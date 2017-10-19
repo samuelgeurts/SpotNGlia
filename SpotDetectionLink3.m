@@ -13,7 +13,7 @@ Ialligned = Ialigned{k5};
 %}
 
 
-if ~exist('zfinput','var');
+if ~exist('zfinput','var')
     ColorToGrayVector = CompleteTemplate.SpotContrastVector;
    
     zfinput = struct;
@@ -49,10 +49,9 @@ GI = sng_RGB2Gray(Ialligned,ColorToGrayVector,false);
 
 %{
 figure;imagesc(Ialligned)
-
 figure;imagesc(MultiProductTh)
-
 %}
+
 %% SpotMeasure
 
 %function sng_spotproperties (Ialligned, MaskedIm)
