@@ -6,6 +6,7 @@
 obj = BrainSpotValidation;
 obj = SpotVal(obj);
 
+SpotOptList = []
 
 PathsComplete('tp3','pp')
 load([obj.SpotPath,'/stackinfo.mat'],'stackinfo');
@@ -41,7 +42,11 @@ ColorToGrayVector = CompleteTemplate.SpotContrastVector;
     obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','SpotSelection','MaxSpotSize',2000,''); % size selection 
     obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','SpotSelection','MinProbability',0,''); %color selection
 
-for l1 = 7:numel(MPthresholdList)
+    
+    
+    
+    
+for l1 = 1:numel(MPthresholdList)
 
     obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','MultiProduct','MPthreshold',MPthresholdList(l1),'');      
     
@@ -74,20 +79,33 @@ for l1 = 7:numel(MPthresholdList)
         ColorI = [ColorI,[Spotpar(~a(:,1)).ColorProbability]];   
     end
        
-    %figure;imagesc(Spotpar(1).Image)
+        %figure;imagesc(Spotpar(1).Image)
+___>>>> added this, compute threshold for area
+        x = linspace(0,500,1000)
+        AreaHistCorrect=sng_chistcount(AreaC,x);      %create bins
+        AreaHistIncorrect=sng_chistcount(AreaI,x);      %
 
-        x = linspace(0,500,100)
-        Eh1=sng_chistcount(AreaC,x);      %create bins
-        Bh1=sng_chistcount(AreaI,x);      %
-        sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),Eh1,Bh1);
-         
-        x = linspace(0,1.2,100)
-        Eh1=sng_chistcount(ColorC,x);      %create bins
-        Bh1=sng_chistcount(ColorI,x);      %
-        sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),Eh1,Bh1);
-         
+        %finds threshold,index is part of the right site
+        for j = 1:size(AreaHistCorrect,2)
+            F(j) = sum(AreaHistIncorrect(1:j-1)) + sum(AreaHistCorrect(j:end));
+        end
+        [mx,index] = max(F);
+        %every area equal or larger than AreaThreshold is part of 
+        AreaThreshold =  x(index) %every area equal or larger than 
+        
+        sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),AreaHistCorrect,AreaHistIncorrect);      
+        hold on;line([AreaThreshold AreaThreshold],[get(gca,'Ylim')],'color',[0 0 0]);
 
         
+        %{
+        sng_chistplot(AreaHistCorrect,AreaHistIncorrect,index);
+        %}
+        
+        x = linspace(0,1.2,30)
+        AreaHistCorrect=sng_chistcount(ColorC,x);      %create bins
+        AreaHistIncorrect=sng_chistcount(ColorI,x);      %
+        sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),AreaHistCorrect,AreaHistIncorrect);
+         
         DS = [[AreaC';AreaI'],[ColorC';ColorI']]
         lab = [ones(numel(AreaC),1);2*ones(numel(AreaI),1)]     
         a = prdataset(DS,lab)     
@@ -95,13 +113,11 @@ for l1 = 7:numel(MPthresholdList)
         
         figure;
         scatterd(a)
-        wp = ldc(a)
+        wp = parzenc(a,0.25)
         plotc(wp)
         
         err{l1} = a*wp*testc %error of testset c on trained classifier wb
 
-        
-        
 obj.show
 obj.saveit(['meas_',num2str(l1)])
 
@@ -109,18 +125,47 @@ obj.saveit(['meas_',num2str(l1)])
 
 
 
-%{
+
+
+
 sng_zfinputAssign(obj.zfinput,'SpotDetection')
+
 SpotOpt.MPlevels = MPlevels
 SpotOpt.MPthreshold = MPthreshold
 SpotOpt.MinSpotSize = MinSpotSize
 SpotOpt.MaxSpotSize = MaxSpotSize
 SpotOpt.MinProbability = MinProbability
 
+SpotOpt.MeanPrecision = mean([obj.SpotInfo.Precision])
+SpotOpt.MeanRecall = mean([obj.SpotInfo.Recall])
+SpotOpt.MeanF1score = mean([obj.SpotInfo.F1score])
+SpotOpt.MeanAbsDifference = mean(abs([obj.SpotInfo.AbsDifference]))
+SpotOpt.MeanRelDifference = mean(abs([obj.SpotInfo.RelDifference]))
+
+SpotOpt.StdPrecision = std([obj.SpotInfo.Precision])
+SpotOpt.StdRecall = std([obj.SpotInfo.Recall])
+SpotOpt.StdF1score = std([obj.SpotInfo.F1score])
+SpotOpt.StdAbsDifference = std(abs([obj.SpotInfo.AbsDifference]))
+SpotOpt.StdRelDifference = std(abs([obj.SpotInfo.RelDifference]))
+
 SpotOpt.Precision = [obj.SpotInfo.Precision]
 SpotOpt.Recall = [obj.SpotInfo.Recall]
 SpotOpt.F1score = [obj.SpotInfo.F1score]
-%}
+SpotOpt.AbsDifference = [obj.SpotInfo.AbsDifference]
+SpotOpt.RelDifference = [obj.SpotInfo.RelDifference]
+
+
+
+SpotOptList(numel(SpotOptList)+1) = SpotOpt
+
+
+SpotOpt = datetime;
+if ~exist('savename','var')
+    savename = inputname(1);
+end
+save([obj.SavePath,'/',savename,'.mat'],'obj');  
+
+
 end
 
 
