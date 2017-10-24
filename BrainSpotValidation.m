@@ -152,25 +152,30 @@ classdef BrainSpotValidation
             for k1 = 1:obj.Numb
 
                 Spotpar = obj.SpotParameters{k1};
-%{
-                SpotparS = Spotpar(...
-                    [Spotpar.MinProbability] &... %selection of spotinfo based on conditions
-                    [Spotpar.Insite] &...
-                    [Spotpar.LargerThan] &...
-                    [Spotpar.SmallerThan]);
-%}
-                %select spot insite annotated brainregion
-                [spotcentroids] = reshape([Spotpar.Centroid],2,numel(Spotpar))';                               
-                ambr = obj.BrainInfo(k1).AnnotatedMidBrainRegistrated;              
-                [ins,~] = inpolygon(spotcentroids(:,1),spotcentroids(:,2),ambr(:,1),ambr(:,2));
                 
-                 SpotparS = Spotpar(...
-                    ins' &...
-                    [Spotpar.MinProbability] &... %selection of spotinfo based on conditions
-                    [Spotpar.LargerThan] &...
-                    [Spotpar.SmallerThan]);    
+                if ~isempty(Spotpar)
+    %{
+                    SpotparS = Spotpar(...
+                        [Spotpar.MinProbability] &... %selection of spotinfo based on conditions
+                        [Spotpar.Insite] &...
+                        [Spotpar.LargerThan] &...
+                        [Spotpar.SmallerThan]);
+    %}
+                    %select spot insite annotated brainregion
+                    [spotcentroids] = reshape([Spotpar.Centroid],2,numel(Spotpar))';                               
+                    ambr = obj.BrainInfo(k1).AnnotatedMidBrainRegistrated;              
+                    [ins,~] = inpolygon(spotcentroids(:,1),spotcentroids(:,2),ambr(:,1),ambr(:,2));
 
-                SpotCom{k1} = reshape([SpotparS.Centroid],2,numel(SpotparS))';
+                     SpotparS = Spotpar(...
+                        ins' &...
+                        [Spotpar.MinProbability] &... %selection of spotinfo based on conditions
+                        [Spotpar.LargerThan] &...
+                        [Spotpar.SmallerThan]);    
+
+                    SpotCom{k1} = reshape([SpotparS.Centroid],2,numel(SpotparS))';
+                else
+                    SpotCom{k1} = []
+                end
                 
                 %because the annotated midbrain does not corresponds
                 %exactly with the annotated spots, de annotated spots are
@@ -647,7 +652,9 @@ classdef BrainSpotValidation
                 savename = inputname(1);
             end
             save([obj.SavePath,'/',savename,'.mat'],'obj');          
-        end    
+        end
+        
+        
         
     end
         
