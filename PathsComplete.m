@@ -24,10 +24,14 @@ Example 2
 %}
 
 %if at erasmus
-if strcmp(getenv('OS'),'Windows_NT') || strcmp(getenv('username'),'260018')
+if strcmp(getenv('OS'),'Windows_NT') && strcmp(getenv('username'),'260018')
     Basepath = 'C:\Users\260018\Dropbox\20170327_3dpf_test';
     TemplatePath = 'C:\Users/260018\Dropbox\Template brain\3 dpf';
     TemplatePath3dpf = 'C:\Users/260018\Dropbox\Template 3 dpf';        
+elseif strcmp(getenv('OS'),'Windows_NT') && strcmp(getenv('username'),'SNGeu')
+    Basepath = 'C:\Users\SNGeu\Dropbox\20170327_3dpf_test';
+    TemplatePath = 'C:\Users/SNGeu\Dropbox\Template brain\3 dpf';
+    TemplatePath3dpf = 'C:\Users/SNGeu\Dropbox\Template 3 dpf';          
 %if at mac laptop
 elseif  strcmp(getenv('USER'),'samuelgeurts')
     Basepath = '/Users/samuelgeurts/Dropbox/20170327_3dpf_test';
