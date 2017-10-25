@@ -28,12 +28,13 @@ sng_zfinputAssign(obj.zfinput,'SpotDetection')
     SpotOpt.AbsDifference = [obj.SpotInfo.AbsDifference];
     SpotOpt.RelDifference = [obj.SpotInfo.RelDifference];
 
-    SpotOpt.date = date
+    SpotOpt.date = date;
     
-    if exist('linen','var') & linen ~= 0 
-        SpotOptList(linen) = SpotOpt;
-    elseif isempty(SpotOptList)
+
+    if isempty(SpotOptList)
         SpotOptList = SpotOpt;
+    elseif exist('linen','var') & linen ~= 0 
+        SpotOptList(linen) = SpotOpt;               
     else
         SpotOptList(numel(SpotOptList)+1) = SpotOpt;
     end
