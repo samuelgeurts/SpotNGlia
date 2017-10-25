@@ -9,7 +9,8 @@ obj = BrainSpotValidation;
 obj = SpotVal(obj);
 
 fig_tf = false;
-fig_tf2 = false;
+fig_tf2 = 1;
+
 
 
 PathsComplete('tp3','pp')
@@ -29,10 +30,16 @@ for k5 = stacknumbers
     Ialigned{k5} = imwarp(Icombined,tform_1234,'FillValues',255,'OutputView',CompleteTemplate.ref_temp);
 end
 
-MPthresholdList = [0.5 1 2 4 8 16 32 64 128 256 512 1024];
-MPlevelList = {3:7,3:8,3:9,4:7,4:8,4:9,5:7,5:8,5:9}
+MPthresholdList = [2 4 8 16 32 64 128 256];
+MPlevelList = {3:7,3:8,3:9,4:7,4:8,4:9,5:7,5:8,5:9};
+
+%MPthresholdList = [8 16];
+%MPlevelList = {5:8};
+
+
 
 ColorToGrayVector = CompleteTemplate.SpotContrastVector;
+%ColorToGrayVector = [0;1;0];
 
     obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','RgbToGray','ColorToGrayVector',ColorToGrayVector,'');  %select color channel [0 1 0], 
     obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','Wavelet','ScaleBase',0.5,'');      
@@ -46,7 +53,7 @@ ColorToGrayVector = CompleteTemplate.SpotContrastVector;
 
 
 %try out different values for Multiproduct
-for l2 = 3:numel(MPlevelList)  
+for l2 = 1:numel(MPlevelList)  
     for l1 = 1:numel(MPthresholdList)
 
         linen = ((l2 - 1) * numel(MPthresholdList) + l1); %variable 2 indicate at which line to save info
@@ -59,7 +66,7 @@ for l2 = 3:numel(MPlevelList)
 
         %compute Spots
         for k5 = stacknumbers
-            disp([num2str(l2),' ',num2str(l1),' ',num2str(k5)])
+            fprintf([num2str(l2),'/',num2str(l1),'/',num2str(k5),' '])
             BrainAnn = obj.BrainInfo(k5).AnnotatedMidBrainRegistrated;
             [~,spoutput{k5}] = SpotDetectionLink3(Ialigned{k5},CompleteTemplate,fliplr(BrainAnn),obj.zfinput);         
             obj.SpotParameters{k5} = spoutput{k5}(3).value;              
@@ -67,12 +74,14 @@ for l2 = 3:numel(MPlevelList)
 
         obj = obj.SpotVal;
         
-        load([obj.SavePath,'/','SpotOptList','.mat'],'SpotOptList');  
-        SpotOptList = AddToSpotOptList(SpotOptList,obj,(linen*2)-1) %stores all relevant info into the next field of SpotOptList
-        save([obj.SavePath,'/','SpotOptList','.mat'],'SpotOptList');  
+        disp([num2str(l2),' ',num2str(l1),' ',num2str(mean([obj.SpotInfo.F1score]))]);
+        
+        load([obj.SavePath,'/','SpotOptList2','.mat'],'SpotOptList2');  
+        SpotOptList2 = AddToSpotOptList(SpotOptList2,obj,(linen*2)-1); %stores all relevant info into the next field of SpotOptList
+        save([obj.SavePath,'/','SpotOptList2','.mat'],'SpotOptList2');  
 
         if fig_tf    
-            obj.show
+            obj.show;
         end
 
         %selects spot sizes and color probabilities, correct & incorrect
@@ -113,7 +122,7 @@ for l2 = 3:numel(MPlevelList)
         [mxR,indexR] = max(FR);
         MinSpotSize = x(indexR); %every area equal or larger than "LargerThan" is large enough                
         [mxL,indexL] = max(FL(indexR:end));
-        MaxSpotSize = x(indexL); %every area equal or larger than "SmallerThan" is small enough
+        MaxSpotSize = x(indexL+indexR); %every area equal or larger than "SmallerThan" is small enough
 
         if fig_tf2
             sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),AreaHistCorrect,AreaHistIncorrect);      
@@ -166,15 +175,16 @@ for l2 = 3:numel(MPlevelList)
 
         obj = obj.SpotVal;
         
-        load([obj.SavePath,'/','SpotOptList','.mat'],'SpotOptList');  
-        SpotOptList = AddToSpotOptList(SpotOptList,obj,linen*2); %stores all relevant info into the next field of SpotOptList
-        save([obj.SavePath,'/','SpotOptList','.mat'],'SpotOptList');    
+        load([obj.SavePath,'/','SpotOptList2','.mat'],'SpotOptList2');  
+        SpotOptList2 = AddToSpotOptList(SpotOptList2,obj,linen*2); %stores all relevant info into the next field of SpotOptList
+        save([obj.SavePath,'/','SpotOptList2','.mat'],'SpotOptList2');    
 
         if fig_tf    
             obj.show
         end
         
-        
+        disp(num2str(mean([obj.SpotInfo.F1score])));
+   
         
         %obj.saveit(['meas_',num2str(l1)])
 
@@ -189,10 +199,9 @@ end
 
 %save([obj.SavePath,'/','savename','.mat'],'obj');  
 
-
 %{
 
-show SpotOptList results
+%show SpotOptList results
 
 SF1 = [SpotOptList.MeanF1score]
 SF1s = [SpotOptList.StdF1score]
@@ -207,6 +216,13 @@ hold on;plot(SF1s(q))
 legend('show')
 
 %}
+
+
+%qq = SpotOptList([SpotOptList.MeanF1score] >= 0.7)
+
+
+
+
 
 
 
