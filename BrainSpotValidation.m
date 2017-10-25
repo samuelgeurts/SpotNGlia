@@ -117,14 +117,14 @@ classdef BrainSpotValidation
             
             %fill the BrainInfo Structure (per fish)
             temp = num2cell(Jaccard);[obj.BrainInfo(1:obj.Numb).Jaccard] = temp{:};
-            temp = num2cell(Dice);[obj.BrainInfo(1:obj.Numb).Overlap] = temp{:};
+            temp = num2cell(Dice);[obj.BrainInfo(1:obj.Numb).Dice] = temp{:};
             
             %fill BrainStats Structure, statistical values
             obj.BrainStats.FiveNumberSummaryJaccard = sng_FiveNumberSum(Jaccard);
             obj.BrainStats.MeanJaccard = mean(Jaccard);
             
-            obj.BrainStats.FiveNumberSummaryOverlap = sng_FiveNumberSum(Dice);
-            obj.BrainStats.MeanOverlap = mean(Dice);       
+            obj.BrainStats.FiveNumberSummaryDice = sng_FiveNumberSum(Dice);
+            obj.BrainStats.MeanDice = mean(Dice);       
             
         end
         
@@ -152,6 +152,7 @@ classdef BrainSpotValidation
             for k1 = 1:obj.Numb
 
                 Spotpar = obj.SpotParameters{k1};
+                ambr = obj.BrainInfo(k1).AnnotatedMidBrainRegistrated;              
                 
                 if ~isempty(Spotpar)
     %{
@@ -163,7 +164,6 @@ classdef BrainSpotValidation
     %}
                     %select spot insite annotated brainregion
                     [spotcentroids] = reshape([Spotpar.Centroid],2,numel(Spotpar))';                               
-                    ambr = obj.BrainInfo(k1).AnnotatedMidBrainRegistrated;              
                     [ins,~] = inpolygon(spotcentroids(:,1),spotcentroids(:,2),ambr(:,1),ambr(:,2));
 
                      SpotparS = Spotpar(...
@@ -174,7 +174,7 @@ classdef BrainSpotValidation
 
                     SpotCom{k1} = reshape([SpotparS.Centroid],2,numel(SpotparS))';
                 else
-                    SpotCom{k1} = []
+                    SpotCom{k1} = [];
                 end
                 
                 %because the annotated midbrain does not corresponds
@@ -281,6 +281,7 @@ classdef BrainSpotValidation
             for k1 = 1:obj.Numb
 
                 Spotpar = obj.SpotParameters{k1};
+                ambr = obj.BrainInfo(k1).AnnotatedMidBrainRegistrated;              
 
                 SpotparS = Spotpar(...
                     [Spotpar.MinProbability] &... %selection of spotinfo based on conditions
@@ -290,8 +291,21 @@ classdef BrainSpotValidation
 
                 SpotCom = reshape([SpotparS.Centroid],2,numel(SpotparS))';
                 
+                %because the annotated midbrain does not corresponds
+                %exactly with the annotated spots, de annotated spots are
+                %also filtered to compute the performance of the
+                %spotdetection only
+                ambs = obj.SpotInfo(k1).AnnotatedSpots;  
+                [ins2,~] = inpolygon(ambs(:,1),ambs(:,2),ambr(:,1),ambr(:,2));
+                ambsx = ambs(:,1);ambsx = ambsx(ins2);
+                ambsy = ambs(:,2);ambsy = ambsy(ins2);                                                
+                ambsS{k1} = [ambsx,ambsy];                
+%{
                 [Correct,FalsePos,FalseNeg,link] = sng_CoordinateMatching...
-                    (SpotCom,obj.SpotInfo(k1).AnnotatedSpots,10);       
+                    (SpotCom,obj.SpotInfo(k1).AnnotatedSpots,10);
+%}
+                [Correct,FalsePos,FalseNeg,link] = sng_CoordinateMatching...
+                    (SpotCom,ambsS{k1},10);                   
                 
                 LinkDistance{k1} = link;
 
@@ -361,14 +375,14 @@ classdef BrainSpotValidation
             %Example only show
             %   obj.show
             
-            %% brainval spotval
+            %%% brainval spotval
             fsx = 6;fsy = 10;
                       
             if isfield(obj.BrainInfo,'Jaccard')
                 [h1,g1] = setfigax1;                    
                 boxplot(g1,[...
                     obj.BrainInfo.Jaccard;...
-                    obj.BrainInfo.Overlap]',{'Jaccard','Dice'});
+                    obj.BrainInfo.Dice]',{'Jaccard','Dice'});
                 title('Brain Validation')
                 setfigax2(h1,g1)            
             end
@@ -415,7 +429,7 @@ classdef BrainSpotValidation
                 [h5,g5] = setfigax1;      
                 boxplot(g5,[...
                     obj.SpotBrainInfo.AbsDifference]',{'AbsDifference'});
-                title('Spot Validation')        
+                title('Spot Validation on Computed Brain')        
                 
                 set(g5,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
                 set(g5,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7])
@@ -453,7 +467,7 @@ classdef BrainSpotValidation
                 [h7,g7] = setfigax1;      
                 boxplot(g7,[...
                     obj.SpotBrainInfo.RelDifference]',{'RelDifference'});
-                title('Spot Validation')        
+                title('Spot Validation on Computed Brain')        
                 
                 set(g7,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
                 set(g7,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7])
@@ -473,27 +487,33 @@ classdef BrainSpotValidation
                 %fsx = 5;fsy = 10;
                 figurehandle = figure('PaperUnits','centimeters','Color',[1 1 1]);
                 axishandle = gca;
-                sng_figcm(fsx,fsy)
+                sng_figcm(fsx,fsy);
             end
             function setfigax2(figurehandle,axishandle)
                 set(axishandle,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
-                set(axishandle,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7])
-                set(axishandle,'YLim',[-0.02,1.02])
+                set(axishandle,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7]);
+                set(axishandle,'YLim',[-0.02,1.02]);
                 
                 if exist('exportit','var') && exportit
                     export_fig(figurehandle ,['/Users/samuelgeurts/Desktop/','boxplot',num2str(figurehandle.Number)], '-png', '-r600', '-nocrop');
                 end
                 
-                ScaledFigure.calibrateDisplay(113.6) %113.6 for this screen
-                ScaledFigure(figurehandle,'reuse')
-                set(figurehandle,'Units','Centimeters')
-                set(figurehandle,'Position',(get(figurehandle,'Position') + [fsx 0 0 0]))             
+                ScaledFigure.calibrateDisplay(113.6); %113.6 for this screen
+                ScaledFigure(figurehandle,'reuse');
+                set(figurehandle,'Units','Centimeters');
+                set(figurehandle,'Position',(get(figurehandle,'Position') + [fsx 0 0 0]));             
             end
 
                              
         end
         
-        function showbrain(obj,val)      
+        function showbrain(obj,val,ComOrAnn)
+            
+            %CompOrAnn determines if the computed or the annotated brain is
+            %displayed inlcudin ghte Correct/FalsePos/FalseNeg
+                
+            
+            
             TemplatePath3dpf = '/Users/samuelgeurts/Dropbox/Template 3 dpf';
             PreprocessionPath = '/Users/samuelgeurts/Dropbox/20170327_3dpf_test/1_preprocessed';
             CompleteTemplate = LoadTemplateLink3(TemplatePath3dpf);
@@ -509,38 +529,84 @@ classdef BrainSpotValidation
                 CorrectedSlice = sng_openimstack2([PreprocessionPath,'/',[obj.ImageInfo(k1).Name],'.tif']);           
                 Icombined = sng_SliceCombine(CorrectedSlice,stackinfo(k1).ExtendedDeptOfField.IndexMatrix);
                 Ialigned = imwarp(Icombined,tform_1234,'FillValues',255,'OutputView',CompleteTemplate.ref_temp);
-
+                                
                 cmbr = obj.BrainInfo(k1).ComputedMidBrain;
                 ambr = obj.BrainInfo(k1).AnnotatedMidBrainRegistrated;                    
                 
                     %figure;imshow(uint8(Icombined))
                     %hold on;plot(mbr(:,1),mbr(:,2))
-                    
-                figure;imshow(uint8(Ialigned))
+%%                    
+                figure;imshow(uint8(Ialigned))                    
                 hold on;
-                plot(cmbr(:,2),cmbr(:,1));                    
-                plot(ambr(:,1),ambr(:,2));
+                plot(cmbr(:,2),cmbr(:,1),'Color',[255 75 75]/255,'LineWidth',2);                    
+                plot(ambr(:,1),ambr(:,2),'Color',[75 75 255]/255,'LineWidth',2);   
+                if strcmp(ComOrAnn,'Com')
+                    Correct = obj.SpotBrainInfo(k1).CorrectSpots;
+                    FalsePos = obj.SpotBrainInfo(k1).FalsePosSpots;
+                    FalseNeg = obj.SpotBrainInfo(k1).FalseNegSpots;
+                    
+                    ps = obj.SpotBrainInfo(val(k)).Precision; %used for textbox
+                    rs = obj.SpotBrainInfo(val(k)).Recall;
+                    fs = obj.SpotBrainInfo(val(k)).F1score;
+                                        
+                elseif strcmp(ComOrAnn,'Ann')
+                    Correct = obj.SpotInfo(k1).CorrectSpots;
+                    FalsePos = obj.SpotInfo(k1).FalsePosSpots;
+                    FalseNeg = obj.SpotInfo(k1).FalseNegSpots;
+                                      
+                    ps = obj.SpotInfo(val(k)).Precision; %used for textbox
+                    rs = obj.SpotInfo(val(k)).Recall;
+                    fs = obj.SpotInfo(val(k)).F1score;
+                    
+                else
+                    Error('choose between choose between Ann and Com, for displaying correct/falsepos/falseneg')
+                end
+                                               
+                %scatter(Correct(:,1), Correct(:,2),400,'LineWidth',2,'MarkerEdgeColor',1/255*[75 255 75]);
+                %scatter(FalsePos(:,1), FalsePos(:,2),400,'LineWidth',2,'MarkerEdgeColor',1/255*[255 75 75]);
+                %scatter(FalseNeg(:,1), FalseNeg(:,2),400,'LineWidth',2,'MarkerEdgeColor',1/255*[75 75 255]);
+                %legend('Computed brain','Annotated brain','Correct','False Positive','False Negative')
 
-                Correct = obj.SpotInfo(k1).CorrectSpots;
-                FalsePos = obj.SpotInfo(k1).FalsePosSpots;
-                FalseNeg = obj.SpotInfo(k1).FalseNegSpots;
-
-                scatter(Correct(:,1), Correct(:,2),400,'LineWidth',2,'MarkerEdgeColor',1/255*[75 255 75]);
-                scatter(FalsePos(:,1), FalsePos(:,2),400,'LineWidth',2,'MarkerEdgeColor',1/255*[255 75 75]);
-                scatter(FalseNeg(:,1), FalseNeg(:,2),400,'LineWidth',2,'MarkerEdgeColor',1/255*[75 75 255]);
+                scatter([Correct(:,1);FalsePos(:,1)], [Correct(:,2);FalsePos(:,2)],400,'LineWidth',2,'MarkerEdgeColor',1/255*[255 75 75]);             
+                scatter([Correct(:,1);FalseNeg(:,1)], [Correct(:,2);FalseNeg(:,2)],270,'LineWidth',2,'MarkerEdgeColor',1/255*[75 75 255]);             
+                legend('Computed brain','Annotated brain','Computed spots','Annotated spots')
                 
-                legend('Computed brain','Annotated brain','Correct','False Positive','False Negative')
-
+                
+                nc = size(Correct,1) + size(FalsePos,1); %number of computed spots
+                na = size(Correct,1) + size(FalseNeg,1); %number of annotated spots
+                jb = obj.BrainInfo(val(k)).Jaccard; %Jaccard number
+                db = obj.BrainInfo(val(k)).Dice; % Dice number
+                
+                                
+                str = sprintf(['BRAIN PARAMETERS',...
+                    '\n','Jaccard: %.2f',...
+                    '\n','dice: %.2f',...
+                    '\n\n','SPOT PARAMETERS',...
+                    '\n','Precision: %.2f',...
+                    '\n','Recall: %.2f',...
+                    '\n','F1score: %.2f',...
+                    '\n\n','Computed spots: %.0f',...
+                    '\n','Annotated spots: %.0f',...                    
+                    '\n\n','Correct spots: %.0f',...
+                    '\n','False Positives: %.0f',...
+                    '\n','False Negatives: %.0f'],...
+                    jb,db,ps,rs,fs,nc,na,...
+                    size(Correct,1),...
+                    size(FalsePos,1),...
+                    size(FalseNeg,1));             
+                
+                annotation('textbox',[.1 .63 .7 .3],'String',str,'FitBoxToText','on');
+           
             end
                     
         end
-        
+                
         function showgraph(obj)
             fsx = 8.5;
             fsy = 8.5;
 
             h1 = figure('PaperUnits','centimeters','Color',[1 1 1]);
-            sng_figcm(fsx,fsy)
+            sng_figcm(fsx,fsy);
             plot(sort([obj.BrainInfo.Jaccard],'descend'))
             title('brain  validation')
             xlabel('fish number','FontSize',8,'FontName','arial');
@@ -554,11 +620,11 @@ classdef BrainSpotValidation
             
 
             h2 = figure('PaperUnits','centimeters','Color',[1 1 1]);
-            sng_figcm(fsx,fsy)
-            plot(sort([obj.BrainInfo.Overlap],'descend'))
+            sng_figcm(fsx,fsy);
+            plot(sort([obj.BrainInfo.Dice],'descend'))
             title('brain validation')                                    
             xlabel('fish number','FontSize',8,'FontName','arial');
-            ylabel('Overlap index','FontSize',8,'FontName','arial');
+            ylabel('Dice index','FontSize',8,'FontName','arial');
             set(gca,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
             set(gca,'XLim',[1 50])
             set(gca,'YLim',[-0.02 1.02])
@@ -567,7 +633,7 @@ classdef BrainSpotValidation
             %export_fig(h2 ,['/Users/samuelgeurts/Desktop/','graph',num2str(2)], '-png', '-r600', '-nocrop');
             
             h3 = figure('PaperUnits','centimeters','Color',[1 1 1]);
-            sng_figcm(fsx,fsy)
+            sng_figcm(fsx,fsy);
             plot(sort([obj.SpotInfo.F1score],'descend'))
             title('spot validation')      
             xlabel('fish number','FontSize',8,'FontName','arial');
@@ -580,7 +646,7 @@ classdef BrainSpotValidation
             %export_fig(h3 ,['/Users/samuelgeurts/Desktop/','graph',num2str(3)], '-png', '-r600', '-nocrop');
             
             h4 = figure('PaperUnits','centimeters','Color',[1 1 1]);
-            sng_figcm(fsx,fsy)            
+            sng_figcm(fsx,fsy);            
             plot(sort([obj.SpotInfo.Recall],'descend'))
             title('spot validation')     
             xlabel('fish number','FontSize',8,'FontName','arial');
@@ -593,7 +659,7 @@ classdef BrainSpotValidation
             %export_fig(h4 ,['/Users/samuelgeurts/Desktop/','graph',num2str(4)], '-png', '-r600', '-nocrop');
             
             h5 = figure('PaperUnits','centimeters','Color',[1 1 1]);
-            sng_figcm(fsx,fsy)            
+            sng_figcm(fsx,fsy);           
             plot(sort([obj.SpotInfo.Precision],'descend'))
             title('spot validation')
             xlabel('fish number','FontSize',8,'FontName','arial');
@@ -619,7 +685,7 @@ classdef BrainSpotValidation
             %export_fig(h6 ,['/Users/samuelgeurts/Desktop/','graph',num2str(6)], '-png', '-r600', '-nocrop');
             
             h7 = figure('PaperUnits','centimeters','Color',[1 1 1]);
-            sng_figcm(fsx,fsy)
+            sng_figcm(fsx,fsy);
             plot(sort([obj.SpotBrainInfo.Recall],'descend'))
             title('spot with computed brain')     
             xlabel('fish number','FontSize',8,'FontName','arial');
@@ -632,7 +698,7 @@ classdef BrainSpotValidation
             %export_fig(h7 ,['/Users/samuelgeurts/Desktop/','graph',num2str(7)], '-png', '-r600', '-nocrop');
             
             h8 = figure('PaperUnits','centimeters','Color',[1 1 1]);
-            sng_figcm(fsx,fsy)
+            sng_figcm(fsx,fsy);
             plot(sort([obj.SpotBrainInfo.Precision],'descend'))
             title('spot with computed brain') 
             xlabel('fish number','FontSize',8,'FontName','arial');
