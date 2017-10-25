@@ -1,7 +1,7 @@
 
 PathsComplete('sp')
 
-%SpotPath = uigetdir(SpotPath)
+SpotPath = uigetdir(SpotPath)
 
 Validation = BrainSpotValidation(SpotPath)
 
@@ -9,21 +9,20 @@ Validation = BrainVal(Validation)
 Validation = SpotVal(Validation)
 Validation = SpotBrainVal(Validation)
 
-Validation.show
-Validation.showgraph
-showbrain(Validation,1:50)
+%Validation.show
+%Validation.showgraph
+showbrain(Validation,45,'Com')
+showbrain(Validation,45,'Ann')
 
-
-validation2 = Validation;
-Validation2.saveit
+saveit(Validation,'Validation20171025')
 
 %%
 
 tic
-obj = BrainSpotValidation
+obj = BrainSpotValidation()
 toc
 tic
-obj.saveit
+%obj.saveit
 toc
 
 
@@ -31,7 +30,10 @@ toc
 obj = BrainVal(obj)
 obj = SpotVal(obj)
 obj = SpotBrainVal(obj)
-obj.show
+%obj.show
+
+showbrain(obj,10,'Com')
+showbrain(obj,10,'Ann')
 
 %%
 
