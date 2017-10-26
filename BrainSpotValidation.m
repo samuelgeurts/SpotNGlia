@@ -719,9 +719,7 @@ classdef BrainSpotValidation
             end
             save([obj.SavePath,'/',savename,'.mat'],'obj');          
         end
-        
-        
-        
+                        
     end
         
 end
