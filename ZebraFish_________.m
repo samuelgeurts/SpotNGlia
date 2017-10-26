@@ -6,7 +6,7 @@
 % SET specific image number to compute
 stacknumbers = 0; %0 for processing all images
 savefig_TF = 0;
-savepar_TF = 0;
+savepar_TF = 1;
 parforArg = 0; %0 for no parrallel computing, 2 for two core parallel computing
 wbar_TF = 0;
 
@@ -135,17 +135,17 @@ load([BrainPath,'/stackinfo.mat'],'stackinfo')
 load([BrainPath,'/zfinput.mat'],'zfinput')
 
 ColorToGrayVector = CompleteTemplate.SpotContrastVector;
-ColorToGrayVector = [0;1;0]
+ColorToGrayVector = [0;1;0];
 
     zfinput = sng_zfinput(zfinput,0,'SpotDetection','RgbToGray','ColorToGrayVector',ColorToGrayVector,'');  %select color channel [0 1 0], 
     zfinput = sng_zfinput(zfinput,0,'SpotDetection','Wavelet','ScaleBase',0.5,'');  
     zfinput = sng_zfinput(zfinput,0,'SpotDetection','Wavelet','ScaleLevels',7,'');  
     zfinput = sng_zfinput(zfinput,0,'SpotDetection','Wavelet','Kthreshold',0,'');  
     zfinput = sng_zfinput(zfinput,0,'SpotDetection','MultiProduct','MPlevels',5:7,'');  
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','MultiProduct','MPthreshold',256,'');  
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','SpotSelection','MinSpotSize',14,''); % size selection 
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','SpotSelection','MaxSpotSize',430,''); % size selection 
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','SpotSelection','MinProbability',0.1,''); %color selection
+    zfinput = sng_zfinput(zfinput,0,'SpotDetection','MultiProduct','MPthreshold',200,'');  
+    zfinput = sng_zfinput(zfinput,0,'SpotDetection','SpotSelection','MinSpotSize',8.4,''); % size selection 
+    zfinput = sng_zfinput(zfinput,0,'SpotDetection','SpotSelection','MaxSpotSize',458,''); % size selection 
+    zfinput = sng_zfinput(zfinput,0,'SpotDetection','SpotSelection','MinProbability',0.066,''); %color selection
 
 spoutput = cell(1,numel(stackinfo));
 
