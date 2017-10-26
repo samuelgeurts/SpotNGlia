@@ -29,11 +29,14 @@ for k5 = stacknumbers
     Ialigned{k5} = imwarp(Icombined,tform_1234,'FillValues',255,'OutputView',CompleteTemplate.ref_temp);
 end
 
-MPthresholdList = [64 128 256 512 1024 2048 4096 8192 16384 32768];
+%MPthresholdList = [16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144];
 %MPlevelList = {3:7,3:8,3:9,4:7,4:8,4:9,5:7,5:8,5:9};
 
-%MPthresholdList = [8 16];
-MPlevelList = {5:8,5:9,5:7,4:9,4:8,4:7,4:6;3:9,3:8,3:7};
+MPthresholdList = [190 200 210];
+%MPthresholdList = [235 245 255 265 285 295 305 315 335 345 355 365 385 395 405];
+%MPthresholdList = [235 245 255 265 285 295 305 315 335 345 355 365 385 395 405];
+
+MPlevelList = {5:7};
 
 
 
@@ -42,7 +45,7 @@ ColorToGrayVector = [0;1;0];
 
     obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','RgbToGray','ColorToGrayVector',ColorToGrayVector,'');  %select color channel [0 1 0], 
     obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','Wavelet','ScaleBase',0.5,'');      
-    obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','Wavelet','ScaleLevels',9,'');  
+    obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','Wavelet','ScaleLevels',7,'');  
     obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','Wavelet','Kthreshold',0,'');  
     obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','MultiProduct','MPlevels',4:9,'');  
     obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','MultiProduct','MPthreshold',50,'');  
@@ -52,10 +55,10 @@ ColorToGrayVector = [0;1;0];
 
 %%
 %try out different values for Multiproduct
-for l2 = 7%:numel(MPlevelList)  
-    for l1 = 1:numel(MPthresholdList)
+for l2 = 1%:numel(MPlevelList)  
+    for l1 = 2%:numel(MPthresholdList)
 
-        linen = ((l2 - 1) * numel(MPthresholdList) gi+ l1); %variable 2 indicate at which line to save info
+        linen = ((l2 - 1) * numel(MPthresholdList) + l1); %variable 2 indicate at which line to save info
         
         obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','SpotSelection','MinSpotSize',1,''); % size selection 
         obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','SpotSelection','MaxSpotSize',2000,''); % size selection 
@@ -75,9 +78,9 @@ for l2 = 7%:numel(MPlevelList)
         
         disp([num2str(l2),' ',num2str(l1),' ',num2str(mean([obj.SpotInfo.F1score]))]);
         
-        load([obj.SavePath,'/','SpotOptList3','.mat'],'SpotOptList3');  
-        SpotOptList3 = AddToSpotOptList(SpotOptList3,obj,(linen*2)-1); %stores all relevant info into the next field of SpotOptList
-        save([obj.SavePath,'/','SpotOptList3','.mat'],'SpotOptList3');  
+        %load([obj.SavePath,'/','SpotOptList3','.mat'],'SpotOptList3');  
+        %SpotOptList4 = AddToSpotOptList(SpotOptList4,obj,(linen*2)-1); %stores all relevant info into the next field of SpotOptList
+        %save([obj.SavePath,'/','SpotOptList4','.mat'],'SpotOptList4');  
 
         if fig_tf    
             obj.show;
@@ -123,6 +126,9 @@ for l2 = 7%:numel(MPlevelList)
         [mxL,indexL] = max(FL(indexR:end));
         MaxSpotSize = x(indexL+indexR); %every area equal or larger than "SmallerThan" is small enough
 
+        %MinSpotSize = MinSpotSize/2;  %%%%
+        
+        
         if fig_tf2
             sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),AreaHistCorrect,AreaHistIncorrect);      
             hold on;line([MinSpotSize MinSpotSize],get(gca,'Ylim'),'color',[0 0 0]);
@@ -140,6 +146,8 @@ for l2 = 7%:numel(MPlevelList)
         [mxR,indexR] = max(FR);
         MinProbability = x(indexR); %every area equal or larger than "LargerThan" is large enough                
 
+        %MinProbability = MinProbability/2
+        
         if fig_tf2
             sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),ColorHistCorrect,ColorHistIncorrect);
             hold on;line([MinProbability MinProbability],get(gca,'Ylim'),'color',[0 0 0]);
@@ -156,28 +164,48 @@ for l2 = 7%:numel(MPlevelList)
         %plotc(wp)
         %err{l1} = a*wp*testc %error of testset c on trained classifier wb
 
-        %%% assign new threshold logical array to obj.SpotParameters
-        for k5 = stacknumbers
-            temp = num2cell([obj.SpotParameters{k5}.Area] >= MinSpotSize);
-            [obj.SpotParameters{k5}.LargerThan] = temp{:};
+        %%% optimize other thresholds
+        Templist = [];
+        for l3 = 0:0.1:1
+            disp([' ',num2str(l3)])
+            for l4 = 0:0.1:1
+                for l5 = 1:0.1:1.6
+                MinSpotSizeT = MinSpotSize * (l3);
+                MinProbabilityT = MinProbability * (l4);
+                MaxSpotSizeT = MaxSpotSize * l5;
+                
+                %%% assign new threshold logical array to obj.SpotParameters
+                for k5 = stacknumbers
+                    temp = num2cell([obj.SpotParameters{k5}.Area] >= MinSpotSizeT);
+                    [obj.SpotParameters{k5}.LargerThan] = temp{:};
 
-            temp = num2cell([obj.SpotParameters{k5}.Area] <= MaxSpotSize);
-            [obj.SpotParameters{k5}.SmallerThan] = temp{:};
+                    temp = num2cell([obj.SpotParameters{k5}.Area] <= MaxSpotSizeT);
+                    [obj.SpotParameters{k5}.SmallerThan] = temp{:};
 
-            temp = num2cell([obj.SpotParameters{k5}.ColorProbability] >= MinProbability);
-            [obj.SpotParameters{k5}.MinProbability] = temp{:};
+                    temp = num2cell([obj.SpotParameters{k5}.ColorProbability] >= MinProbabilityT);
+                    [obj.SpotParameters{k5}.MinProbability] = temp{:};
+                end
+
+                obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','SpotSelection','MinSpotSize',MinSpotSizeT,'');      % size selection 
+                obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','SpotSelection','MaxSpotSize',MaxSpotSize,'');      % size selection 
+                obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','SpotSelection','MinProbability',MinProbabilityT,'');% color selection
+
+                obj = obj.SpotVal;
+                Templist = AddToSpotOptList(Templist,obj);          
+                end
+            end
         end
+        [mx,indx] = max([Templist.MeanF1score]);
 
-        obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','SpotSelection','MinSpotSize',MinSpotSize,'');      % size selection 
-        obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','SpotSelection','MaxSpotSize',MaxSpotSize,'');      % size selection 
-        obj.zfinput = sng_zfinput(obj.zfinput,0,'SpotDetection','SpotSelection','MinProbability',MinProbability,'');% color selection
+        if exist([obj.SavePath,'/','SpotOptList5','.mat'])
+            load([obj.SavePath,'/','SpotOptList5','.mat'],'SpotOptList5');  
+        else 
+            SpotOptList5 = [];
+        end
+        SpotOptList5 = AddToSpotOptList(Templist(indx),obj); %stores all relevant info into the next field of SpotOptList
+        save([obj.SavePath,'/','SpotOptList5','.mat'],'SpotOptList5');    
 
-        obj = obj.SpotVal;
         
-        load([obj.SavePath,'/','SpotOptList3','.mat'],'SpotOptList3');  
-        SpotOptList3 = AddToSpotOptList(SpotOptList3,obj,linen*2); %stores all relevant info into the next field of SpotOptList
-        save([obj.SavePath,'/','SpotOptList3','.mat'],'SpotOptList3');    
-
         if fig_tf    
             obj.show
         end
