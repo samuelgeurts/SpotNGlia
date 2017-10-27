@@ -1,4 +1,4 @@
-function [imageinfo] = ImageInfoLink(FolderPath,zfinput)
+function [imageinfo] = ImageInfoLink2(FolderPath,zfinput)
 %this function measures the correlation af adjacent fish-images in a folder en
 %give the boundaries of batches of fishes that are similar
 
@@ -13,8 +13,9 @@ function [imageinfo] = ImageInfoLink(FolderPath,zfinput)
 %% parameters
 
 
-if ~exist('zfinput','var');
+if ~exist('zfinput','var')
     zfinput = struct;
+    zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','sorting','date','high');   
     zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','levels',1,'low'); %number of scaled levels correlation is performed
     zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','iterations',10,'low'); %number of iterations iat is performed
     zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','scale',1/16,'low'); %lowered initial scale to increase computation speed for correlation
@@ -31,7 +32,7 @@ dirinfo =  dir([FolderPath,'/*.','tif']);
 imageinfo = rmfield(dirinfo,{'isdir','datenum','bytes'}); %removes unimportant fields
 
 %sort imageinfo according the field 'date'
-answer = inputdlg({'do you want to sort images by creation date?'})
+answer = inputdlg({'do you want to sort images by creation date? (no is sorting on name)'});
 if strcmp(answer,'y') || strcmp(answer,'yes')
     [~, newindex] = sort({imageinfo.date});
     imageinfo = imageinfo(newindex);
@@ -64,10 +65,12 @@ bit = zeros(ni,1);
 histmax = zeros(ni,3);
 warp = zeros(ni,2);
 corcoef = zeros(ni,1);
-fishnumber = zeros(ni,1);
+%fishnumber = zeros(ni,1);
 modulusw = zeros(ni,1);
 anglew = zeros(ni,1);
 warning = cell(ni,1);
+nextstack = zeros(ni,1);
+
 
 for k = 1:ni
     slice = imread([FolderPath,'/',imageinfo(k).name]);
@@ -89,7 +92,7 @@ for k = 1:ni
     [~,histmax(k,2)] = max(hist(s2(:),linspace(0,255,256)));
     [~,histmax(k,3)] = max(hist(s3(:),linspace(0,255,256)));
 
-    histmax(k,:) = histmax(k,:) - 1 %as the values go from 0-255 
+    histmax(k,:) = histmax(k,:) - 1; %as the values go from 0-255 
         
     % compute correlation and warp and add it to imageinfo
     IS{k} = imcomplement(imresize(slice,scale));
@@ -105,7 +108,7 @@ for k = 1:ni
     fprintf('\b ');disp(num2str(k));
     
     modulusw(k) = sqrt(warp(k,1).^2+warp(k,2).^2);%modulus warp
-    anglew(k) = angle(warp(k,:)*[1;i]);%angle warp
+    anglew(k) = angle(warp(k,:)*[1;1i]);%angle warp
     
 
     
@@ -145,7 +148,7 @@ tmp = num2cell(anglew); [imageinfo.anglewarp] = tmp{:};
 tmp = num2cell(corcoef); [imageinfo.corcoef] = tmp{:};
 tmp = num2cell(nextstack); [imageinfo.nextstack] = tmp{:};
 tmp = {imageinfo.nextstack}';[imageinfo.CorNextStack] = tmp{:};
-[imageinfo.warning] = warning{:}
+[imageinfo.warning] = warning{:};
 tmp = num2cell(bit); [imageinfo.bit] = tmp{:};
 tmp = num2cell(histmax,2); [imageinfo.histmax] = tmp{:};
 %tmp = num2cell(fishnumber); [imageinfo.fishnumber] = tmp{:};
