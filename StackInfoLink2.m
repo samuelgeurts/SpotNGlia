@@ -1,4 +1,4 @@
- v function [stackinfo] = StackInfoLink2(imageinfo)
+function [stackinfo] = StackInfoLink2(imageinfo)
 %creates structure with stack information
 %Version StackInfoLink2 20170616
 %   changed to open CorNextStack instead of nextstack (from imageinfo)
