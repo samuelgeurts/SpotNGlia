@@ -19,3 +19,15 @@ saveit(obj,'Validation20171025b')
 
 obj2.show
 
+
+
+%% SpotNGlia sequence
+
+
+obj = SpotNGlia(0)
+
+obj.Sorting = 'Name'
+obj.ImageInfoChecked_TF = true;
+
+obj = obj.SliceCombination([1,2,5])
+obj = obj.PreProcession(1:2)
