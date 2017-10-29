@@ -122,9 +122,9 @@ for k = 1:ni
         warning{k} = 'Warn!';
     elseif bit(k) ~= 8
         warning{k} = 'Wrong Res!';
-    elseif (anglew(k) >= -0.25 || anglew(k) <= -0.45) && nextstack(k) == 0
+    elseif (anglew(k) >= -0.18 || anglew(k) <= -0.53) && nextstack(k) == 0
         warning{k} = 'Angle warn';
-    elseif (anglew(k) <= -0.25 && anglew(k) >= -0.45) && nextstack(k) == 1
+    elseif (anglew(k) <= -0.18 && anglew(k) >= -0.53) && nextstack(k) == 1
         warning{k} = 'Angle warn';
     else
         warning{k} = '';
