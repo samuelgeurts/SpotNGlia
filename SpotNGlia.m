@@ -1,8 +1,8 @@
 classdef SpotNGlia
 
     properties   
-        OriginalPath = []
-        TemplatePath3dpf = []
+        FishPath = []
+        SourcePath = []
         SavePath = []
         
         fishnumbers = []
@@ -17,15 +17,15 @@ classdef SpotNGlia
         
         StackInfo = []
         ImageInfo = []                        
-        PreprocessionInfo = []
-        ExtendedDeptOfFieldInfo = []
+        PreprocessionInfo = []        
+        ExtendedDeptOfFieldInfo = []        
         RegistrationInfo = []
         BrainSegmentationInfo = []
         SpotInfo = []
                         
-        CorrectedFish = []
-        CombinedFish = []
-        AlignedFish = []
+        %CorrectedFish = []
+        %CombinedFish = []
+        %AlignedFish = []
     end
 %{      
     properties
@@ -61,72 +61,34 @@ classdef SpotNGlia
         
         %constructor function
         function obj = SpotNGlia(mode1)
-
+       
             if exist('mode1','var') && mode1 == 0 %training folder
-                [obj.OriginalPath,BasePath] = PathsComplete('or','bp');            
-                 obj.SavePath = [BasePath,'/','SpotNGlia'];                           
-                [obj.RoiMicrogliaPath,obj.RoiBrainPath] = PathsComplete('rois','roib');
-            elseif exist('mode1','var') && mode1 == 9 %temporary mode with temp folder
-                [obj.OriginalPath,BasePath] = PathsComplete('or','bp');            
-                 obj.SavePath = [BasePath,'/','SpotNGlia'];
-                 obj.OriginalPath = [BasePath,'/','originalTEMP'];               
-                [obj.RoiMicrogliaPath,obj.RoiBrainPath] = PathsComplete('rois','roib');
-            else %open new folder
-                disp('select source folder')
-                obj.OriginalPath = uigetdir;
-                disp('select save folder')
-                obj.SavePath = uigetdir;
-            end
+                if strcmp(getenv('OS'),'Windows_NT') && strcmp(getenv('username'),'260018')
+                    BasePath = 'C:\Users\260018\Dropbox';        
+                elseif strcmp(getenv('OS'),'Windows_NT') && strcmp(getenv('username'),'SNGeu')
+                    BasePath = 'C:\Users\SNGeu\Dropbox';
+                elseif  strcmp(getenv('USER'),'samuelgeurts')
+                    BasePath = '/Users/samuelgeurts/Dropbox';
+                elseif  strcmp(getenv('USER'),'Anouk')
+                    BasePath = '/Users/Anouk/Dropbox';
+                else
+                    error('unknown platform and user');
+                end
+                obj.FishPath = [BasePath,'/','20170327_3dpf'];
+                obj.SavePath = [BasePath,'/','SpotNGlia Destination'];                           
+                obj.SourcePath = [BasePath,'/','SpotNGlia Source'];                           
+            else
+                disp('select image folder to process')
+                obj.FishPath = uigetdir([],'select image folder to process');
+                disp('select destination folder')
+                obj.SavePath = uigetdir([],'select destination folder');
+                disp('select program source folder')
+                obj.SourcePath = uigetdir([],'select program source folder');                
+            end            
             
-            obj.TemplatePath3dpf =  PathsComplete('tp3');            
-                      
-            zfinput = struct('stage',[],'substage',[],'name',[]','value',[],'sensitivity',[]);            
-            zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','levels',1,'low'); %number of scaled levels correlation is performed
-            zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','iterations',10,'low'); %number of iterations iat is performed
-            zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','scale',1/16,'low'); %lowered initial scale to increase computation speed for correlation
-            zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','threshold',0.96,'severe'); %threshold for correlation selection
-            zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','threshold2',2,'severe'); %threshold for warp modulus
-            zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','sorting','','high'); %date or name  
-            zfinput = sng_zfinput(zfinput,0,'preprocession','bandpass filtering','onoff',false,''); %sigma for bandpassfilter (lowpass)    
-            zfinput = sng_zfinput(zfinput,0,'preprocession','bandpass filtering','sigmalp',1,'moderate'); %sigma for bandpassfilter (lowpass)
-            zfinput = sng_zfinput(zfinput,0,'preprocession','bandpass filtering','sigmahp',4,'moderate'); %for bandpassfilter (highpass)
-            zfinput = sng_zfinput(zfinput,0,'preprocession','RGB correction','scaleC',1/4,'low'); %lowered initial scale to increase computation speed for correlation
-            zfinput = sng_zfinput(zfinput,0,'preprocession','RGB correction','levelsC',2,'low'); %number of scaled levels correlation is performed
-            zfinput = sng_zfinput(zfinput,0,'preprocession','RGB correction','iterationsC',10,'low'); %number of iterations iat is performed
-            zfinput = sng_zfinput(zfinput,0,'preprocession','slice stack correction','scaleS',1/4,'low'); %lowered initial scale to increase computation speed for correlation
-            zfinput = sng_zfinput(zfinput,0,'preprocession','slice stack correction','levelsS',3,'low'); %number of scaled levels correlation is performed
-            zfinput = sng_zfinput(zfinput,0,'preprocession','slice stack correction','iterationsS',20,'low'); %iterations iat is performed
-            zfinput = sng_zfinput(zfinput,0,'ExtendedDeptOfField','edof','variancedisksize',7,'moderate'); %sigma for bandpassfilter (lowpass)    
-            zfinput = sng_zfinput(zfinput,0,'Registration','BackgroundRemoval','Method','TriangleSmooth','?');
-            zfinput = sng_zfinput(zfinput,0,'Registration','BackgroundRemoval','Smooth',1,'?');  
-            zfinput = sng_zfinput(zfinput,0,'Registration','BackgroundRemoval','ChannelMethod','cuboid','?');  
-            zfinput = sng_zfinput(zfinput,0,'Registration','RotationalAlignment','AngleSteps1',100,'?');  
-            zfinput = sng_zfinput(zfinput,0,'Registration','RotationalAlignment','Scale1',1/16,'?');  
-            zfinput = sng_zfinput(zfinput,0,'Registration','RotationalAlignment','AngleRange2',0.01,'?');  
-            zfinput = sng_zfinput(zfinput,0,'Registration','RotationalAlignment','AngleSteps2',50,'?');
-            zfinput = sng_zfinput(zfinput,0,'Registration','RotationalAlignment','FinalCenteredYCrop',1000,'?');
-            zfinput = sng_zfinput(zfinput,0,'Registration','ScaleFlipAlignment','ScaleRange',[0.6,1.3],'?');      
-            zfinput = sng_zfinput(zfinput,0,'Registration','ScaleFlipAlignment','ScaleSteps',200,'?');      
-            zfinput = sng_zfinput(zfinput,0,'Registration','ScaleFlipAlignment','Scale2',1/16,'?');      
-            zfinput = sng_zfinput(zfinput,0,'Registration','FinalTemplateMatching','RemoveTail',600,'');   
-            zfinput = sng_zfinput(zfinput,0,'Registration','FinalTemplateMatching','Scale3',1/4,''); %lowered initial scale to increase computation speed for correlation
-            zfinput = sng_zfinput(zfinput,0,'Registration','FinalTemplateMatching','AffineMethod','translation',''); %affine or translation
-            zfinput = sng_zfinput(zfinput,0,'Registration','FinalTemplateMatching','Levels',3,''); %number of scaled levels correlation is performed
-            zfinput = sng_zfinput(zfinput,0,'Registration','FinalTemplateMatching','Iterations',40,''); %number of iterations iat is performed
-            zfinput = sng_zfinput(zfinput,0,'BrainSegmentation','','Method','TriangleSmooth','?');
-            zfinput = sng_zfinput(zfinput,0,'BrainSegmentation','','Method2',4,'?');            
-            zfinput = sng_zfinput(zfinput,0,'SpotDetection','RgbToGray','ColorToGrayVector',[0;1;0],'');  %select color channel [0 1 0], 
-            zfinput = sng_zfinput(zfinput,0,'SpotDetection','Wavelet','ScaleBase',0.5,'');  
-            zfinput = sng_zfinput(zfinput,0,'SpotDetection','Wavelet','ScaleLevels',7,'');  
-            zfinput = sng_zfinput(zfinput,0,'SpotDetection','Wavelet','Kthreshold',0,'');  
-            zfinput = sng_zfinput(zfinput,0,'SpotDetection','MultiProduct','MPlevels',5:7,'');  
-            zfinput = sng_zfinput(zfinput,0,'SpotDetection','MultiProduct','MPthreshold',200,'');  
-            zfinput = sng_zfinput(zfinput,0,'SpotDetection','SpotSelection','MinSpotSize',8.4,''); % size selection 
-            zfinput = sng_zfinput(zfinput,0,'SpotDetection','SpotSelection','MaxSpotSize',458,''); % size selection 
-            zfinput = sng_zfinput(zfinput,0,'SpotDetection','SpotSelection','MinProbability',0.066,''); %color selection  
+            load([obj.SourcePath,'/','zfinput.mat']);   
             obj.ZFParameters = zfinput;
-                  
-        end
+        end   
         
         function obj = SliceCombination(obj,slicenumbers)
             %computes imageinfo and stackinfo
@@ -160,11 +122,11 @@ classdef SpotNGlia
                 
             if isempty(obj.ImageInfo)                    
                 % compute ImageInfo and StackInfo
-                dirinfo =  dir([obj.OriginalPath,'/*.','tif']);
+                dirinfo =  dir([obj.FishPath,'/*.','tif']);
                 imageinfotemp = rmfield(dirinfo,{'isdir','datenum','bytes'}); %removes unimportant fields
 
                 % make en selection of fishslices if fisnumbers is given as input
-                if ~exist('fishnumbers','var')
+                if ~exist('slicenumbers','var')
                     obj.ImageInfo = imageinfotemp;
                     slicenumbers = 1:numel(imageinfotemp);
                 elseif (max(slicenumbers) <= numel(imageinfotemp))
@@ -190,10 +152,13 @@ classdef SpotNGlia
                     '\n   Set value "0" if slice belongs to previous slice']);               
                 msgbox(str);
             end
-        end
+            obj.saveit
+        end   
         
         function obj = PreProcession(obj,fishnumbers)
             
+            h = waitbar(0,'Preprocession','Name','SpotNGlia');  
+         
             if ~isempty(obj.ImageInfo)
                 [obj.StackInfo] = StackInfoLink2(obj.ImageInfo);
             else
@@ -229,14 +194,23 @@ classdef SpotNGlia
                         'NNC_BP_before',[],...
                         'NNC_BP_after',[]);
                 end
-           
-                for k1 = 1:nfishes 
+                
+                %folder to save CorrectedFish
+                TempFolderName = ([obj.SavePath,'/','CorrectedFish']);
+                if ~exist(TempFolderName,'dir')
+                    mkdir(TempFolderName)
+                end
+                
+                for k1 = 1:nfishes                
+                    
+                    waitbar(k1/nfishes,h,'Preprocession')                
+                    
                     %select slices
                     fn = fishnumbers(k1);
                                         
                     ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
                     for k2 = 1:obj.StackInfo(fn).stacksize
-                        ImageSlice{k2} = imread([obj.OriginalPath,'/',obj.StackInfo(fn).imagenames{k2}]);
+                        ImageSlice{k2} = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
                     end
                     
 %                    if savefig1_TF
@@ -245,15 +219,16 @@ classdef SpotNGlia
 
                     %[CorrectedSlice,ppoutput(k1)] = PreprocessionLink(ImageSlice,obj.ZFParameters);
                     if k1 == 1
-                        [CorrectedFishTemp,ppoutput] = PreprocessionLink(ImageSlice,obj.ZFParameters);
+                        [CorrectedFishTemp,ppoutput] = PreprocessionLink(ImageSlice,obj.ZFParameters);               
                     else
                         [CorrectedFishTemp,ppoutput(k1)] = PreprocessionLink(ImageSlice,obj.ZFParameters);
                     end
-                    
-                    obj.CorrectedFish(k1).image = CorrectedFishTemp;
+
+                    sng_SaveCell2TiffStack(CorrectedFishTemp,[TempFolderName,'/',obj.StackInfo(k1).stackname,'.tif'])
+                                       
+                    %obj.CorrectedFish(k1).image = CorrectedFishTemp; <- %save to object takes to much space
         
 %TODO for imaging   [CorrectedSlice,ppoutput,ImageSliceCor,FiltIm] = PreprocessionLink(ImageSlice,zfinput)
-
 %                    if savefig2_TF
 %                        sng_SaveCell2TiffStack(CorrectedSlice,[obj.SavePath,'/',StackInfo(k1).stackname,'.tif'])
 %                    end
@@ -262,7 +237,9 @@ classdef SpotNGlia
                 obj.PreprocessionInfo = ppoutput;
                 
             end       
-        end
+            obj.saveit
+            delete(h)
+        end   
         
         function obj = ExtendedDeptOfField(obj,fishnumbers)
             
@@ -274,7 +251,10 @@ classdef SpotNGlia
                 error('at least one fish does not exist in PreProcessionInfo')                   
             end
             nfishes = numel(fishnumbers);             
+
             obj.fishnumbers.extendeddeptoffield = fishnumbers; 
+            %obj.fishnumbers.extendeddeptoffield = obj.fishnumbers.preprocession(fishnumbers);
+            %fix later fishnumber
              
             %{
              %Stack has to be added but than input parameters are needed,
@@ -287,53 +267,78 @@ classdef SpotNGlia
                  fn = fishnumbers(k1);
                  ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
                  for k2 = 1:numel(ImageSlice)
-                 ImageSlice = imread([obj.OriginalPath,'/',obj.StackInfo(fn).imagenames{k2}]);
+                 ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
                  [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
                  %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
                  end
              end
              %}                
             if nfishes > 1
-                    edoutput(nfishes) = struct('IndexMatrix',[],...
-                        'variance_sq',[]);
+                edoutput(nfishes) = struct('IndexMatrix',[],...
+                    'variance_sq',[]);
             end
-             
+            
+            %folder to save CombinedFish
+            TempFolderName = ([obj.SavePath,'/','CombinedFish']);
+            if ~exist(TempFolderName,'dir')
+                mkdir(TempFolderName)
+            end
+                
             for k1 = 1:nfishes
-                waitbar(nfishes/k1,h,'Extended Dept of Field')                
+                waitbar(k1/nfishes,h,'Extended Dept of Field')                
                 fn = fishnumbers(k1);
-                [CombinedFishTemp,edoutput(k1)] = ExtendedDeptofFieldLink2(obj.CorrectedFish(fn).image,obj.ZFParameters);                
-                obj.CombinedFish(k1).image = CombinedFishTemp;
+                
+                CorrectedFish = sng_openimstack2([obj.SavePath,'/','CorrectedFish','/',obj.StackInfo(fn).stackname,'.tif']);             
+                [CombinedFishTemp,edoutput(k1)] = ExtendedDeptofFieldLink2(CorrectedFish,obj.ZFParameters);                
+                %obj.CombinedFish(k1).image = CombinedFishTemp; because it takes to much space               
+                imwrite(uint8(CombinedFishTemp),[TempFolderName,'/',obj.StackInfo(k1).stackname,'.tif'],...
+                    'WriteMode','overwrite','Compression','none');
             end
             obj.ExtendedDeptOfFieldInfo = edoutput;
-
-        end
+            obj.saveit
+            delete(h)
+        end   
         
         function obj = Registration(obj,fishnumbers)
             
+            h = waitbar(0,'Combine fish slices','Name','SpotNGlia');  
+            
             if isempty(obj.CompleteTemplate)
-                obj.CompleteTemplate = LoadTemplateLink3(obj.TemplatePath3dpf);                         
+                obj.CompleteTemplate = LoadTemplateLink3([obj.SourcePath,'/','Template 3 dpf']);                         
             end
-            
-            
+                        
             if ~exist('fishnumbers','var')
                 fishnumbers = 1:numel(obj.ExtendedDeptOfFieldInfo);
             elseif max(fishnumbers) > numel(obj.ExtendedDeptOfFieldInfo)
                 error('at least one fish does not exist in ExtendedDeptOfFieldInfo')                   
             end
-            
             nfishes = numel(fishnumbers);             
             obj.fishnumbers.registration = fishnumbers;
             
+            %folder to save AlignedFish
+            TempFolderName = ([obj.SavePath,'/','AlignedFish']);
+            if ~exist(TempFolderName,'dir')
+                mkdir(TempFolderName)
+            end
+                                        
             rgoutput = cell(nfishes,1); 
-            for k1 = 1:nfishes                    
-                fn = fishnumbers(k1);
-                [AlignedFishTemp,rgoutput{k1,1}] = AllignmentLink5(obj.CombinedFish(fn).image,obj.CompleteTemplate,obj.ZFParameters);
-                obj.AlignedFish(k1).image = AlignedFishTemp;
+            for k1 = 1:nfishes
+                waitbar(k1/nfishes,h,'Align to template')                                
+                fn = fishnumbers(k1);                
+                CombinedFish = imread([obj.SavePath,'/','CombinedFish','/',obj.StackInfo(fn).stackname,'.tif']);          
+                [AlignedFishTemp,rgoutput{k1,1}] = AllignmentLink5(CombinedFish,obj.CompleteTemplate,obj.ZFParameters);
+                %obj.AlignedFish(k1).image = AlignedFishTemp; %because it
+                %takes to much space                                
+                imwrite(uint8(AlignedFishTemp),[TempFolderName,'/',obj.StackInfo(k1).stackname,'.tif'],...
+                    'WriteMode','overwrite','Compression','none');
             end
             obj.RegistrationInfo = rgoutput;
-        end
+            obj.saveit
+            delete(h)            
+        end   
         
         function obj = BrainSegmentation(obj,fishnumbers)
+            h = waitbar(0,'Combine fish slices','Name','SpotNGlia');  
             
             if ~exist('fishnumbers','var')
                 fishnumbers = 1:numel(obj.RegistrationInfo);
@@ -352,14 +357,19 @@ classdef SpotNGlia
             end            
             
             for k1 = 1:nfishes                    
-                fn = fishnumbers(k1);    
-                [~,broutput(k1)] = MidBrainDetectionLink3(obj.AlignedFish(fn).image,obj.CompleteTemplate,obj.ZFParameters);      
+                fn = fishnumbers(k1);
+                waitbar(k1/nfishes,h,'Brain Segmentation')
+                AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);                         
+                [~,broutput(k1)] = MidBrainDetectionLink3(AlignedFish,obj.CompleteTemplate,obj.ZFParameters);      
                 %obj.BrainFish(k1).image = BrainFishTemp;
             end
             obj.BrainInfo = broutput;
+            obj.saveit
+            delete(h)            
         end            
 
         function obj = SpotDetection(obj,fishnumbers)
+            h = waitbar(0,'Combine fish slices','Name','SpotNGlia');  
             
             if ~exist('fishnumbers','var')
                 fishnumbers = 1:numel(obj.BrainInfo);
@@ -378,11 +388,15 @@ classdef SpotNGlia
             %end            
             
             for k1 = 1:nfishes                    
-                fn = fishnumbers(k1);    
-                [~,spoutput{k1,1}] = SpotDetectionLink2(obj.AlignedFish(fn).image,obj.CompleteTemplate,obj.BrainInfo(k1).BrainEdge,obj.ZFParameters);   
+                fn = fishnumbers(k1);
+                waitbar(k1/nfishes,h,'Spot Detection')
+                AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);                         
+                [~,spoutput{k1,1}] = SpotDetectionLink2(AlignedFish,obj.CompleteTemplate,obj.BrainInfo(k1).BrainEdge,obj.ZFParameters);   
                 %obj.BrainFish(k1).image = BrainFishTemp;
             end
             obj.SpotInfo = spoutput;
+            obj.saveit            
+            delete(h)            
         end            
             
         function obj = CompleteProgram(obj,fishnumbers)
@@ -408,12 +422,10 @@ classdef SpotNGlia
             firstim = obj.ImageInfo(1).name;
             firstn = char(regexp(firstim,'\d+.tif','match'));  
             firstn = strrep(firstn,'.tif','');
-            name = strrep(firstim, [firstn,'.tif'],'')
+            name = strrep(firstim, [firstn,'.tif'],'');
             dt = strcat(string(year(date)),string(month(date)),string(day(date)));            
             save(strcat(obj.SavePath,'/SNG_',dt,'_',name,'.mat'),'obj');      
-        end
-                
-        
+        end        
     end
 end
 
