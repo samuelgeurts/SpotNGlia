@@ -29,5 +29,12 @@ obj = SpotNGlia(0)
 obj.Sorting = 'Name'
 obj.ImageInfoChecked_TF = true;
 
-obj = obj.SliceCombination([1,2,5])
-obj = obj.PreProcession(1:2)
+obj = obj.SliceCombination
+obj = obj.PreProcession
+
+obj = obj.ExtendedDeptOfField
+obj = obj.Registration
+
+obj = obj.BrainSegmentation
+
+obj = obj.SpotInfo
