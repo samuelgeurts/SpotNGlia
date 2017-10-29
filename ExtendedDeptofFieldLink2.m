@@ -12,8 +12,9 @@ sng_zfinputAssign(zfinput,'ExtendedDeptOfField')
 
 [IndexMatrix, variance_sq, Icombined] = sng_StackDOF2(CorrectedSlice,variancedisksize);
 
+Icombined = uint8(Icombined);
 edoutput.IndexMatrix = uint8(IndexMatrix);
-edoutput.variancedisksize = uint8(variance_sq);
+edoutput.variance_sq = uint8(variance_sq);
 
 
 %{
