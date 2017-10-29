@@ -27,7 +27,7 @@ obj2.show
 obj = SpotNGlia(0)
 
 obj.Sorting = 'Name'
-obj.ImageInfoChecked_TF = true;
+obj.ImageInfoChecked_TF = false;
 
 obj = obj.SliceCombination
 obj = obj.PreProcession
