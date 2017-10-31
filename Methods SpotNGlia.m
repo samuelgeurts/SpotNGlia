@@ -16,13 +16,11 @@ showbrain(obj,1:50,'Ann')
 
 saveit(obj,'Validation20171025b')
 
-
 obj2.show
 
 
 
 %% SpotNGlia sequence
-
 
 obj = SpotNGlia(0)
 
@@ -38,3 +36,4 @@ obj = obj.Registration
 obj = obj.BrainSegmentation
 
 obj = obj.SpotInfo
+
