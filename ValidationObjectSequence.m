@@ -34,19 +34,7 @@ obj = obj.PreProcession
 
 obj = obj.ExtendedDeptOfField
 obj = obj.Registration
+
 obj = obj.BrainSegmentation
 
-obj = obj.SpotDetection
-
-%%
-temp = SpotNGlia(0)
-dr = dir([temp.SavePath,'/*.mat'])
-clear temp
-load([dr.folder,'/',dr.name])
-clear dr
-
-
-
-
-
-
+obj = obj.SpotInfo
