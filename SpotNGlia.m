@@ -29,25 +29,20 @@ classdef SpotNGlia
         %CombinedFish = []
         %AlignedFish = []
     end
-%{      
-    properties
-        Numb = []        
-        date = []       
-        
-        SpotParameters = []
-
       
+    properties
 
         BrainInfo = []
         BrainStats = []
 
+        SpotInfo = []
         SpotStats = []
-        SpotSelection = []      
+        %SpotSelection = []      
         
         SpotBrainInfo = []
         SpotBrainStats = []    
     end 
-%}
+
     
     properties
        ImageInfoChecked_TF = false
@@ -152,8 +147,8 @@ classdef SpotNGlia
                 [obj.ImageInfo] = ImageInfoLink3(obj.ImageInfo,obj.ZFParameters);
                 [obj.StackInfo] = StackInfoLink2(obj.ImageInfo);
                 
-                ImageInfo = obj.ImageInfo;
-                StackInfo = obj.StackInfo;
+                ImageInfo = obj.ImageInfo; %#ok<NASGU,PROPLC>
+                StackInfo = obj.StackInfo;  %#ok<NASGU,PROPLC>
                 
                 save([obj.SavePath,'/',obj.InfoName,'.mat'],'ImageInfo')
                 save([obj.SavePath,'/',obj.InfoName,'.mat'],'StackInfo','-append')
@@ -265,8 +260,8 @@ classdef SpotNGlia
             h = waitbar(0,'Combine fish slices','Name','SpotNGlia');  
             
             if ~exist('fishnumbers','var')
-                fishnumbers = 1:numel(obj.PreprocessionInfo);
-            elseif max(fishnumbers) > numel(obj.PreprocessionInfo)
+                fishnumbers = 1:numel(obj.StackInfo);
+            elseif max(fishnumbers) > numel(obj.StackInfo)
                 error('at least one fish does not exist in PreProcessionInfo')                   
             end
             nfishes = numel(fishnumbers);             
@@ -328,8 +323,8 @@ classdef SpotNGlia
             end
                         
             if ~exist('fishnumbers','var')
-                fishnumbers = 1:numel(obj.ExtendedDeptOfFieldInfo);
-            elseif max(fishnumbers) > numel(obj.ExtendedDeptOfFieldInfo)
+                fishnumbers = numel(obj.StackInfo);
+            elseif max(fishnumbers) > numel(obj.StackInfo)
                 error('at least one fish does not exist in ExtendedDeptOfFieldInfo')                   
             end
             nfishes = numel(fishnumbers);             
@@ -362,8 +357,8 @@ classdef SpotNGlia
             h = waitbar(0,'Combine fish slices','Name','SpotNGlia');  
             
             if ~exist('fishnumbers','var')
-                fishnumbers = 1:numel(obj.RegistrationInfo);
-            elseif max(fishnumbers) > numel(obj.RegistrationInfo)
+                fishnumbers = 1:numel(obj.StackInfo);
+            elseif max(fishnumbers) > numel(obj.StackInfo)
                 error('at least one fish does not exist in RegistrationInfo')                   
             end
             
@@ -391,11 +386,14 @@ classdef SpotNGlia
         end            
 
         function obj = SpotDetection(obj,fishnumbers)
+            
+            load([obj.SavePath,'/',obj.InfoName,'.mat'],'BrainSegmentationInfo')
+        
             h = waitbar(0,'Combine fish slices','Name','SpotNGlia');  
             
             if ~exist('fishnumbers','var')
-                fishnumbers = 1:numel(obj.BrainSegmentationInfo);
-            elseif max(fishnumbers) > numel(obj.BrainSegmentationInfo)
+                fishnumbers = 1:numel(obj.StackInfo);
+            elseif max(fishnumbers) > numel(obj.StackInfo)
                 error('at least one fish does not exist in BrainInfo')                   
             end
             
@@ -407,17 +405,27 @@ classdef SpotNGlia
             %        'ShortestPath',[],...
             %        'ShortestPathValue',[],...
             %        'BrainEdge',[]);
-            %end            
+            %end
+            SpotsDetected = cell(nfishes,1);
+            SpotParameters = cell(nfishes,1);
+           
+            
+            if nfishes > 1
+            	SpotDetectionInfo(nfishes) = struct('Multiproduct',[],...
+                    'MultiproductThreshold',[]);
+            end
             
             for k1 = 1:nfishes                    
                 fn = fishnumbers(k1);
                 waitbar(k1/nfishes,h,'Spot Detection')
                 AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);                         
-                [~,SpotDetectionInfo{k1,1}] = SpotDetectionLink2(AlignedFish,obj.CompleteTemplate,obj.BrainSegmentationInfo(k1).BrainEdge,obj.ZFParameters);   
-                %obj.BrainFish(k1).image = BrainFishTemp;
+                %[~,SpotDetectionInfo{k1,1}] = SpotDetectionLink2(AlignedFish,obj.CompleteTemplate,BrainSegmentationInfo(k1).BrainEdge,obj.ZFParameters);                   
+                [SpotsDetected{k1},SpotParameters{k1},SpotDetectionInfo(k1)] = SpotDetectionSNG(AlignedFish,obj.CompleteTemplate,BrainSegmentationInfo(k1).BrainEdge,obj.ZFParameters);
             end
             obj.saveit
             save([obj.SavePath,'/',obj.InfoName,'.mat'],'SpotDetectionInfo','-append')  
+            save([obj.SavePath,'/',obj.InfoName,'.mat'],'SpotsDetected','-append')  
+            save([obj.SavePath,'/',obj.InfoName,'.mat'],'SpotParameters','-append')  
 
             delete(h)            
         end            
@@ -461,12 +469,15 @@ classdef SpotNGlia
             end
             
             %annotated midbrain roi            
-            if ~isempty('obj.AnnotatedMidBrainPath')
+            if isempty('obj.AnnotatedMidBrainPath')
                 disp('Select Annotated MidBrain Path')
                 obj.AnnotatedMidBrainPath = uigetdir([],'Select Annotated MidBrain Path');
+            end
+            
+            if ~isempty('obj.AnnotatedMidBrainPath')         
                 ambr = cell(nfishes,1);               
                 for k1 = 1:nfishes
-                    RoiBrain = ReadImageJROI([obj.SourcePath,'/Roi brain/',obj.StackInfo(k1).stackname,'.zip']);
+                    RoiBrain = ReadImageJROI([obj.AnnotatedMidBrainPath,'/',obj.StackInfo(k1).stackname,'.zip']);
 
                     amb = sng_roicell2poly(RoiBrain,1);   
                     [ambr{k1}(:,1),ambr{k1}(:,2)] = transformPointsForward(tform_1234{k1},amb(:,1),amb(:,2));
@@ -476,12 +487,15 @@ classdef SpotNGlia
             end
             
             %annotated spots            
-            if ~isempty('obj.AnnotatedSpotPath')
+            if isempty('obj.AnnotatedSpotPath')
                 disp('Select Annotated Spot Path')
                 obj.AnnotatedSpotPath = uigetdir([],'Select Annotated Spot Path');
+            end
+            
+            if ~isempty('obj.AnnotatedSpotPath')
                      SpotAnn = cell(nfishes,1);
                 for k1 = 1:nfishes
-                    RoiMicroglia = ReadImageJROI([obj.SourcePath,'/Roi microglia/',obj.StackInfo(k1).stackname,'.roi']);
+                    RoiMicroglia = ReadImageJROI([obj.AnnotatedSpotPath,'/',obj.StackInfo(k1).stackname,'.roi']);
 
                     SpotAnn{k1} = zeros(size(RoiMicroglia.mfCoordinates,1),2);
                     [SpotAnn{k1}(:,1),SpotAnn{k1}(:,2)] = transformPointsForward(tform_1234{k1},...
@@ -499,64 +513,469 @@ classdef SpotNGlia
             %    obj.SpotParameters{k1} = SpotDetectionInfo{k1}(strcmp({SpotDetectionInfo{k1}.name},'SpotParameters')).value;
             %end
         end
+ 
+        function obj = BrainVal(obj)
+            
+            load([obj.SavePath,'/',obj.InfoName,'.mat'],'BrainSegmentationInfo')
+                     
+            nfishes = numel(obj.StackInfo);
+            
+            Jaccard = zeros(nfishes,1);
+            Dice = zeros(nfishes,1);
+            
+            cmbr = {BrainSegmentationInfo.BrainEdge};
+            ambr = {obj.Annotations.MidBrain};      
+                       
+            for k1 = 1:nfishes
+
+                mx = round(max([cmbr{k1};fliplr(ambr{k1})]));
+                
+                a = poly2mask(cmbr{k1}(:,2),cmbr{k1}(:,1),mx(1),mx(2));
+                b = poly2mask(ambr{k1}(:,1),ambr{k1}(:,2),mx(1),mx(2));
+                
+                intersection = (a & b);
+                union = (a | b);
+
+                Jaccard(k1) = sum(intersection(:))/sum(union(:));
+                %Overlap(k1) = sum(intersection(:)) / min(sum(a(:)),sum(b(:)));
+                Dice(k1) = (2*sum(intersection(:)))/(sum(union(:))+sum(intersection(:)));
+                
+            end
+            
+            %fill the BrainInfo Structure (per fish)
+            temp = num2cell(Jaccard);[obj.BrainInfo(1:nfishes).Jaccard] = temp{:};
+            temp = num2cell(Dice);[obj.BrainInfo(1:nfishes).Dice] = temp{:};
+            
+            %fill BrainStats Structure, statistical values
+            obj.BrainStats.FiveNumberSummaryJaccard = sng_FiveNumberSum(Jaccard);
+            obj.BrainStats.MeanJaccard = mean(Jaccard);
+            
+            obj.BrainStats.FiveNumberSummaryDice = sng_FiveNumberSum(Dice);
+            obj.BrainStats.MeanDice = mean(Dice);       
+            
+        end     
+                
+        function obj = SpotVal(obj)
+            
+            load([obj.SavePath,'/',obj.InfoName,'.mat'],'SpotParameters')
+                        
+            nfishes = numel(obj.StackInfo);
+            
+            LinkDistance = cell(nfishes,1);
+            CorrectSpots = cell(nfishes,1);
+            nCorrect = zeros(nfishes,1);
+            FalsePosSpots = cell(nfishes,1);
+            nFalsePos = zeros(nfishes,1);
+            FalseNegSpots = cell(nfishes,1);
+            nFalseNeg = zeros(nfishes,1);
+            Precision = zeros(nfishes,1);
+            Recall = zeros(nfishes,1);
+            F1score = zeros(nfishes,1);
+            AbsDifference = zeros(nfishes,1);
+            RelDifference = zeros(nfishes,1);
+            
+            SpotCom = cell(nfishes,1);
+            ambsS = cell(nfishes,1);
+                        
+            %value added to prevent for substraction by zero        
+            a = 0.001; 
+            
+            
+
+            for k1 = 1:nfishes
+
+                Spotpar = SpotParameters{k1};
+                ambr = obj.Annotations(k1).MidBrain;
+                ambs = obj.Annotations(k1).Spots;  
+
+                
+                if ~isempty(Spotpar)
+                    
+                    %select spot insite annotated brainregion
+                    [spotcentroids] = reshape([Spotpar.Centroid],2,numel(Spotpar))';                               
+                    [ins,~] = inpolygon(spotcentroids(:,1),spotcentroids(:,2),ambr(:,1),ambr(:,2));
+
+                     SpotparS = Spotpar(...
+                        ins' &...
+                        [Spotpar.MinProbability] &... %selection of spotinfo based on conditions
+                        [Spotpar.LargerThan] &...
+                        [Spotpar.SmallerThan]);    
+
+                    SpotCom{k1} = reshape([SpotparS.Centroid],2,numel(SpotparS))';
+                else
+                    SpotCom{k1} = [];
+                end
+                
+                %because the annotated midbrain does not corresponds
+                %exactly with the annotated spots, de annotated spots are
+                %also filtered to compute the performance of the
+                %spotdetection only
+                [ins2,~] = inpolygon(ambs(:,1),ambs(:,2),ambr(:,1),ambr(:,2));
+                ambsx = ambs(:,1);ambsx = ambsx(ins2);
+                ambsy = ambs(:,2);ambsy = ambsy(ins2);                                                
+                ambsS{k1} = [ambsx,ambsy];                
+
+                [Correct,FalsePos,FalseNeg,link] = sng_CoordinateMatching...
+                    (SpotCom{k1},ambsS{k1},10);                
+                
+                LinkDistance{k1} = link;
+
+                if exist('Correct','var')
+                    CorrectSpots{k1} = Correct;
+                    nCorrect(k1) = size(Correct,1);
+                else
+                    CorrectSpots{k1} = [];
+                    nCorrect(k1) = 0;
+                end
+                if exist('FalsePos','var')
+                    FalsePosSpots{k1} = FalsePos;
+                    nFalsePos(k1) = size(FalsePos,1);
+                else
+                    FalsePosSpots{k1} = [];
+                    nFalsePos(k1) = 0;
+                end
+                if exist('FalseNeg','var')
+                    FalseNegSpots{k1} = FalseNeg;
+                    nFalseNeg(k1) = size(FalseNeg,1);
+                else
+                    FalseNegSpots{k1} = [];
+                    nFalseNeg(k1) = 0;
+                end
+
+                Precision(k1) = nCorrect(k1)/(nCorrect(k1) + nFalsePos(k1)+ a);
+                Recall(k1) = nCorrect(k1)/(nCorrect(k1) + nFalseNeg(k1)+ a);
+                F1score(k1) = 2 * (Precision(k1)*Recall(k1))/(Precision(k1) + Recall(k1) + a);
+                AbsDifference(k1) = nFalsePos(k1) - nFalseNeg(k1);
+                RelDifference(k1) = (nFalsePos(k1) - nFalseNeg(k1)) / nCorrect(k1);
+                
+
+                obj.SpotStats.FiveNumberSummaryPrecision = sng_FiveNumberSum(Precision);
+                obj.SpotStats.MeanPrecision = mean(Precision);
+
+                obj.SpotStats.FiveNumberSummaryRecall = sng_FiveNumberSum(Recall);
+                obj.SpotStats.MeanRecall = mean(Recall);                
+
+                obj.SpotStats.FiveNumberSummaryF1score = sng_FiveNumberSum(F1score);
+                obj.SpotStats.MeanF1score = mean(F1score); 
+                
+                obj.SpotStats.FiveNumberSummaryAbsDifference  = sng_FiveNumberSum(AbsDifference);
+                obj.SpotStats.MeanAbsDifference = mean(AbsDifference); 
+
+                obj.SpotStats.FiveNumberSummaryRelDifference  = sng_FiveNumberSum(RelDifference);
+                obj.SpotStats.MeanRelDifference = mean(RelDifference); 
+
+
+            end
+
+            %store variables in obj.SpotInfo
+            [obj.SpotInfo(1:nfishes).LinkDistance] = LinkDistance{:};
+            [obj.SpotInfo(1:nfishes).CorrectSpots] = CorrectSpots{:};
+            temp = num2cell(nCorrect);[obj.SpotInfo(1:nfishes).nCorrect] = temp{:};
+            [obj.SpotInfo(1:nfishes).FalsePosSpots] = FalsePosSpots{:};
+            temp = num2cell(nFalsePos); [obj.SpotInfo(1:nfishes).nFalsePos] = temp{:};
+            [obj.SpotInfo(1:nfishes).FalseNegSpots] = FalseNegSpots{:};
+            temp = num2cell(nFalseNeg); [obj.SpotInfo(1:nfishes).nFalseNeg] = temp{:};
+            temp = num2cell(Precision); [obj.SpotInfo(1:nfishes).Precision] = temp{:};
+            temp = num2cell(Recall); [obj.SpotInfo(1:nfishes).Recall] = temp{:};
+            temp = num2cell(F1score); [obj.SpotInfo(1:nfishes).F1score] = temp{:};            
+            temp = num2cell(AbsDifference); [obj.SpotInfo(1:nfishes).AbsDifference] = temp{:};
+            temp = num2cell(RelDifference); [obj.SpotInfo(1:nfishes).RelDifference] = temp{:};
+            %[obj.SpotSelection(1:nfishes).AnnotatedSpots] = ambsS{:};                
+            %[obj.SpotSelection(1:nfishes).ComputedSpots] = SpotCom{:};
+                       
+        end
         
- %{
-       function ShowBrain(obj,fishnumbers,ComOrAnn)
+        function obj = SpotBrainVal(obj)
+            
+            %load([obj.SavePath,'/',obj.InfoName,'.mat'],'SpotParameters')
+            load([obj.SavePath,'/',obj.InfoName,'.mat'],'SpotsDetected')
+                                   
+            
+            nfishes = numel(obj.StackInfo);
+        
+            
+            LinkDistance = cell(nfishes,1);
+            CorrectSpots = cell(nfishes,1);
+            nCorrect = zeros(nfishes,1);              
+            FalsePosSpots = cell(nfishes,1);
+            nFalsePos = zeros(nfishes,1);              
+            FalseNegSpots = cell(nfishes,1);
+            nFalseNeg = zeros(nfishes,1);
+            Precision = zeros(nfishes,1);
+            Recall = zeros(nfishes,1);
+            F1score = zeros(nfishes,1);
+            AbsDifference = zeros(nfishes,1);
+            RelDifference = zeros(nfishes,1);            
+
+            %SpotCom = cell(nfishes,1);
+
+            %value added to prevent for substraction by zero        
+            a = 0.001; 
+
+            for k1 = 1:nfishes
+
+                Spotpar = SpotsDetected{k1};
+                %ambr = obj.BrainInfo(k1).AnnotatedMidBrainRegistrated;              
+
+                SpotCom = reshape([Spotpar.Centroid],2,numel(Spotpar))';
+                ambs = obj.Annotations(k1).Spots;  
+
+
+                [Correct,FalsePos,FalseNeg,link] = sng_CoordinateMatching...
+                    (SpotCom,ambs,10);
+
+                LinkDistance{k1} = link;
+
+                if exist('Correct','var')
+                    CorrectSpots{k1} = Correct;
+                    nCorrect(k1) = size(Correct,1);
+                else
+                    CorrectSpots{k1} = [];
+                    nCorrect(k1) = 0;
+                end
+                if exist('FalsePos','var')
+                    FalsePosSpots{k1} = FalsePos;
+                    nFalsePos(k1) = size(FalsePos,1);
+                else
+                    FalsePosSpots{k1} = [];
+                    nFalsePos(k1) = 0;
+                end
+                if exist('FalseNeg','var')
+                    FalseNegSpots{k1} = FalseNeg;
+                    nFalseNeg(k1) = size(FalseNeg,1);
+                else
+                    FalseNegSpots{k1} = [];
+                    nFalseNeg(k1) = 0;
+                end
+
+                Precision(k1) = nCorrect(k1)/(nCorrect(k1) + nFalsePos(k1)+ a);
+                Recall(k1) = nCorrect(k1)/(nCorrect(k1) + nFalseNeg(k1)+ a);
+                F1score(k1) = 2 * (Precision(k1)*Recall(k1))/(Precision(k1) + Recall(k1) + a);
+                AbsDifference(k1) = nFalsePos(k1) - nFalseNeg(k1);
+                RelDifference(k1) = (nFalsePos(k1) - nFalseNeg(k1)) / nCorrect(k1);
+
+                obj.SpotBrainStats.FiveNumberSummaryPrecision = sng_FiveNumberSum(Precision);
+                obj.SpotBrainStats.MeanPrecision = mean(Precision);
+
+                obj.SpotBrainStats.FiveNumberSummaryRecall = sng_FiveNumberSum(Recall);
+                obj.SpotBrainStats.MeanRecall = mean(Recall);                
+
+                obj.SpotBrainStats.FiveNumberSummaryF1score = sng_FiveNumberSum(F1score);
+                obj.SpotBrainStats.MeanF1score = mean(F1score);
+                
+                obj.SpotBrainStats.FiveNumberSummaryAbsDifference  = sng_FiveNumberSum(AbsDifference);
+                obj.SpotBrainStats.MeanAbsDifference = mean(AbsDifference); 
+
+                obj.SpotBrainStats.FiveNumberSummaryRelDifference  = sng_FiveNumberSum(RelDifference);
+                obj.SpotBrainStats.MeanRelDifference = mean(RelDifference); 
+
+            end
+
+            %store variables in obj.SpotInfo
+            [obj.SpotBrainInfo(1:nfishes).LinkDistance] = LinkDistance{:};
+            [obj.SpotBrainInfo(1:nfishes).CorrectSpots] = CorrectSpots{:};
+            temp = num2cell(nCorrect);[obj.SpotBrainInfo(1:nfishes).nCorrect] = temp{:};
+            [obj.SpotBrainInfo(1:nfishes).FalsePosSpots] = FalsePosSpots{:};
+            temp = num2cell(nFalsePos); [obj.SpotBrainInfo(1:nfishes).nFalsePos] = temp{:};
+            [obj.SpotBrainInfo(1:nfishes).FalseNegSpots] = FalseNegSpots{:};
+            temp = num2cell(nFalseNeg); [obj.SpotBrainInfo(1:nfishes).nFalseNeg] = temp{:};
+            temp = num2cell(Precision); [obj.SpotBrainInfo(1:nfishes).Precision] = temp{:};
+            temp = num2cell(Recall); [obj.SpotBrainInfo(1:nfishes).Recall] = temp{:};
+            temp = num2cell(F1score); [obj.SpotBrainInfo(1:nfishes).F1score] = temp{:};
+            temp = num2cell(AbsDifference); [obj.SpotBrainInfo(1:nfishes).AbsDifference] = temp{:};
+            temp = num2cell(RelDifference); [obj.SpotBrainInfo(1:nfishes).RelDifference] = temp{:};                       
+        end
+
+        function ShowBoxPlot(obj,exportit)
+            %Example show and save
+            %   show(obj,1)
+            %Example only show
+            %   obj.show
+            
+            %%% brainval spotval
+            fsx = 6;fsy = 10;
+                      
+            if isfield(obj.BrainInfo,'Jaccard')
+                [h1,g1] = setfigax1;                    
+                boxplot(g1,[...
+                    obj.BrainInfo.Jaccard;...
+                    obj.BrainInfo.Dice]',{'Jaccard','Dice'});
+                title('Brain Validation')
+                setfigax2(h1,g1)            
+            end
+            if isfield(obj.SpotInfo,'Precision')
+                [h2,g2] = setfigax1;
+                boxplot(g2,[...
+                    obj.SpotInfo.Precision;...
+                    obj.SpotInfo.Recall;...
+                    obj.SpotInfo.F1score]',{'Precision','Recall','F1score'});
+                title('Spot Validation')            
+                setfigax2(h2,g2)
+            end
+            
+            if isfield(obj.SpotBrainInfo,'Precision')
+                [h3,g3] = setfigax1;      
+                boxplot(g3,[...
+                    obj.SpotBrainInfo.Precision;...
+                    obj.SpotBrainInfo.Recall;...
+                    obj.SpotBrainInfo.F1score]',{'Precision','Recall','F1score'});
+                title('Spot Validation on Computed Brain')          
+                setfigax2(h3,g3)
+            end
+
+            if isfield(obj.SpotInfo,'AbsDifference')
+                [h4,g4] = setfigax1;      
+                boxplot(g4,[...
+                    obj.SpotInfo.AbsDifference]',{'AbsDifference'});
+                title('Spot Validation')        
+                
+                set(g4,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
+                set(g4,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7])
+                
+                if exist('exportit','var') && exportit
+                    export_fig(h4 ,['/Users/samuelgeurts/Desktop/','boxplot',num2str(h4.Number)], '-png', '-r600', '-nocrop');
+                end
+                
+                ScaledFigure.calibrateDisplay(113.6) %113.6 for this screen
+                ScaledFigure(h4,'reuse')
+                set(h4,'Units','Centimeters')
+                set(h4,'Position',(get(h4,'Position') + [fsx 0 0 0]))  
+            end
+
+            if isfield(obj.SpotBrainInfo,'AbsDifference')
+                [h5,g5] = setfigax1;      
+                boxplot(g5,[...
+                    obj.SpotBrainInfo.AbsDifference]',{'AbsDifference'});
+                title('Spot Validation on Computed Brain')        
+                
+                set(g5,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
+                set(g5,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7])
+                
+                if exist('exportit','var') && exportit
+                    export_fig(h5 ,['/Users/samuelgeurts/Desktop/','boxplot',num2str(h5.Number)], '-png', '-r600', '-nocrop');
+                end
+                
+                ScaledFigure.calibrateDisplay(113.6) %113.6 for this screen
+                ScaledFigure(h5,'reuse')
+                set(h5,'Units','Centimeters')
+                set(h5,'Position',(get(h5,'Position') + [fsx 0 0 0]))  
+            end
+            
+            if isfield(obj.SpotInfo,'RelDifference')
+                [h6,g6] = setfigax1;      
+                boxplot(g6,[...
+                    obj.SpotInfo.RelDifference]',{'RelDifference'});
+                title('Spot Validation')        
+                
+                set(g6,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
+                set(g6,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7])
+                
+                if exist('exportit','var') && exportit
+                    export_fig(h6 ,['/Users/samuelgeurts/Desktop/','boxplot',num2str(h6.Number)], '-png', '-r600', '-nocrop');
+                end
+                
+                ScaledFigure.calibrateDisplay(113.6) %113.6 for this screen
+                ScaledFigure(h6,'reuse')
+                set(h6,'Units','Centimeters')
+                set(h6,'Position',(get(h6,'Position') + [fsx 0 0 0]))  
+            end
+            
+            if isfield(obj.SpotBrainInfo,'RelDifference')
+                [h7,g7] = setfigax1;      
+                boxplot(g7,[...
+                    obj.SpotBrainInfo.RelDifference]',{'RelDifference'});
+                title('Spot Validation on Computed Brain')        
+                
+                set(g7,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
+                set(g7,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7])
+                
+                if exist('exportit','var') && exportit
+                    export_fig(h7 ,['/Users/samuelgeurts/Desktop/','boxplot',num2str(h7.Number)], '-png', '-r600', '-nocrop');
+                end
+                
+                ScaledFigure.calibrateDisplay(113.6) %113.6 for this screen
+                ScaledFigure(h7,'reuse')
+                set(h7,'Units','Centimeters')
+                set(h7,'Position',(get(h7,'Position') + [fsx 0 0 0]))  
+            end            
+            
+            %%
+            function [figurehandle,axishandle] = setfigax1
+                %fsx = 5;fsy = 10;
+                figurehandle = figure('PaperUnits','centimeters','Color',[1 1 1]);
+                axishandle = gca;
+                sng_figcm(fsx,fsy);
+            end
+            function setfigax2(figurehandle,axishandle)
+                set(axishandle,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
+                set(axishandle,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7]);
+                set(axishandle,'YLim',[-0.02,1.02]);
+                
+                if exist('exportit','var') && exportit
+                    export_fig(figurehandle ,['/Users/samuelgeurts/Desktop/','boxplot',num2str(figurehandle.Number)], '-png', '-r600', '-nocrop');
+                end
+                
+                ScaledFigure.calibrateDisplay(113.6); %113.6 for this screen
+                ScaledFigure(figurehandle,'reuse');
+                set(figurehandle,'Units','Centimeters');
+                set(figurehandle,'Position',(get(figurehandle,'Position') + [fsx 0 0 0]));             
+            end
+
+                             
+        end        
+        
+        function ShowFishVal(obj,fishnumbers,ComOrAnn)
+            %if ComOrAnn is not given, the computed brain is used
+            
+            if ~exist('fishnumbers','var')
+                fishnumbers = 1:numel(obj.StackInfo);
+            elseif (max(fishnumbers) > numel(obj.StackInfo))
+                error('at least one fish does not exist in StackInfo')
+            end        
             
             %CompOrAnn determines if the computed or the annotated brain is
             %displayed inlcudin ghte Correct/FalsePos/FalseNeg
                 
             load([obj.SavePath,'/',obj.InfoName,'.mat'],'BrainSegmentationInfo')
-            
-            temp = load([obj.SpotPath,'/stackinfo.mat']);
-            stackinfo = temp.stackinfo;    
-            
-            for k = 1:numel(fishnumbers)               
-                fn = fishnumers(k);
-                
-                %tform_1234 = stackinfo(k1).Registration(strcmp({stackinfo(k1).Registration.name},'tform_complete')).value; 
 
-% !!!!!       %%%%Ga verder met checken of Ialigned bestaat en anders berekenen.
-%                if ~exist([obj.SavePath,'/AlignedFish'],'dir')
-%                    if exist([obj.SavePath,'/Fish'],'dir')
-%                
-%                CorrectedSlice = sng_openimstack2([PreprocessionPath,'/',[obj.ImageInfo(k1).Name],'.tif']);           
-%                Icombined = sng_SliceCombine(CorrectedSlice,stackinfo(k1).ExtendedDeptOfField.IndexMatrix);
-%                Ialigned = imwarp(Icombined,tform_1234,'FillValues',255,'OutputView',CompleteTemplate.ref_temp);
-%
-% misschien nog eens toepassen maar dan moet CombinedInfo kleiner en vanaf
-% original fishes berekenen, wel mooi idee ->github
-
-                cmbr = obj.BrainSegmentationInfo(k1).ComputedMidBrain;
-                ambr = obj.BrainInfo(k1).AnnotatedMidBrainRegistrated;                    
+            if ~isempty({obj.Annotations.MidBrain})
+                ambr = {obj.Annotations.MidBrain};
+            end
+            
+            
+            for k1 = 1:numel(fishnumbers)               
+                fn = fishnumbers(k1);
                 
-                    %figure;imshow(uint8(Icombined))
-                    %hold on;plot(mbr(:,1),mbr(:,2))
+                cmbr = BrainSegmentationInfo(fn).BrainEdge;
+                AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);                         
+
 %%                    
-                figure;imshow(uint8(Ialigned))                    
+                figure;imshow(uint8(AlignedFish))                    
                 hold on;
-                plot(cmbr(:,2),cmbr(:,1),'Color',[255 75 75]/255,'LineWidth',2);                    
-                plot(ambr(:,1),ambr(:,2),'Color',[75 75 255]/255,'LineWidth',2);   
-                if strcmp(ComOrAnn,'Com')
-                    Correct = obj.SpotBrainInfo(k1).CorrectSpots;
-                    FalsePos = obj.SpotBrainInfo(k1).FalsePosSpots;
-                    FalseNeg = obj.SpotBrainInfo(k1).FalseNegSpots;
+                plot(cmbr(:,2),cmbr(:,1),'Color',[255 75 75]/255,'LineWidth',2);
+                
+                if exist('ambr','var')
+                    plot(ambr{fn}(:,1),ambr{fn}(:,2),'Color',[75 75 255]/255,'LineWidth',2);
+                end
                     
-                    ps = obj.SpotBrainInfo(val(k)).Precision; %used for textbox
-                    rs = obj.SpotBrainInfo(val(k)).Recall;
-                    fs = obj.SpotBrainInfo(val(k)).F1score;
+                if ~exist('ComOrAnn','var') || strcmp(ComOrAnn,'Com')
+                    Correct = obj.SpotBrainInfo(fn).CorrectSpots;
+                    FalsePos = obj.SpotBrainInfo(fn).FalsePosSpots;
+                    FalseNeg = obj.SpotBrainInfo(fn).FalseNegSpots;
+                    
+                    ps = obj.SpotBrainInfo(fn).Precision; %used for textbox
+                    rs = obj.SpotBrainInfo(fn).Recall;
+                    fs = obj.SpotBrainInfo(fn).F1score;
                                         
                 elseif strcmp(ComOrAnn,'Ann')
-                    Correct = obj.SpotInfo(k1).CorrectSpots;
-                    FalsePos = obj.SpotInfo(k1).FalsePosSpots;
-                    FalseNeg = obj.SpotInfo(k1).FalseNegSpots;
+                    Correct = obj.SpotInfo(fn).CorrectSpots;
+                    FalsePos = obj.SpotInfo(fn).FalsePosSpots;
+                    FalseNeg = obj.SpotInfo(fn).FalseNegSpots;
                                       
-                    ps = obj.SpotInfo(val(k)).Precision; %used for textbox
-                    rs = obj.SpotInfo(val(k)).Recall;
-                    fs = obj.SpotInfo(val(k)).F1score;
+                    ps = obj.SpotInfo(fn).Precision; %used for textbox
+                    rs = obj.SpotInfo(fn).Recall;
+                    fs = obj.SpotInfo(fn).F1score;
                     
-                else
-                    Error('choose between choose between Ann and Com, for displaying correct/falsepos/falseneg')
                 end
                                                
                 %scatter(Correct(:,1), Correct(:,2),400,'LineWidth',2,'MarkerEdgeColor',1/255*[75 255 75]);
@@ -596,8 +1015,43 @@ classdef SpotNGlia
            
             end 
         end
-        %}
         
+        function ShowFish(obj,fishnumbers)
+            %if ComOrAnn is not given, the computed brain is used
+            
+            if ~exist('fishnumbers','var')
+                fishnumbers = 1:numel(obj.StackInfo);
+            elseif (max(fishnumbers) > numel(obj.StackInfo))
+                error('at least one fish does not exist in StackInfo')
+            end        
+            
+            %CompOrAnn determines if the computed or the annotated brain is
+            %displayed inlcudin ghte Correct/FalsePos/FalseNeg
+                
+            load([obj.SavePath,'/',obj.InfoName,'.mat'],'BrainSegmentationInfo')
+            load([obj.SavePath,'/',obj.InfoName,'.mat'],'SpotsDetected')
+
+            
+            for k1 = 1:numel(fishnumbers)               
+                fn = fishnumbers(k1);
+                
+                cmbr = BrainSegmentationInfo(fn).BrainEdge;
+                AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);                
+                cmbs = reshape([SpotsDetected{fn}.Centroid],2,numel(SpotsDetected{fn}))';
+%%                    
+                figure;imshow(uint8(AlignedFish))                    
+                hold on;
+                plot(cmbr(:,2),cmbr(:,1),'Color',[255 75 75]/255,'LineWidth',2);
+                                               
+                scatter(cmbs(:,1), cmbs(:,2),400,'LineWidth',2,'MarkerEdgeColor',1/255*[255 75 75]);             
+                               
+                nc = size(cmbs,1) %number of computed spots                             
+                str = sprintf('Computed Spots: %.0f',nc)         
+                a = annotation('textbox',[.1 .63 .7 .3],'String',str,'FitBoxToText','on','FontSize',15);
+           
+            end 
+        end
+       
     end
 end
 
