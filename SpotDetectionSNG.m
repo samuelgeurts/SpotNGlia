@@ -1,4 +1,4 @@
-function [Ispots,spoutput] = SpotDetectionLink3(Ialligned,CompleteTemplate,cmbr,zfinput)
+function [SpotsDetected,SpotParameters,SpotDetectionInfo] = SpotDetectionSNG(Ialigned,CompleteTemplate,cmbr,zfinput)
 
 
 %Version SpotDetectionLink3
@@ -6,40 +6,26 @@ function [Ispots,spoutput] = SpotDetectionLink3(Ialligned,CompleteTemplate,cmbr,
 
 %{
 
-todo zfinput to zebrafish__
-cmbr = fliplr(BrainAnn)
-zfinput = obj.zfinput
-Ialligned = Ialigned{k5};
+
+Ialigned = AlignedFish;
+CompleteTemplate = obj.CompleteTemplate;
+cmbr = BrainSegmentationInfo(k1).BrainEdge;
+zfinput = obj.ZFParameters;
+
+
 %}
-
-
-if ~exist('zfinput','var')
-    ColorToGrayVector = CompleteTemplate.SpotContrastVector;
-   
-    zfinput = struct;
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','RgbToGray','ColorToGrayVector',ColorToGrayVector,'');  %select color channel [0 1 0],     
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','Wavelet','ScaleBase',0.5,'');  
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','Wavelet','ScaleLevels',9,'');  
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','Wavelet','Kthreshold',0,'');  
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','MultiProduct','MPlevels',4:9,'');  
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','MultiProduct','MPthreshold',50,'');  
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','SpotSelection','MinSpotSize',30,''); % size selection 
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','SpotSelection','MaxSpotSize',500,''); % size selection 
-    zfinput = sng_zfinput(zfinput,0,'SpotDetection','SpotSelection','MinProbability',0.01,''); %color selection
-end
 
 sng_zfinputAssign(zfinput,'SpotDetection')
 
 %TODO: suffisticated color transform of afterwards color detection
 %TODO: apply on original images which are not dept of field combined as :some spots appear due to dof artifacts. Combine images afterwards
-%TODO:  filter spots based on color
 %TODO:  add more parameters
 %TODO:  find out how hard thresholding works
 
 
 %% RGB to gray algorithm
 
-GI = sng_RGB2Gray(Ialligned,ColorToGrayVector,false);
+GI = sng_RGB2Gray(Ialigned,ColorToGrayVector,false);
 
 
 %% Generate Wavelets
@@ -48,13 +34,13 @@ GI = sng_RGB2Gray(Ialligned,ColorToGrayVector,false);
 [MultiProductTh,MultiProduct] = sng_SpotWavelet(GI,ScaleLevels,ScaleBase,MPlevels,MPthreshold,false);
 
 %{
-figure;imagesc(Ialligned)
+figure;imagesc(Ialigned)
 figure;imagesc(MultiProductTh)
 %}
 
 %% SpotMeasure
 
-%function sng_spotproperties (Ialligned, MaskedIm)
+%function sng_spotproperties (Ialigned, MaskedIm)
 
 CC = bwconncomp(MultiProductTh);
 L = labelmatrix(CC);
@@ -63,17 +49,24 @@ Regions1 = regionprops(L,'Area','PixelIdxList','PixelList','Centroid','Image','B
 
 
 
-
-
-
 %% Color mean of founded spots
 colormean = zeros(numel(Regions1),3);
 for k = 1:numel(Regions1)
     spotimage = getfield(Regions1,{k},'Image');
     sbb = round(getfield(Regions1,{k},'BoundingBox')); %round because wc?
-    spotcimage = Ialligned(sbb(2):sbb(2)+sbb(4)-1,sbb(1):sbb(1)+sbb(3)-1,1:3);
+    spotcimage = Ialigned(sbb(2):sbb(2)+sbb(4)-1,sbb(1):sbb(1)+sbb(3)-1,1:3);
     spotcimage(repmat(spotimage,1,1,3) == 0) = 0; %color image of spot
     %color channels
+    
+    %TODO apply erosion, and solve isue with bouandary
+    %erode spot for better colormean
+    %CubeSizeSpotErode  =4
+    %    SE1 = strel('cube',CubeSizeSpotErode); %spot structure element for erode
+    %    
+    %    spotimage2 = imerode(spotimage,SE1)
+    %    
+    % 
+
     rc = spotcimage(:,:,1);
     gc = spotcimage(:,:,2);
     bc = spotcimage(:,:,3);
@@ -132,7 +125,7 @@ temp = num2cell(in);[Regions1.Insite] = temp{:};
 
 %{
 figure;
-imagesc(Ialligned)
+imagesc(Ialigned)
 plot(cmbr(:,2),cmbr(:,1))
 hold on
 plot(rc(in,1),rc(in,2),'r+')
@@ -153,18 +146,24 @@ st = [Regions1.Area] <= MaxSpotSize;
 temp = num2cell(st);[Regions1.SmallerThan] = temp{:};
  
 %%
+%{
 Ifilt = ismember(L,find(...
     [Regions1.Insite] == 1 &...
     [Regions1.LargerThan] == 1 &...
     [Regions1.SmallerThan] == 1 &...
     [Regions1.MinProbability] == 1));
+%}
 
-nspots = sum([Regions1.Insite] == 1 &...
+%nspots = sum([Regions1.Insite] == 1 &...
+%    [Regions1.LargerThan] == 1 &...
+%    [Regions1.SmallerThan] == 1 &...
+%    [Regions1.MinProbability] == 1);
+
+
+SpotsDetected = Regions1([Regions1.Insite] == 1 &...
     [Regions1.LargerThan] == 1 &...
     [Regions1.SmallerThan] == 1 &...
     [Regions1.MinProbability] == 1);
-
-
 
 
 
@@ -177,8 +176,10 @@ truesize
 figure;scatter3(colormean(:,1),colormean(:,2),colormean(:,3))
 %}        
 
-Ispots = Ialligned;
-Ispots(repmat(Ifilt,1,1,3) == 0) = 0;
+    
+%Ispots = Ialigned;
+%Ispots(repmat(Ifilt,1,1,3) == 0) = 0;
+
 
 %{
     figure;imagesc(uint8(Ispots));axis off tight equal
@@ -217,20 +218,11 @@ Ispots(repmat(Ifilt,1,1,3) == 0) = 0;
 
 %}        
 
+SpotParameters = Regions1;
 
-
-
-spoutput = struct('stage',[],'substage',[],'name',[]','value',[]);
-
-spoutput = sng_StructFill(spoutput,{'SpotDetection','Wavelet','Multiproduct',MultiProduct});
-spoutput = sng_StructFill(spoutput,{'SpotDetection','Wavelet','MultiproductThreshold',MultiProductTh});
-
-
-spoutput = sng_StructFill(spoutput,{'SpotDetection','SpotSelection','SpotParameters',Regions1});
-spoutput = sng_StructFill(spoutput,{'SpotDetection','SpotSelection','SpotFilter',Ifilt});
-spoutput = sng_StructFill(spoutput,{'SpotDetection','SpotSelection','NumberOfSpots',nspots});
-
-
+SpotDetectionInfo.Multiproduct = MultiProduct;
+SpotDetectionInfo.MultiproductThreshold = MultiProductTh;
+%SpotDetectionInfo.SpotFilter = Ifilt;
 
 
 
