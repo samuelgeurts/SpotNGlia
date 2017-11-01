@@ -132,6 +132,10 @@ classdef SpotNGlia
                 % compute ImageInfo and StackInfo
                 dirinfo =  dir([obj.FishPath,'/*.','tif']);
                 imageinfotemp = rmfield(dirinfo,{'isdir','datenum','bytes'}); %removes unimportant fields
+                               
+                if ~isfield(imageinfotemp,'folder')
+                    [imageinfotemp.new] = deal(obj.FishPath)
+                end                
 
                 % make en selection of fishslices if fisnumbers is given as input
                 if ~exist('slicenumbers','var')
