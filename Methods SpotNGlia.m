@@ -3,7 +3,7 @@ PathsComplete('sp')
 
 SpotPath = uigetdir(SpotPath)
 
-obj = BrainSpotValidation(SpotPath)
+ddd = BrainSpotValidation(SpotPath)
 
 obj = BrainVal(obj)
 obj = SpotVal(obj)
@@ -34,6 +34,7 @@ obj = obj.ExtendedDeptOfField
 obj = obj.Registration
 
 obj = obj.BrainSegmentation
+obj = obj.SpotDetection
 
-obj = obj.SpotInfo
+obj = obj.LoadAnnotations
 
