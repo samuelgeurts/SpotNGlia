@@ -42,8 +42,7 @@ classdef SpotNGlia
         SpotBrainInfo = []
         SpotBrainStats = []    
     end 
-
-    
+   
     properties
        ImageInfoChecked_TF = false
        Sorting = []
@@ -134,7 +133,7 @@ classdef SpotNGlia
                 imageinfotemp = rmfield(dirinfo,{'isdir','datenum','bytes'}); %removes unimportant fields
                                
                 if ~isfield(imageinfotemp,'folder')
-                    [imageinfotemp.new] = deal(obj.FishPath)
+                    [imageinfotemp.folder] = deal(obj.FishPath)
                 end                
 
                 % make en selection of fishslices if fisnumbers is given as input
@@ -160,8 +159,8 @@ classdef SpotNGlia
             
             if ~obj.ImageInfoChecked_TF
                 
-                openvar('obj.ImageInfo')
-                openvar('obj.StackInfo')                
+                %openvar('ImageInfo')
+                %openvar('StackInfo')                
                 
                 str = sprintf(['Check slice combination in ImageInfo and StackInfo.',...
                     '\nApply corrections in "imageinfo.CorNextStack".',...
@@ -261,7 +260,7 @@ classdef SpotNGlia
         
         function obj = ExtendedDeptOfField(obj,fishnumbers)
             
-            h = waitbar(0,'Combine fish slices','Name','SpotNGlia');  
+            h = waitbar(0,'Extended Dept of Field','Name','SpotNGlia');  
             
             if ~exist('fishnumbers','var')
                 fishnumbers = 1:numel(obj.StackInfo);
@@ -303,7 +302,7 @@ classdef SpotNGlia
             end
                 
             for k1 = 1:nfishes
-                waitbar(k1/nfishes,h,'Extended Dept of Field')                
+                waitbar(k1/nfishes,h)                
                 fn = fishnumbers(k1);
                 
                 CorrectedFish = sng_openimstack2([obj.SavePath,'/','CorrectedFish','/',obj.StackInfo(fn).stackname,'.tif']);             
@@ -320,7 +319,7 @@ classdef SpotNGlia
         
         function obj = Registration(obj,fishnumbers)
             
-            h = waitbar(0,'Combine fish slices','Name','SpotNGlia');  
+            h = waitbar(0,'Registration','Name','SpotNGlia');  
             
             if isempty(obj.CompleteTemplate)
                 obj.CompleteTemplate = LoadTemplateLink3([obj.SourcePath,'/','Template 3 dpf']);                         
@@ -342,7 +341,7 @@ classdef SpotNGlia
                                         
             RegistrationInfo = cell(nfishes,1); 
             for k1 = 1:nfishes
-                waitbar(k1/nfishes,h,'Align to template')                                
+                waitbar(k1/nfishes,h)                                
                 fn = fishnumbers(k1);                
                 CombinedFish = imread([obj.SavePath,'/','CombinedFish','/',obj.StackInfo(fn).stackname,'.tif']);          
                 [AlignedFishTemp,RegistrationInfo{k1,1}] = AllignmentLink5(CombinedFish,obj.CompleteTemplate,obj.ZFParameters);
@@ -358,7 +357,7 @@ classdef SpotNGlia
         end   
         
         function obj = BrainSegmentation(obj,fishnumbers)
-            h = waitbar(0,'Combine fish slices','Name','SpotNGlia');  
+            h = waitbar(0,'Brain Segmentation','Name','SpotNGlia');  
             
             if ~exist('fishnumbers','var')
                 fishnumbers = 1:numel(obj.StackInfo);
@@ -378,7 +377,7 @@ classdef SpotNGlia
             
             for k1 = 1:nfishes                    
                 fn = fishnumbers(k1);
-                waitbar(k1/nfishes,h,'Brain Segmentation')
+                waitbar(k1/nfishes,h)
                 AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);                         
                 [~,BrainSegmentationInfo(k1)] = MidBrainDetectionLink3(AlignedFish,obj.CompleteTemplate,obj.ZFParameters);      
                 %obj.BrainFish(k1).image = BrainFishTemp;
@@ -393,7 +392,7 @@ classdef SpotNGlia
             
             load([obj.SavePath,'/',obj.InfoName,'.mat'],'BrainSegmentationInfo')
         
-            h = waitbar(0,'Combine fish slices','Name','SpotNGlia');  
+            h = waitbar(0,'SpotDetection','Name','SpotNGlia');  
             
             if ~exist('fishnumbers','var')
                 fishnumbers = 1:numel(obj.StackInfo);
@@ -421,7 +420,7 @@ classdef SpotNGlia
             
             for k1 = 1:nfishes                    
                 fn = fishnumbers(k1);
-                waitbar(k1/nfishes,h,'Spot Detection')
+                waitbar(k1/nfishes,h)
                 AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);                         
                 %[~,SpotDetectionInfo{k1,1}] = SpotDetectionLink2(AlignedFish,obj.CompleteTemplate,BrainSegmentationInfo(k1).BrainEdge,obj.ZFParameters);                   
                 [SpotsDetected{k1},SpotParameters{k1},SpotDetectionInfo(k1)] = SpotDetectionSNG(AlignedFish,obj.CompleteTemplate,BrainSegmentationInfo(k1).BrainEdge,obj.ZFParameters);
@@ -448,18 +447,7 @@ classdef SpotNGlia
             obj = obj.BrainSegmentation(fishnumbers);
             obj = obj.SpotDetection(fishnumbers);                        
         end
-            
-        function saveit(obj)
-            %obj.savedate = datetime;
-            %dt = strcat(string(year(date)),string(month(date)),string(day(date)));                     
-            %firstim = obj.ImageInfo(1).name;
-            %firstn = char(regexp(firstim,'\d+.tif','match'));  
-            %firstn = strrep(firstn,'.tif','');
-            %name = strrep(firstim, [firstn,'.tif'],'');
-
-            save(strcat(obj.SavePath,'/',obj.SaveName,'.mat'),'obj');    
-        end
-        
+                    
         function obj = LoadAnnotations(obj)
 
             if ~isempty('obj.AnnotatedMidBrainPath') || ~isempty('obj.AnnotatedSpotPath')
@@ -1055,6 +1043,18 @@ classdef SpotNGlia
            
             end 
         end
+        
+        function saveit(obj)
+            %obj.savedate = datetime;
+            %dt = strcat(string(year(date)),string(month(date)),string(day(date)));                     
+            %firstim = obj.ImageInfo(1).name;
+            %firstn = char(regexp(firstim,'\d+.tif','match'));  
+            %firstn = strrep(firstn,'.tif','');
+            %name = strrep(firstim, [firstn,'.tif'],'');
+
+            save(strcat(obj.SavePath,'/',obj.SaveName,'.mat'),'obj');    
+        end
+        
        
     end
 end
