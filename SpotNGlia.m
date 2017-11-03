@@ -75,7 +75,25 @@ classdef SpotNGlia
                 obj.SavePath = [BasePath,'/','SpotNGlia Destination'];                           
                 obj.SourcePath = [BasePath,'/','SpotNGlia Source'];                       
                 obj.AnnotatedMidBrainPath = [BasePath,'/','SpotNGlia Source','/','Roi brain'];    
-                obj.AnnotatedSpotPath = [BasePath,'/','SpotNGlia Source','/','Roi microglia'];    
+                obj.AnnotatedSpotPath = [BasePath,'/','SpotNGlia Source','/','Roi microglia']
+                
+            elseif exist('mode1','var') && mode1 == 1 %new folder selected by myself (sng)
+                if strcmp(getenv('OS'),'Windows_NT') && strcmp(getenv('username'),'260018')
+                    BasePath = 'C:\Users\260018\Dropbox';        
+                elseif strcmp(getenv('OS'),'Windows_NT') && strcmp(getenv('username'),'SNGeu')
+                    BasePath = 'C:\Users\SNGeu\Dropbox';
+                elseif  strcmp(getenv('USER'),'samuelgeurts')
+                    BasePath = '/Users/samuelgeurts/Dropbox';
+                elseif  strcmp(getenv('USER'),'Anouk')
+                    BasePath = '/Users/Anouk/Dropbox';
+                else
+                    error('unknown platform and user');
+                end
+                obj.SourcePath = [BasePath,'/','SpotNGlia Source'];                                       
+                disp('select image folder to process')
+                obj.FishPath = uigetdir([],'select image folder to process');
+                obj.SavePath = obj.FishPath
+                
             else
                 disp('select image folder to process')
                 obj.FishPath = uigetdir([],'select image folder to process');
@@ -379,7 +397,7 @@ classdef SpotNGlia
                 fn = fishnumbers(k1);
                 waitbar(k1/nfishes,h)
                 AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);                         
-                [~,BrainSegmentationInfo(k1)] = MidBrainDetectionLink3(AlignedFish,obj.CompleteTemplate,obj.ZFParameters);      
+                [~,BrainSegmentationInfo(k1)] = MidBrainDetectionSNG(AlignedFish,obj.CompleteTemplate,obj.ZFParameters);      
                 %obj.BrainFish(k1).image = BrainFishTemp;
             end
             obj.saveit            
@@ -783,6 +801,16 @@ classdef SpotNGlia
             %   show(obj,1)
             %Example only show
             %   obj.show
+
+            bj = obj.BrainStats.FiveNumberSummaryJaccard(3);
+            bd = obj.BrainStats.FiveNumberSummaryDice(3);
+            sp = obj.SpotStats.FiveNumberSummaryPrecision(3);
+            sr = obj.SpotStats.FiveNumberSummaryRecall(3);
+            sf = obj.SpotStats.FiveNumberSummaryF1score(3);
+            bsp = obj.SpotBrainStats.FiveNumberSummaryPrecision(3);
+            bsr = obj.SpotBrainStats.FiveNumberSummaryRecall(3);
+            bsf = obj.SpotBrainStats.FiveNumberSummaryF1score(3);
+                          
             
             %%% brainval spotval
             fsx = 6;fsy = 10;
@@ -793,7 +821,11 @@ classdef SpotNGlia
                     obj.BrainInfo.Jaccard;...
                     obj.BrainInfo.Dice]',{'Jaccard','Dice'});
                 title('Brain Validation')
-                setfigax2(h1,g1)            
+                setfigax2(h1,g1)
+       
+                text(1.2,bj,sprintf('%.3f',bj))
+                text(2.2,bd,sprintf('%.3f',bd))
+                 
             end
             if isfield(obj.SpotInfo,'Precision')
                 [h2,g2] = setfigax1;
@@ -803,6 +835,12 @@ classdef SpotNGlia
                     obj.SpotInfo.F1score]',{'Precision','Recall','F1score'});
                 title('Spot Validation')            
                 setfigax2(h2,g2)
+                                
+                text(1.3,sp,sprintf('%.3f',sp))
+                text(2.3,sr,sprintf('%.3f',sr))                
+                text(3.3,sf,sprintf('%.3f',sf))
+                set(gca,'XLim',[0.5 3.8])
+
             end
             
             if isfield(obj.SpotBrainInfo,'Precision')
@@ -813,8 +851,14 @@ classdef SpotNGlia
                     obj.SpotBrainInfo.F1score]',{'Precision','Recall','F1score'});
                 title('Spot Validation on Computed Brain')          
                 setfigax2(h3,g3)
+                                                
+                text(1.3,bsp,sprintf('%.3f',bsp))
+                text(2.3,bsr,sprintf('%.3f',bsr))                
+                text(3.3,bsf,sprintf('%.3f',bsf))                
+                set(gca,'XLim',[0.5 3.8])
             end
 
+            %{
             if isfield(obj.SpotInfo,'AbsDifference')
                 [h4,g4] = setfigax1;      
                 boxplot(g4,[...
@@ -890,6 +934,7 @@ classdef SpotNGlia
                 set(h7,'Units','Centimeters')
                 set(h7,'Position',(get(h7,'Position') + [fsx 0 0 0]))  
             end            
+            %}
             
             %%
             function [figurehandle,axishandle] = setfigax1
