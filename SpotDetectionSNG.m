@@ -1,4 +1,4 @@
-function [SpotsDetected,SpotParameters,SpotDetectionInfo] = SpotDetectionSNG(Ialigned,CompleteTemplate,cmbr,zfinput)
+function [SpotsDetected,SpotParameters,SpotDetectionInfo] = SpotDetectionSNG(Ialigned,CompleteTemplate,cmbr,ZFParameters)
 
 
 %Version SpotDetectionLink3
@@ -10,12 +10,15 @@ function [SpotsDetected,SpotParameters,SpotDetectionInfo] = SpotDetectionSNG(Ial
 Ialigned = AlignedFish;
 CompleteTemplate = obj.CompleteTemplate;
 cmbr = BrainSegmentationInfo(k1).BrainEdge;
-zfinput = obj.ZFParameters;
-
+ZFParameters = obj.ZFParameters;
+ZFParameters = ZFParametersTemp{1}
 
 %}
 
-sng_zfinputAssign(zfinput,'SpotDetection')
+sng_zfinputAssign(ZFParameters,'SpotDetection')
+
+ScaleLevels = max(MPlevels);
+
 
 %TODO: suffisticated color transform of afterwards color detection
 %TODO: apply on original images which are not dept of field combined as :some spots appear due to dof artifacts. Combine images afterwards
