@@ -1,4 +1,4 @@
-function [Ibrain,Parameters] = MidBrainDetectionSNG(Ialigned,CompleteTemplate,zfinput);
+function [Ibrain,Parameters] = MidBrainDetectionSNG(AlignedFish,CompleteTemplate,ZFParameters);
 %Detect midbrain
 %works in combination with other "Link" functions
 %based on MidBraindetection 2 and GeneratePolarTransforms2
@@ -9,22 +9,20 @@ function [Ibrain,Parameters] = MidBrainDetectionSNG(Ialigned,CompleteTemplate,zf
 %   put 1000x1000 selection in other function (sng_boxaroundcenter)
 %
 %Version MidBrainDetectionLink3
-%   applicable for zfinput and broutput
+%   applicable for ZFParameters and broutput
+%Version MidBrainDetectionSNG
+%   applicable for SpotNGlia
 
 %{
 fn = 1
 AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);                         
-CompleteTemplate =obj.CompleteTemplate,obj.ZFParameters)
+CompleteTemplate =obj.CompleteTemplate  
+ZFParameters = obj.ZFParameters
 
 %}
 
 
-if ~exist('zfinput','var');
-    zfinput = struct;
-    zfinput = sng_zfinput(zfinput,0,'BrainSegmentation','','Method','TriangleSmooth','?');
-    zfinput = sng_zfinput(zfinput,0,'BrainSegmentation','','Method2',4,'?');2
-end
-sng_zfinputAssign(zfinput,'BrainSegmentation')
+sng_zfinputAssign(ZFParameters,'BrainSegmentation')
 
 
 
@@ -57,10 +55,10 @@ truesize(gcf,12*sng_size(get(get(gca,'Children'),'Cdata'),[1,2]))
 
 cxy = CompleteTemplate.CenterMidBrain;
 
-[Isquare] = sng_boxaroundcenter(Ialigned,cxy);
+[Isquare] = sng_boxaroundcenter(AlignedFish,cxy);
 
     %extend with 200 pixels on every side
-    siz = size(Ialigned);
+    siz = size(AlignedFish);
     cxy2 = round(cxy + 200); 
     rangex = cxy2(1)-499:cxy2(1)+500;
     rangey = cxy2(2)-499:cxy2(2)+500;
@@ -259,18 +257,18 @@ frame(rangey,rangex) = Mask;
 Ibrain = frame(201:end-200,201:end-200);
 
 %{
-    figure;imagesc(uint8(Ialigned))
+    figure;imagesc(uint8(AlignedFish))
 
     figure;imagesc(uint8(Ibrain))
     figure;plot(J,I)
 
-    IA = double(Ialigned);
+    IA = double(AlignedFish);
     IA(:,:,3) = IA(:,:,3) + 110 * double(IBrain);
     IA(:,:,2) = IA(:,:,2) + 50 * double(IBrain);
     figure;imagesc(uint8(IA));sng_imfix
 
 bc = bwboundaries(Ibrain)
-figure;imagesc(uint8(Ialigned));sng_imfix
+figure;imagesc(uint8(AlignedFish));sng_imfix
 hold on;plot(bc{1}(:,2),bc{1}(:,1),'Color',[0,176/255,240/255],'LineWidth',2)
 
 %}
@@ -298,7 +296,7 @@ Parameters.BrainEdge = bwbb{1}
 
 %% the fish movie (not finished, look for mov_polartransform3)
 %{
-siz = size(Ialigned)
+siz = size(AlignedFish)
 cxy2 = round(cxy + 200) 
 rangex = cxy2(1)-499:cxy2(1)+500;
 rangey = cxy2(2)-499:cxy2(2)+500;
