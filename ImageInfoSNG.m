@@ -1,4 +1,4 @@
-function [imageinfo] = ImageInfoLink3(imageinfo,zfinput)
+function [imageinfo] = ImageInfoSNG(imageinfo,zfinput)
 %this function measures the correlation af adjacent fish-images in a folder en
 %give the boundaries of batches of fishes that are similar
 
@@ -68,6 +68,10 @@ nextstack = zeros(ni,1);
 
 for k = 1:ni
     slice = imread([imageinfo(k).folder,'/',imageinfo(k).name]);
+    
+    %sometimes images are 16 bit
+    slice =im2uint8(slice);
+    
   
     % store bit info
     info = imfinfo([imageinfo(k).folder,'/',imageinfo(k).name]);
