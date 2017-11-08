@@ -305,6 +305,7 @@ classdef SpotNGlia
                     ImageSlice = cell(1, obj.StackInfo(fn).stacksize); %preallocate for every new slice
                     for k2 = 1:obj.StackInfo(fn).stacksize
                         ImageSlice{k2} = imread([obj.FishPath, '/', obj.StackInfo(fn).imagenames{k2}]);
+                        ImageSlice{k2} = im2uint8(ImageSlice{k2});
                     end
                     
                     %                    if savefig1_TF
@@ -597,11 +598,19 @@ classdef SpotNGlia
             %end
         end
         
-        function obj = BrainVal(obj)
+        function obj = BrainVal(obj, BrainSegmentationInfo, fishnumbers)
+            %fishnumbers has to correspondent with BrainSegmentationInfo if given
+            if ~exist('BrainSegmentationInfo', 'var')
+                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
+            end            
             
-            load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
-            
-            nfishes = numel(obj.StackInfo);
+            if ~exist('fishnumbers', 'var')
+                fishnumbers = 1:numel(obj.StackInfo);
+            elseif (max(fishnumbers) > numel(obj.StackInfo))
+                error('at least one fish does not exist in StackInfo')
+            end
+            nfishes = numel(fishnumbers);
+
             
             Jaccard = zeros(nfishes, 1);
             Dice = zeros(nfishes, 1);
@@ -609,12 +618,13 @@ classdef SpotNGlia
             cmbr = {BrainSegmentationInfo.BrainEdge};
             ambr = {obj.Annotations.MidBrain};
             
-            for k1 = 1:nfishes
+            for k1 = 1:nfishes                
+                fn = fishnumbers(k1);
                 
-                mx = round(max([cmbr{k1}; fliplr(ambr{k1})]));
+                mx = round(max([cmbr{k1}; fliplr(ambr{fn})]));
                 
                 a = poly2mask(cmbr{k1}(:, 2), cmbr{k1}(:, 1), mx(1), mx(2));
-                b = poly2mask(ambr{k1}(:, 1), ambr{k1}(:, 2), mx(1), mx(2));
+                b = poly2mask(ambr{fn}(:, 1), ambr{fn}(:, 2), mx(1), mx(2));
                 
                 intersection = (a & b);
                 union = (a | b);
@@ -872,7 +882,7 @@ classdef SpotNGlia
         
         function SpotOptimization(obj, fishnumbers)
             
-            CompleteTemplate = LoadTemplateLink3([obj.SourcePath, '/', 'Template 3 dpf']);
+            CompleteTemplate = LoadTemplateLink3([obj.SourcePath, '/', 'Template 3 dpf']); %#ok<PROPLC>
             
             
             if exist([obj.SavePath, '/', 'SpotOptList', '.mat'], 'file')
@@ -891,9 +901,9 @@ classdef SpotNGlia
             
             nfishes = numel(fishnumbers);
             
-            ColorToGrayVectorL = {[0; 1; 0]}
-            ScaleBaseL = {0.5}
-            KthresholdL = {0}
+            ColorToGrayVectorL = {[0; 1; 0]};
+            ScaleBaseL = {0.5};
+            KthresholdL = {0};
             MPlevelsL = {5:7};
             MPthresholdL = {256};
             %MinSpotSizeL = {}
@@ -1006,12 +1016,12 @@ classdef SpotNGlia
                     [SpotParameters{k5}.MinProbability] = temp{:};
                 end
                 
-                obj = obj.SpotVal(SpotParameters);
+                objTemp = obj.SpotVal(SpotParameters);
                 
                 
-                disp(num2str(mean([obj.SpotInfo.F1score])));
+                disp(num2str(mean([objTemp.SpotInfo.F1score])));
                 
-                %disp([num2str(l2),' ',num2str(l1),' ',num2str(mean([obj.SpotInfo.F1score]))]);
+                %disp([num2str(l2),' ',num2str(l1),' ',num2str(mean([objTemp.SpotInfo.F1score]))]);
                 
                 SpotOpt.ColorToGrayVectorL = ColorToGrayVectorL{a(k2)};
                 SpotOpt.ScaleBaseL = ScaleBaseL{b(k2)};
@@ -1022,23 +1032,23 @@ classdef SpotNGlia
                 SpotOpt.MaxSpotSize = MaxSpotSize;
                 SpotOpt.MinProbability = MinProbability;
                 
-                SpotOpt.MeanPrecision = mean([obj.SpotInfo.Precision]);
-                SpotOpt.MeanRecall = mean([obj.SpotInfo.Recall]);
-                SpotOpt.MeanF1score = mean([obj.SpotInfo.F1score]);
-                SpotOpt.MeanAbsDifference = mean(abs([obj.SpotInfo.AbsDifference]));
-                SpotOpt.MeanRelDifference = mean(abs([obj.SpotInfo.RelDifference]));
+                SpotOpt.MeanPrecision = mean([objTemp.SpotInfo.Precision]);
+                SpotOpt.MeanRecall = mean([objTemp.SpotInfo.Recall]);
+                SpotOpt.MeanF1score = mean([objTemp.SpotInfo.F1score]);
+                SpotOpt.MeanAbsDifference = mean(abs([objTemp.SpotInfo.AbsDifference]));
+                SpotOpt.MeanRelDifference = mean(abs([objTemp.SpotInfo.RelDifference]));
                 
-                SpotOpt.StdPrecision = std([obj.SpotInfo.Precision]);
-                SpotOpt.StdRecall = std([obj.SpotInfo.Recall]);
-                SpotOpt.StdF1score = std([obj.SpotInfo.F1score]);
-                SpotOpt.StdAbsDifference = std(abs([obj.SpotInfo.AbsDifference]));
-                SpotOpt.StdRelDifference = std(abs([obj.SpotInfo.RelDifference]));
+                SpotOpt.StdPrecision = std([objTemp.SpotInfo.Precision]);
+                SpotOpt.StdRecall = std([objTemp.SpotInfo.Recall]);
+                SpotOpt.StdF1score = std([objTemp.SpotInfo.F1score]);
+                SpotOpt.StdAbsDifference = std(abs([objTemp.SpotInfo.AbsDifference]));
+                SpotOpt.StdRelDifference = std(abs([objTemp.SpotInfo.RelDifference]));
                 
-                SpotOpt.Precision = [obj.SpotInfo.Precision];
-                SpotOpt.Recall = [obj.SpotInfo.Recall];
-                SpotOpt.F1score = [obj.SpotInfo.F1score];
-                SpotOpt.AbsDifference = [obj.SpotInfo.AbsDifference];
-                SpotOpt.RelDifference = [obj.SpotInfo.RelDifference];
+                SpotOpt.Precision = [objTemp.SpotInfo.Precision];
+                SpotOpt.Recall = [objTemp.SpotInfo.Recall];
+                SpotOpt.F1score = [objTemp.SpotInfo.F1score];
+                SpotOpt.AbsDifference = [objTemp.SpotInfo.AbsDifference];
+                SpotOpt.RelDifference = [objTemp.SpotInfo.RelDifference];
                 
                 SpotOpt.date = date;
                 
@@ -1054,26 +1064,19 @@ classdef SpotNGlia
             
         end
          
-        function ShowBoxPlot(obj, exportit)
+        function ShowBoxPlot(obj,exportit)
             %Example show and save
             %   show(obj,1)
             %Example only show
             %   obj.show
-            
-            bj = obj.BrainStats.FiveNumberSummaryJaccard(3);
-            bd = obj.BrainStats.FiveNumberSummaryDice(3);
-            sp = obj.SpotStats.FiveNumberSummaryPrecision(3);
-            sr = obj.SpotStats.FiveNumberSummaryRecall(3);
-            sf = obj.SpotStats.FiveNumberSummaryF1score(3);
-            bsp = obj.SpotBrainStats.FiveNumberSummaryPrecision(3);
-            bsr = obj.SpotBrainStats.FiveNumberSummaryRecall(3);
-            bsf = obj.SpotBrainStats.FiveNumberSummaryF1score(3);
-            
-            
+                
             %%% brainval spotval
             fsx = 6; fsy = 10;
             
             if isfield(obj.BrainInfo, 'Jaccard')
+                bj = obj.BrainStats.FiveNumberSummaryJaccard(3);
+                bd = obj.BrainStats.FiveNumberSummaryDice(3);    
+
                 [h1, g1] = setfigax1;
                 boxplot(g1, [ ...
                     obj.BrainInfo.Jaccard; ...
@@ -1082,10 +1085,13 @@ classdef SpotNGlia
                 setfigax2(h1, g1)
                 
                 text(1.2, bj, sprintf('%.3f', bj))
-                text(2.2, bd, sprintf('%.3f', bd))
-                
+                text(2.2, bd, sprintf('%.3f', bd))                
             end
+            
             if isfield(obj.SpotInfo, 'Precision')
+            sp = obj.SpotStats.FiveNumberSummaryPrecision(3);
+            sr = obj.SpotStats.FiveNumberSummaryRecall(3);
+            sf = obj.SpotStats.FiveNumberSummaryF1score(3);                
                 [h2, g2] = setfigax1;
                 boxplot(g2, [ ...
                     obj.SpotInfo.Precision; ...
@@ -1097,11 +1103,14 @@ classdef SpotNGlia
                 text(1.3, sp, sprintf('%.3f', sp))
                 text(2.3, sr, sprintf('%.3f', sr))
                 text(3.3, sf, sprintf('%.3f', sf))
-                set(gca, 'XLim', [0.5, 3.8])
-                
+                set(gca, 'XLim', [0.5, 3.8])               
             end
             
             if isfield(obj.SpotBrainInfo, 'Precision')
+                bsp = obj.SpotBrainStats.FiveNumberSummaryPrecision(3);
+                bsr = obj.SpotBrainStats.FiveNumberSummaryRecall(3);
+                bsf = obj.SpotBrainStats.FiveNumberSummaryF1score(3);
+
                 [h3, g3] = setfigax1;
                 boxplot(g3, [ ...
                     obj.SpotBrainInfo.Precision; ...
