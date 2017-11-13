@@ -67,11 +67,14 @@ nextstack = zeros(ni,1);
 
 
 for k = 1:ni
-    slice = imread([imageinfo(k).folder,'/',imageinfo(k).name]);
+
+    %slice = imread([imageinfo(k).folder,'/',imageinfo(k).name]);
+
+    t = Tiff([imageinfo(k).folder,'/',imageinfo(k).name],'r');
+    slice = t.readRGBAImage;
     
     %sometimes images are 16 bit
-    slice =im2uint8(slice);
-    
+    slice = im2uint8(slice);
   
     % store bit info
     info = imfinfo([imageinfo(k).folder,'/',imageinfo(k).name]);
@@ -82,15 +85,15 @@ for k = 1:ni
     %[~,histmax(k,2)] = max(histcounts(slice(:,:,2),linspace(0,255,256)));
     %[~,histmax(k,3)] = max(histcounts(slice(:,:,3),linspace(0,255,256)));
     %for older matlab versions:
-    s1 = slice(:,:,1);
-    s2 = slice(:,:,2);
-    s3 = slice(:,:,3);
+    %s1 = slice(:,:,1);
+    %s2 = slice(:,:,2);
+    %s3 = slice(:,:,3);
     
-    [~,histmax(k,1)] = max(hist(s1(:),linspace(0,255,256)));
-    [~,histmax(k,2)] = max(hist(s2(:),linspace(0,255,256)));
-    [~,histmax(k,3)] = max(hist(s3(:),linspace(0,255,256)));
+%    [~,histmax(k,1)] = max(hist(s1(:),linspace(0,255,256)));
+%    [~,histmax(k,2)] = max(hist(s2(:),linspace(0,255,256)));
+%    [~,histmax(k,3)] = max(hist(s3(:),linspace(0,255,256)));
 
-    histmax(k,:) = histmax(k,:) - 1; %as the values go from 0-255 
+%    histmax(k,:) = histmax(k,:) - 1; %as the values go from 0-255 
         
     % compute correlation and warp and add it to imageinfo
     IS{k} = imcomplement(imresize(slice,scale));
@@ -148,7 +151,7 @@ tmp = num2cell(nextstack); [imageinfo.nextstack] = tmp{:};
 tmp = {imageinfo.nextstack}';[imageinfo.CorNextStack] = tmp{:};
 [imageinfo.warning] = warning{:};
 tmp = num2cell(bit); [imageinfo.bit] = tmp{:};
-tmp = num2cell(histmax,2); [imageinfo.histmax] = tmp{:};
+%tmp = num2cell(histmax,2); [imageinfo.histmax] = tmp{:};
 %tmp = num2cell(fishnumber); [imageinfo.fishnumber] = tmp{:};
 
 
