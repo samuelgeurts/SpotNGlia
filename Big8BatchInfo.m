@@ -53,20 +53,42 @@ P{11} = '/Volumes/Seagate Expansion Drive/PublicationBatch/20171026_DKO_NR_3dpf'
 I{11} = 'INFO_20171026_DKO_NR_3dpf'
 S{11} = 'SNG_20171026_DKO_NR_3dpf'
 
+%change path if pc is windows medion laptop
+if strcmp(getenv('username'), 'SNGeu')
+    for k1 = 1:11
+
+            splitStr = regexp(P{k1}, '\/', 'split');                             
+            if strcmp(splitStr{2}, 'Volumes')
+                filename = 'D:';
+                for k2 = 4:numel(splitStr)
+                    filename = [filename, '/', splitStr{k2}]; %#ok<AGROW>
+                end
+                P{k1} = filename;
+            end
+    end
+end
+
+%% change savepath and fishpath to new path
+for k1 = 1:11  
+    k1
+    load([P{k1}, '/', S{k1}, '.mat']);
+        tempvar = obj.SavePath
+    obj = obj.NewPath(11);
+    if ~isequal(obj.SavePath,tempvar)
+        obj.saveit;
+    end
+end
+%%
+
+%%
+for k1 = 2:11  
+    k1
+    load([P{k1}, '/', S{k1}, '.mat']);
+    obj.ShowFish([],true)
+end
 
 
-k1=1
 
-load([P{k1}, '/', S{k1}, '.mat'])
-
-obj = obj.NewPath(1)
-
-filename = obj.SavePath
-infoname = obj.InfoName
-sngname = obj.SaveName
-
-
-AlignedFish = imread([P{k1}, '/', 'AlignedFish', '/', obj.StackInfo(k1).stackname, '.tif']);
 
 
 
@@ -74,10 +96,13 @@ sng_SaveCell2TiffStack(CorrectedFishTemp, [TempFolderName, '/', obj.StackInfo(k1
 
 
 mfilename('fullpath')
-[folder, name, ext] = fileparts(which('obj'));
 
-S = dbstack('-completenames');
-S(1).file
+
+
+%[folder, name, ext] = fileparts(which('obj'));
+%S = dbstack('-completenames');
+%S(1).file
+
 
 
 %{
