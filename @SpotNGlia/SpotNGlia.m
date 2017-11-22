@@ -57,9 +57,10 @@ classdef SpotNGlia
     %    %stackinfo
     %end
     
-    methods %(Access = private)
+    methods (Hidden = false)
          Mask = BrainMask(obj, fishnumbers)
-         obj = BrainOptimization(obj, fishnumbers)
+         BrainOptimization(obj, fishnumbers)
+         SpotOptimization(obj, fishnumbers, zfinputlist)
     end
     
     
@@ -70,55 +71,10 @@ classdef SpotNGlia
         function obj = SpotNGlia(mode1)
             
             if ~exist('mode1', 'var')
-                mode1 = 2;
+                mode1 = 0;
             end
             
             obj = NewPath(obj, mode1);
-            
-            %{
-                if exist('mode1', 'var') && mode1 == 0 %training folder
-                    if strcmp(getenv('OS'), 'Windows_NT') && strcmp(getenv('username'), '260018')
-                        BasePath = 'C:\Users\260018\Dropbox';
-                    elseif strcmp(getenv('OS'), 'Windows_NT') && strcmp(getenv('username'), 'SNGeu')
-                        BasePath = 'C:\Users\SNGeu\Dropbox';
-                    elseif strcmp(getenv('USER'), 'samuelgeurts')
-                        BasePath = '/Users/samuelgeurts/Dropbox';
-                    elseif strcmp(getenv('USER'), 'Anouk')
-                        BasePath = '/Users/Anouk/Dropbox';
-                    else
-                        error('unknown platform and user');
-                    end
-                    obj.FishPath = [BasePath, '/', '20170327_3dpf'];
-                    obj.SavePath = [BasePath, '/', 'SpotNGlia Destination'];
-                    obj.SourcePath = [BasePath, '/', 'SpotNGlia Source'];
-                    obj.AnnotatedMidBrainPath = [BasePath, '/', 'SpotNGlia Source', '/', 'Roi brain'];
-                    obj.AnnotatedSpotPath = [BasePath, '/', 'SpotNGlia Source', '/', 'Roi microglia'];
-                elseif exist('mode1', 'var') && mode1 == 1 %new folder selected by myself (sng)
-                    if strcmp(getenv('OS'), 'Windows_NT') && strcmp(getenv('username'), '260018')
-                        BasePath = 'C:\Users\260018\Dropbox';
-                    elseif strcmp(getenv('OS'), 'Windows_NT') && strcmp(getenv('username'), 'SNGeu')
-                        BasePath = 'C:\Users\SNGeu\Dropbox';
-                    elseif strcmp(getenv('USER'), 'samuelgeurts')
-                        BasePath = '/Users/samuelgeurts/Dropbox';
-                    elseif strcmp(getenv('USER'), 'Anouk')
-                        BasePath = '/Users/Anouk/Dropbox';
-                    else
-                        error('unknown platform and user');
-                    end
-                    obj.SourcePath = [BasePath, '/', 'SpotNGlia Source'];
-                    disp('select image folder to process')
-                    obj.FishPath = uigetdir([], 'select image folder to process');
-                    obj.SavePath = obj.FishPath
- 
-                else
-                    disp('select image folder to process')
-                    obj.FishPath = uigetdir([], 'select image folder to process');
-                    disp('select destination folder')
-                    obj.SavePath = uigetdir([], 'select destination folder');
-                    disp('select program source folder')
-                    obj.SourcePath = uigetdir([], 'select program source folder');
-                end
-            %}
             
             [~, folder] = fileparts(obj.FishPath);
             obj.SaveName = strcat('SNG_', folder);
@@ -138,7 +94,29 @@ classdef SpotNGlia
             msg2 = ['select destination folder to save:  ', obj.SavePath];
             msg3 = ['select program source folder:  ', obj.SourcePath];
             
-            if ~exist('mode1', 'var') || mode1 == 2
+            if mode1 == 0
+                disp(msg1)
+                obj.FishPath = uigetdir([], msg1);
+                disp(msg2)
+                obj.SavePath = uigetdir(obj.FishPath, msg2);                
+            
+                % find path where SpotNGlia.m is saved and reconstruct source path 
+                SpotNGliaPath = mfilename('fullpath');
+                expression = ['\',filesep];
+                splitStr = regexp(SpotNGliaPath, expression, 'split');
+                path = [];
+                for k1 = 1:numel(splitStr) - 3
+                    path = [path, filesep, splitStr{k1}]; %#ok<AGROW>
+                end
+                obj.SourcePath = [path,filesep,'Source'];
+                                        
+                obj.OS = getenv('OS');
+                if isempty(obj.OS)
+                    obj.User = getenv('USER');
+                else
+                    obj.User = getenv('username');
+                end    
+            elseif mode1 == 1
                 disp(msg1)
                 obj.FishPath = uigetdir([], msg1);
                 disp(msg2)
@@ -152,7 +130,7 @@ classdef SpotNGlia
                 else
                     obj.User = getenv('username');
                 end               
-            else
+            elseif (mode1 == 10) || (mode1 == 11) || (mode1 == 12)
                 if strcmp(getenv('OS'), 'Windows_NT') && strcmp(getenv('username'), '260018')
                     BasePath = 'C:\Users\260018\Dropbox';
                     User = '260018';
@@ -169,22 +147,25 @@ classdef SpotNGlia
                     error('unknown platform and user');
                 end
                 
-                if mode1 == 0
+                %this modes 10,11,12 only work for my own pc and are used for development (samuel geurts)
+                if mode1 == 10
                     %this mode assumes the trainingset and set known paths
                     obj.FishPath = [BasePath, '/', '20170327_3dpf'];
                     obj.SavePath = [BasePath, '/', 'SpotNGlia Destination'];
                     obj.SourcePath = [BasePath, '/', 'SpotNGlia Source'];
                     obj.AnnotatedMidBrainPath = [BasePath, '/', 'SpotNGlia Source', '/', 'Roi brain'];
                     obj.AnnotatedSpotPath = [BasePath, '/', 'SpotNGlia Source', '/', 'Roi microglia'];
-                elseif mode1 == 1
+                elseif mode1 == 11
                     %this mode assumes that Fishpath and SavePath are equal and user UI to select new path
+                    %
                     disp(msg1)
                     obj.FishPath = uigetdir([], msg1);
                     obj.SavePath = obj.FishPath;
                     obj.SourcePath = [BasePath, '/', 'SpotNGlia Source'];
-                elseif mode1 == 11
-                    %this mode automatically changes paths between users '260018' and 'samuelgeurts'
-                    %i.e. between macbookpro and erasmus pc
+                elseif mode1 == 12
+                    %this mode automatically changes paths between users '260018' and 'samuelgeurts' an SNGeu
+                    %i.e. between macbookpro and erasmus pc and medion pc.
+                    %Pnly when fishes are on harddisk
                     
                     if strcmp(User, 'SNGeu') && strcmp(obj.User,'samuelgeurts') %#ok<PROPLC>
                         splitStr = regexp(obj.FishPath, '\/', 'split');                               
@@ -224,12 +205,10 @@ classdef SpotNGlia
                     end
                     obj.SavePath = obj.FishPath;     
                     obj.SourcePath = [BasePath, '/', 'SpotNGlia Source'];           
-                else
-                    error('unknown mode')
                 end
-                
-                
-                obj.User = User
+                obj.User = User; %#ok<PROPLC>
+            else
+                error('unknown mode')                
             end
         end
         
@@ -284,7 +263,7 @@ classdef SpotNGlia
                 obj.slicenumbers.slicecombination = slicenumbers;
                 
                 [obj.ImageInfo] = ImageInfoSNG(obj.ImageInfo, obj.ZFParameters);
-                [obj.StackInfo] = StackInfoLink2(obj.ImageInfo);
+                [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
                 
                 ImageInfo = obj.ImageInfo; %#ok<NASGU,PROPLC>
                 StackInfo = obj.StackInfo; %#ok<NASGU,PROPLC>
@@ -313,10 +292,10 @@ classdef SpotNGlia
         function obj = PreProcession(obj, fishnumbers)
             
             h = waitbar(0, 'Preprocession', 'Name', 'SpotNGlia');
-            [obj.StackInfo] = StackInfoLink2(obj.ImageInfo);
+            [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
             
             %if ~isempty(obj.ImageInfo)
-            %    [obj.StackInfo] = StackInfoLink2(obj.ImageInfo);
+            %    [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
             %else
             %    error('First run SliceCombination');
             %end
@@ -374,18 +353,18 @@ classdef SpotNGlia
                     %                        sng_SaveCell2TiffStack(ImageSlice,[SavePath,'/stack/',stackinfo(k1).stackname,'.tif'])
                     %                    end
                     
-                    %[CorrectedSlice,ppoutput(k1)] = PreprocessionLink(ImageSlice,obj.ZFParameters);
+                    %[CorrectedSlice,ppoutput(k1)] = PreprocessionSNG(ImageSlice,obj.ZFParameters);
                     if k1 == 1
-                        [CorrectedFishTemp, PreprocessionInfo] = PreprocessionLink(ImageSlice, obj.ZFParameters);
+                        [CorrectedFishTemp, PreprocessionInfo] = PreprocessionSNG(ImageSlice, obj.ZFParameters);
                     else
-                        [CorrectedFishTemp, PreprocessionInfo(k1)] = PreprocessionLink(ImageSlice, obj.ZFParameters);
+                        [CorrectedFishTemp, PreprocessionInfo(k1)] = PreprocessionSNG(ImageSlice, obj.ZFParameters);
                     end
                     
                     sng_SaveCell2TiffStack(CorrectedFishTemp, [TempFolderName, '/', obj.StackInfo(k1).stackname, '.tif'])
                     
                     %obj.CorrectedFish(k1).image = CorrectedFishTemp; <- %save to object takes to much space
                     
-                    %TODO for imaging   [CorrectedSlice,ppoutput,ImageSliceCor,FiltIm] = PreprocessionLink(ImageSlice,zfinput)
+                    %TODO for imaging   [CorrectedSlice,ppoutput,ImageSliceCor,FiltIm] = PreprocessionSNG(ImageSlice,zfinput)
                     %                    if savefig2_TF
                     %                        sng_SaveCell2TiffStack(CorrectedSlice,[obj.SavePath,'/',StackInfo(k1).stackname,'.tif'])
                     %                    end
@@ -413,7 +392,7 @@ classdef SpotNGlia
             
             %{
                      %Stack has to be added but than input parameters are needed,
-                     so the function PreProcessionLink has to be separated in that
+                     so the function PreprocessionSNG has to be separated in that
                      case. For now we choose to store every image the object. If it
                      leads to memory issue on other obtion has to be made. For
                      example save the images in a folder outsite the object.
@@ -444,7 +423,7 @@ classdef SpotNGlia
                 fn = fishnumbers(k1);
                 
                 CorrectedFish = sng_openimstack2([obj.SavePath, '/', 'CorrectedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
-                [CombinedFishTemp, ExtendedDeptOfFieldInfo(k1)] = ExtendedDeptofFieldLink2(CorrectedFish, obj.ZFParameters);
+                [CombinedFishTemp, ExtendedDeptOfFieldInfo(k1)] = ExtendedDeptofFieldSNG(CorrectedFish, obj.ZFParameters);
                 %obj.CombinedFish(k1).image = CombinedFishTemp; because it takes to much space
                 imwrite(uint8(CombinedFishTemp), [TempFolderName, '/', obj.StackInfo(k1).stackname, '.tif'], ...
                     'WriteMode', 'overwrite', 'Compression', 'none');
@@ -460,7 +439,7 @@ classdef SpotNGlia
             h = waitbar(0, 'Registration', 'Name', 'SpotNGlia');
             
             if isempty(obj.CompleteTemplate)
-                obj.CompleteTemplate = LoadTemplateLink3([obj.SourcePath, '/', 'Template 3 dpf']);
+                obj.CompleteTemplate = LoadTemplateSNG([obj.SourcePath, '/', 'Template 3 dpf']);
             end
             
             if ~exist('fishnumbers', 'var')
@@ -482,7 +461,7 @@ classdef SpotNGlia
                 waitbar(k1/nfishes, h)
                 fn = fishnumbers(k1);
                 CombinedFish = imread([obj.SavePath, '/', 'CombinedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
-                [AlignedFishTemp, RegistrationInfo{k1, 1}] = AllignmentLink5(CombinedFish, obj.CompleteTemplate, obj.ZFParameters);
+                [AlignedFishTemp, RegistrationInfo{k1, 1}] = AlignmentSNG(CombinedFish, obj.CompleteTemplate, obj.ZFParameters);
                 %obj.AlignedFish(k1).image = AlignedFishTemp; %because it
                 %takes to much space
                 imwrite(uint8(AlignedFishTemp), [TempFolderName, '/', obj.StackInfo(k1).stackname, '.tif'], ...
@@ -510,7 +489,8 @@ classdef SpotNGlia
                 BrainSegmentationInfo(nfishes) = struct('EdgeFilterWidth', [], ...
                     'ShortestPath', [], ...
                     'ShortestPathValue', [], ...
-                    'BrainEdge', []);
+                    'BrainEdge', [],...
+                    'PolarTransform', []);
             end
             
             for k1 = 1:nfishes
@@ -587,7 +567,7 @@ classdef SpotNGlia
         
         function obj = CompleteProgram(obj, fishnumbers)
             
-            [obj.StackInfo] = StackInfoLink2(obj.ImageInfo);
+            [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
             
             if ~exist('fishnumbers', 'var')
                 fishnumbers = 1:numel(obj.StackInfo);
@@ -600,7 +580,15 @@ classdef SpotNGlia
             obj = obj.Registration(fishnumbers);
             obj = obj.BrainSegmentation(fishnumbers);
             obj = obj.SpotDetection(fishnumbers);
+            
+            obj.ShowFish([],true)
+            
+            
+            
         end
+    end
+    
+    methods (Hidden = true)    
         
         function obj = LoadAnnotations(obj)
             
@@ -715,8 +703,8 @@ classdef SpotNGlia
             if ~exist('SpotParameters', 'var')
                 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters');
             end
-            
-            nfishes = numel(obj.StackInfo);
+                   
+            nfishes = numel(SpotParameters);
             
             LinkDistance = cell(nfishes, 1);
             CorrectSpots = cell(nfishes, 1);
@@ -941,193 +929,7 @@ classdef SpotNGlia
             temp = num2cell(AbsDifference); [obj.SpotBrainInfo(1:nfishes).AbsDifference] = temp{:};
             temp = num2cell(RelDifference); [obj.SpotBrainInfo(1:nfishes).RelDifference] = temp{:};
         end
-        
-        function SpotOptimization(obj, fishnumbers)
-            
-            CompleteTemplate = LoadTemplateLink3([obj.SourcePath, '/', 'Template 3 dpf']); %#ok<PROPLC>
-            
-            
-            if exist([obj.SavePath, '/', 'SpotOptList', '.mat'], 'file')
-                load([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList')
-            else
-                SpotOptList = []
-                save([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList')
-            end
-            
-            
-            if ~exist('fishnumbers', 'var')
-                fishnumbers = 1:numel(obj.StackInfo);
-            elseif max(fishnumbers) > numel(obj.StackInfo)
-                error('at least one fish does not exist in RegistrationInfo')
-            end
-            
-            nfishes = numel(fishnumbers);
-            
-            ColorToGrayVectorL = {[0; 1; 0]};
-            ScaleBaseL = {0.5};
-            KthresholdL = {0};
-            MPlevelsL = {5:7};
-            MPthresholdL = {256};
-            %MinSpotSizeL = {}
-            %MaxSpotSizeL = {}
-            %MinProbabilityL = {}
-            
-            %stores every combination of indices given by the size of the
-            %variables above
-            [a, b, c, d, e] = ndgrid(1:numel(ColorToGrayVectorL), ...
-                1:numel(ScaleBaseL), ...
-                1:numel(KthresholdL), ...
-                1:numel(MPlevelsL), ...
-                1:numel(MPthresholdL));
-            
-            %create different variable-sets to test select only spotinfo parameters
-            for k2 = 1:numel(a)
-                ZFParametersTemp{k2} = obj.ZFParameters(strcmp({obj.ZFParameters.stage}, 'SpotDetection'));
-                ZFParametersTemp{k2} = sng_zfinput(ZFParametersTemp{k2}, 0, 'SpotDetection', 'RgbToGray', 'ColorToGrayVector', ColorToGrayVectorL{a(k2)}, ''); %color selection
-                ZFParametersTemp{k2} = sng_zfinput(ZFParametersTemp{k2}, 0, 'SpotDetection', 'Wavelet', 'ScaleBase', ScaleBaseL{b(k2)}, ''); %color selection
-                ZFParametersTemp{k2} = sng_zfinput(ZFParametersTemp{k2}, 0, 'SpotDetection', 'Wavelet', 'Kthreshold', KthresholdL{c(k2)}, ''); %color selection
-                ZFParametersTemp{k2} = sng_zfinput(ZFParametersTemp{k2}, 0, 'SpotDetection', 'MultiProduct', 'MPlevels', MPlevelsL{d(k2)}, ''); %color selection
-                ZFParametersTemp{k2} = sng_zfinput(ZFParametersTemp{k2}, 0, 'SpotDetection', 'MultiProduct', 'MPthreshold', MPthresholdL{e(k2)}, ''); %color selection
-                %ZFParametersTemp = sng_zfinput(ZFParametersTemp,0,'SpotDetection','SpotSelection','MinSpotSize',MinSpotSizeL{g},''); %color selection
-                %ZFParametersTemp = sng_zfinput(ZFParametersTemp,0,'SpotDetection','SpotSelection','MaxSpotSize',MaxSpotSizeL{h},''); %color selection
-                %ZFParametersTemp = sng_zfinput(ZFParametersTemp,0,'SpotDetection','SpotSelection','MinProbability',MinProbabilityL{i},''); %color selection
-            end
-            
-            %compute Spots
-            
-            
-            for k2 = 1:numel(ZFParametersTemp)
-                %compute spot parameters for certain ZFParemeter input
-                for k1 = 1:nfishes
-                    fn = fishnumbers(k1);
-                    fprintf([num2str(a(k2)), ',', num2str(b(k2)), ',', num2str(c(k2)), ',', num2str(d(k2)), ',', num2str(e(k2)), ',', num2str(k1), '\n'])
-                    ambr = [obj.Annotations(fn).MidBrain];
-                    
-                    AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
-                    
-                    [~, SpotParameters{k1}] = SpotDetectionSNG(AlignedFish, CompleteTemplate, fliplr(ambr), ZFParametersTemp{k2});
-                end
-                
-                
-                %% selects spot sizes and color probabilities, correct & incorrect
-                AreaC = [];
-                AreaI = [];
-                ColorC = [];
-                ColorI = [];
-                for k5 = 1:nfishes
-                    Spotpar = SpotParameters{k5}([SpotParameters{k5}.Insite]); %selects only insite brain region
-                    SpotCom = reshape([Spotpar.Centroid], 2, numel(Spotpar))';
-                    [atemp] = ismember(SpotCom, obj.SpotInfo(k5).CorrectSpots);
-                    
-                    AreaC = [AreaC, [Spotpar(atemp(:, 1)).Area]];
-                    AreaI = [AreaI, [Spotpar(~atemp(:, 1)).Area]];
-                    
-                    ColorC = [ColorC, [Spotpar(atemp(:, 1)).ColorProbability]];
-                    ColorI = [ColorI, [Spotpar(~aatemp(:, 1)).ColorProbability]];
-                end
-                %{
-                        if fig_tf
-                            figure;imagesc(Spotpar(3).Image)
-                        end
-                %}
-                
-                %% Compute Threshold for area, larger than and smaller than!
-                x = linspace(0, 1000, 1000); %histogram bins
-                AreaHistCorrect = histcounts(AreaC, x); %correct spot area
-                AreaHistIncorrect = histcounts(AreaI, x); %incorrect spot area
-                %finds threshold, index is part of the right site of the histogram
-                for j = 1:size(AreaHistCorrect, 2)
-                    FR(j) = sum(AreaHistIncorrect(1:j-1)) + sum(AreaHistCorrect(j:end));
-                    FL(j) = sum(AreaHistCorrect(1:j-1)) + sum(AreaHistIncorrect(j:end));
-                end
-                [mxR, indexR] = max(FR);
-                MinSpotSize = x(indexR); %every area equal or larger than "LargerThan" is large enough
-                [mxL, indexL] = max(FL(indexR:end));
-                MaxSpotSize = x(indexL+indexR); %every area equal or larger than "SmallerThan" is small enough
-                %{
-                        if fig_tf2
-                            sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),AreaHistCorrect,AreaHistIncorrect);
-                            hold on;line([MinSpotSize MinSpotSize],get(gca,'Ylim'),'color',[0 0 0]);
-                            hold on;line([MaxSpotSize MaxSpotSize],get(gca,'Ylim'),'color',[0 0 0]);
-                        end
-                %}
-                
-                %% Compute Threshold for color probability
-                x = linspace(0, 1.2, 1000)
-                ColorHistCorrect = histcounts(ColorC, x); %create bins
-                ColorHistIncorrect = histcounts(ColorI, x); %
-                for j = 1:size(ColorHistCorrect, 2)
-                    FR(j) = sum(ColorHistIncorrect(1:j-1)) + sum(ColorHistCorrect(j:end));
-                end
-                [mxR, indexR] = max(FR);
-                MinProbability = x(indexR); %every area equal or larger than "LargerThan" is large enough
-                %{
-                        if fig_tf2
-                            sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),ColorHistCorrect,ColorHistIncorrect);
-                            hold on;line([MinProbability MinProbability],get(gca,'Ylim'),'color',[0 0 0]);
-                        end
-                %}
-                
-                %% assign new threshold logical array to obj.SpotParameters
-                for k5 = 1:nfishes
-                    temp = num2cell([SpotParameters{k5}.Area] >= MinSpotSize);
-                    [SpotParameters{k5}.LargerThan] = temp{:};
-                    
-                    temp = num2cell([SpotParameters{k5}.Area] <= MaxSpotSize);
-                    [SpotParameters{k5}.SmallerThan] = temp{:};
-                    
-                    temp = num2cell([SpotParameters{k5}.ColorProbability] >= MinProbability);
-                    [SpotParameters{k5}.MinProbability] = temp{:};
-                end
-                
-                objTemp = obj.SpotVal(SpotParameters);
-                
-                
-                disp(num2str(mean([objTemp.SpotInfo.F1score])));
-                
-                %disp([num2str(l2),' ',num2str(l1),' ',num2str(mean([objTemp.SpotInfo.F1score]))]);
-                
-                SpotOpt.ColorToGrayVectorL = ColorToGrayVectorL{a(k2)};
-                SpotOpt.ScaleBaseL = ScaleBaseL{b(k2)};
-                SpotOpt.KthresholdL = KthresholdL{c(k2)};
-                SpotOpt.MPlevelsL = MPlevelsL{d(k2)};
-                SpotOpt.MPthresholdL = MPthresholdL{e(k2)};
-                SpotOpt.MinSpotSize = MinSpotSize;
-                SpotOpt.MaxSpotSize = MaxSpotSize;
-                SpotOpt.MinProbability = MinProbability;
-                
-                SpotOpt.MeanPrecision = mean([objTemp.SpotInfo.Precision]);
-                SpotOpt.MeanRecall = mean([objTemp.SpotInfo.Recall]);
-                SpotOpt.MeanF1score = mean([objTemp.SpotInfo.F1score]);
-                SpotOpt.MeanAbsDifference = mean(abs([objTemp.SpotInfo.AbsDifference]));
-                SpotOpt.MeanRelDifference = mean(abs([objTemp.SpotInfo.RelDifference]));
-                
-                SpotOpt.StdPrecision = std([objTemp.SpotInfo.Precision]);
-                SpotOpt.StdRecall = std([objTemp.SpotInfo.Recall]);
-                SpotOpt.StdF1score = std([objTemp.SpotInfo.F1score]);
-                SpotOpt.StdAbsDifference = std(abs([objTemp.SpotInfo.AbsDifference]));
-                SpotOpt.StdRelDifference = std(abs([objTemp.SpotInfo.RelDifference]));
-                
-                SpotOpt.Precision = [objTemp.SpotInfo.Precision];
-                SpotOpt.Recall = [objTemp.SpotInfo.Recall];
-                SpotOpt.F1score = [objTemp.SpotInfo.F1score];
-                SpotOpt.AbsDifference = [objTemp.SpotInfo.AbsDifference];
-                SpotOpt.RelDifference = [objTemp.SpotInfo.RelDifference];
-                
-                SpotOpt.date = date;
-                
-                if isempty(SpotOptList)
-                    SpotOptList = SpotOpt;
-                    %elseif exist('linen','var') & linen ~= 0
-                    %    SpotOptList(linen) = SpotOpt;
-                else
-                    SpotOptList(numel(SpotOptList)+1) = SpotOpt;
-                end
-            end
-            save([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList');
-            
-        end
-        
+              
         function ShowBoxPlot(obj, exportit)
             %Example show and save
             %   show(obj,1)
@@ -1384,6 +1186,9 @@ classdef SpotNGlia
             end
         end
         
+    end
+    
+    methods
         function ShowFish(obj, fishnumbers, saveimage)
             
             if ~exist('fishnumbers', 'var') || isempty(fishnumbers)
@@ -1409,7 +1214,13 @@ classdef SpotNGlia
                 AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
                 cmbs = reshape([SpotsDetected{fn}.Centroid], 2, numel(SpotsDetected{fn}))'; %#ok<IDISVAR,USENS>
                 
-                figure; imshow(uint8(AlignedFish))
+                if exist('saveimage','var') && saveimage                            
+                    figure('visible','off')
+                else
+                    figure
+                end
+                imshow(uint8(AlignedFish),'Border','tight','InitialMagnification',50)
+                %imshow(uint8(AlignedFish))
                 hold on;
                 plot(cmbr(:, 2), cmbr(:, 1), 'Color', [255, 75, 75]/255, 'LineWidth', 2);
                 
@@ -1419,7 +1230,7 @@ classdef SpotNGlia
                 str = sprintf('Computed Spots: %.0f', nc);
                 annotation('textbox', [.1, .63, .7, .3], 'String', str, 'FitBoxToText', 'on', 'FontSize', 15);
                 
-                if saveimage               
+                if exist('saveimage','var') && saveimage             
                     saveas(gcf,[TempFolderName, '/', obj.StackInfo(fn).stackname],'tif');
                     close(gcf)
                 end
@@ -1452,8 +1263,6 @@ classdef SpotNGlia
                end
             %}
         end
-        
-        
     end
 end
 
