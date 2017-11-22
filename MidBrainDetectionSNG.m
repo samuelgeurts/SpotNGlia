@@ -27,254 +27,254 @@ sng_zfinputAssign(ZFParameters,'BrainSegmentation')
 
 
 %% generate useable edge filter from edge template
-%add more templates later on
-filterwidth = 21; %has to be an odd numberl
+    %add more templates later on
+    filterwidth = 21; %has to be an odd numberl
 
-EdgeTemp = CompleteTemplate.EdgeTemplate1;
-EdgeTempMean = mean(EdgeTemp,2);
-EdgeFilter = repmat(EdgeTempMean,1,filterwidth);
+    EdgeTemp = CompleteTemplate.EdgeTemplate1;
+    EdgeTempMean = mean(EdgeTemp,2);
+    EdgeFilter = repmat(EdgeTempMean,1,filterwidth);
 
 
-%{
-figure;
-imagesc(uint8(EdgeTemp));axis off tight equal
-set(gca,'position',[0 0 1 1],'units','normalized')
-truesize(gcf,12*sng_size(get(get(gca,'Children'),'Cdata'),[1,2]))
+    %{
+    figure;
+    imagesc(uint8(EdgeTemp));axis off tight equal
+    set(gca,'position',[0 0 1 1],'units','normalized')
+    truesize(gcf,12*sng_size(get(get(gca,'Children'),'Cdata'),[1,2]))
 
-figure;imagesc(uint8(EdgeTemp));axis off equal tight
-figure;imagesc(uint8(EdgeTempMean));sng_imfix
+    figure;imagesc(uint8(EdgeTemp));axis off equal tight
+    figure;imagesc(uint8(EdgeTempMean));sng_imfix
 
-figure;
-imagesc(uint8(EdgeFilter));axis off tight equal
-set(gca,'position',[0 0 1 1],'units','normalized')
-truesize(gcf,12*sng_size(get(get(gca,'Children'),'Cdata'),[1,2]))
-
-%}
+    figure;
+    imagesc(uint8(EdgeFilter));axis off tight equal
+    set(gca,'position',[0 0 1 1],'units','normalized')
+    truesize(gcf,12*sng_size(get(get(gca,'Children'),'Cdata'),[1,2]))
+    %}
 
 %% polar transform
 
-cxy = CompleteTemplate.CenterMidBrain;
+    cxy = CompleteTemplate.CenterMidBrain;
 
-[Isquare] = sng_boxaroundcenter(AlignedFish,cxy);
+    [Isquare] = sng_boxaroundcenter(AlignedFish,cxy);
 
-    %extend with 200 pixels on every side
-    siz = size(AlignedFish);
-    cxy2 = round(cxy + 200); 
-    rangex = cxy2(1)-499:cxy2(1)+500;
-    rangey = cxy2(2)-499:cxy2(2)+500;
+        %extend with 200 pixels on every side
+        siz = size(AlignedFish);
+        cxy2 = round(cxy + 200); 
+        rangex = cxy2(1)-499:cxy2(1)+500;
+        rangey = cxy2(2)-499:cxy2(2)+500;
 
-%{
-sng_show(Isquare)
-%}
+    %{
+    sng_show(Isquare)
+    %}
 
-%polar coordinates
-Ipolar = sng_Im2Polar3(Isquare);
-Ipolar = permute(Ipolar,[2,1,3]);
+    %polar coordinates
+    Ipolar = sng_Im2Polar3(Isquare);
+    Ipolar = permute(Ipolar,[2,1,3]);
 
-%{
-%view(gca,[180 90]);
-sng_show(Ipolar)
-%}
+    %{
+    %view(gca,[180 90]);
+    sng_show(Ipolar)
+    %}
 
-%TODO: normalized or not normalized correlation?
+    %TODO: normalized or not normalized correlation?
 
-%correlation with Edgetemplates
-ICorr(:,:,1) = normxcorr2_general(EdgeFilter(:,:,1),Ipolar(:,:,1),numel(EdgeFilter(:,:,1))/2);
-ICorr(:,:,2) = normxcorr2_general(EdgeFilter(:,:,2),Ipolar(:,:,2),numel(EdgeFilter(:,:,2))/2);
-ICorr(:,:,3) = normxcorr2_general(EdgeFilter(:,:,3),Ipolar(:,:,3),numel(EdgeFilter(:,:,3))/2);
+%% correlation with Edgetemplates
+    ICorr(:,:,1) = normxcorr2_general(EdgeFilter(:,:,1),Ipolar(:,:,1),numel(EdgeFilter(:,:,1))/2);
+    ICorr(:,:,2) = normxcorr2_general(EdgeFilter(:,:,2),Ipolar(:,:,2),numel(EdgeFilter(:,:,2))/2);
+    ICorr(:,:,3) = normxcorr2_general(EdgeFilter(:,:,3),Ipolar(:,:,3),numel(EdgeFilter(:,:,3))/2);
 
-%{
-figure;imagesc((ICorr+1)/2);sng_imfix
-%}
+    %{
+    figure;imagesc((ICorr+1)/2);sng_imfix
+    %}
 
-%crop the correlated image to the original size
-stf = floor(size(EdgeFilter(:,:,1))/2); %start coordinates to add
-stc = ceil(size(EdgeFilter(:,:,1))/2); %end coordinates to add
-si = size(Ipolar); %image size
-crR = stc(1):si(1)+stf(1); %row coordinates
-crC = stc(2):si(2)+stf(2); %column coordinates
-ICorr2 = ICorr(stc(1):si(1)+stf(1),stc(2):si(2)+stf(2),:);
+    %crop the correlated image to the original size
+    stf = floor(size(EdgeFilter(:,:,1))/2); %start coordinates to add
+    stc = ceil(size(EdgeFilter(:,:,1))/2); %end coordinates to add
+    si = size(Ipolar); %image size
+    crR = stc(1):si(1)+stf(1); %row coordinates
+    crC = stc(2):si(2)+stf(2); %column coordinates
+    ICorr2 = ICorr(stc(1):si(1)+stf(1),stc(2):si(2)+stf(2),:);
 
-%remove values below zero or lift above zero
-%ICorr2 (ICorr2 < 0) = 0;
-ICorr2 =  (ICorr2+1)/2; %function lift
+    %remove values below zero or lift above zero
+    %ICorr2 (ICorr2 < 0) = 0;
+    ICorr2 =  (ICorr2+1)/2; %function lift
 
 
-%{
-figure;imagesc(ICorr2);sng_imfix
-%}
+    %{
+    figure;imagesc(ICorr2);sng_imfix
+    %}
 
-%combine channels
-%ISum = sum(ICorr2,3);
-INorm = sqrt(sum(ICorr2.^2,3));
+    %combine channels
+    %ISum = sum(ICorr2,3);
+    INorm = sqrt(sum(ICorr2.^2,3));
 
-%{
-figure;imshow(ISum)
-figure;imagesc(INorm);colormap gray;sng_imfix
-figure;imagesc(INorm);sng_imfix
+    %{
+    figure;imshow(ISum)
+    figure;imagesc(INorm);colormap gray;sng_imfix
+    figure;imagesc(INorm);sng_imfix
+    %}
 
-%}
+%% Polar transform distancemap    
+    
+    %DONE: use more suffisticated method to exclude area in shortest path
+    %finding, multiply shortest path with based on brains blurred distancemap
+    %to exclude some area from pathfinding
+    %TODO: add band to generateskeleton function output instead of computing from distancemap
+    IsquareMB = sng_boxaroundcenter(CompleteTemplate.MidBrainDistanceMap,cxy);
 
-%DONE: use more suffisticated method to exclude area in shortest path
-%finding, multiply shortest path with based on brains blurred distancemap
-%to exclude some area from pathfinding
-%TODO: add band to generateskeleton function output instead of computing from distancemap
-IsquareMB = sng_boxaroundcenter(CompleteTemplate.MidBrainDistanceMap,cxy);
+    %{
+    figure;imagesc(boolean(IsquareMB));sng_imfix;colormap gray
+    %}
 
-%{
-figure;imagesc(boolean(IsquareMB));sng_imfix;colormap gray
-%}
+    IDistmap = sng_Im2Polar3(IsquareMB);
+    IDistmap = permute(IDistmap,[2,1,3]);
+    IDistmap(IDistmap ~= 0) = 1; %set every nonzero value 2 one (band) 
 
-IDistmap = sng_Im2Polar3(IsquareMB);
-IDistmap = permute(IDistmap,[2,1,3]);
-IDistmap(IDistmap ~= 0) = 1; %set every nonzero value 2 one (band) 
+    %gaussion blur on IDistmap, probably doesnt work as the main plan is
+    %blurred
+    IDistmap2 = imgaussfilt(IDistmap,[40,5]);
 
-%gaussion blur on IDistmap, probably doesnt work as the main plan is
-%blurred
-IDistmap2 = imgaussfilt(IDistmap,[40,5]);
+    %IDistmap3 contains added gausian filter at te boudary i.e. the values of
+    %IDistmap which are 1 stays 1, i.e. the plane is preserved
+    blurvar = 6;
+    IDistmap3 = IDistmap;
+    sz=size(IDistmap3)
+    center = 501;
+    for k2 = 1:sz(2)
+    a = find(IDistmap3(:,k2) == 1,1,'first');
+    b = find(IDistmap3(:,k2) == 1,1,'last');
+    %y = gaussmf([-500:1:500],[(b-a)/blurvar 0])';
+    %for versions without fuzzy logic toolbox
+    y = exp(-((-500:1:500)-0).^2/(2*((b-a)/blurvar).^2))';
 
-%IDistmap3 contains added gausian filter at te boudary i.e. the values of
-%IDistmap which are 1 stays 1, i.e. the plane is preserved
-blurvar = 6;
-IDistmap3 = IDistmap;
-sz=size(IDistmap3)
-center = 501;
-for k2 = 1:sz(2)
-a = find(IDistmap3(:,k2) == 1,1,'first');
-b = find(IDistmap3(:,k2) == 1,1,'last');
-%y = gaussmf([-500:1:500],[(b-a)/blurvar 0])';
-%for versions without fuzzy logic toolbox
-y = exp(-((-500:1:500)-0).^2/(2*((b-a)/blurvar).^2))';
+    IDistmap3(1:a,k2) = y(center-a+1:center);
+    IDistmap3(b:sz(1),k2) = y(center:center+sz(1)-b);
+    end
+    %a bit of gaussian blur added
+    IDistmap4 = imgaussfilt(IDistmap3,[5,5]);
+    %figure;plot(y) % a gaussian
 
-IDistmap3(1:a,k2) = y(center-a+1:center);
-IDistmap3(b:sz(1),k2) = y(center:center+sz(1)-b);
-end
-%a bit of gaussian blur added
-IDistmap4 = imgaussfilt(IDistmap3,[5,5]);
-%figure;plot(y) % a gaussian
+%% Filter image with brain probability 
+    
+    INorm2 = INorm .* IDistmap4;
 
-INorm2 = INorm .* IDistmap4;
+    %{
+    figure;imagesc(IDistmap);sng_imfix;colormap gray
+    figure;imagesc(IDistmap2);sng_imfix;colormap gray
+    figure;imagesc(IDistmap3);sng_imfix;colormap gray
+    figure;imagesc(IDistmap4);sng_imfix;colormap gray
 
-%{
-figure;imagesc(IDistmap);sng_imfix;colormap gray
-figure;imagesc(IDistmap2);sng_imfix;colormap gray
-figure;imagesc(IDistmap3);sng_imfix;colormap gray
-figure;imagesc(IDistmap4);sng_imfix;colormap gray
-
-figure;imagesc(INorm2);sng_imfix;
-%}
-
-%invert for lowest cost path and normalize
-INorm3 = -INorm2/max(INorm2(:)) + 1;
-
-%{
-figure;imagesc(INorm3);sng_imfix;
-%}
-
+    figure;imagesc(INorm2);sng_imfix;
+    %}
 
 %% Find shortest Path
 
-s = size(INorm3)
-%compute edges
-[edges] = sng_SquareGridDiGraph(si(1:2));
-%compute directer graph
-DGraph = digraph([edges(:,1)],[edges(:,2)],INorm3(edges(:,2)));
+    %invert for lowest cost path and normalize
+    INorm3 = -INorm2/max(INorm2(:)) + 1;
+
+    %{
+    figure;imagesc(INorm3);sng_imfix;
+    %}
 
 
-%compute shortest path start and end at equal row
-rows = 100:10:400
-nrows = numel(rows)
-path = zeros(nrows,1000);
+
+    s = size(INorm3)
+    %compute edges
+    [edges] = sng_SquareGridDiGraph(si(1:2));
+    %compute directer graph
+    DGraph = digraph([edges(:,1)],[edges(:,2)],INorm3(edges(:,2)));
 
 
-%TODO: check if area calculation is right
-%figure;imagesc(INorm3);sng_imfix
+    %compute shortest path start and end at equal row
+    rows = 100:10:400
+    nrows = numel(rows)
+    path = zeros(nrows,1000);
 
-for l = 1:nrows
-    l
-    a = sub2ind(s,rows(l),1);
-    b = sub2ind(s,rows(l),s(2));   
-    [path,lengthd(l)]= shortestpath(DGraph,a,b,'Method','acyclic');
+
+    %TODO: check if area calculation is right
+    %figure;imagesc(INorm3);sng_imfix
+    a = arrayfun(@(x) sub2ind(si, x, 1), rows);
+    b = arrayfun(@(x) sub2ind(si, x, s(2)), rows);
+
+    for l = 1:nrows
+        l 
+        [path,lengthd(l)]= shortestpath(DGraph,a(l),b(l),'Method','acyclic');
+        [I,J] = ind2sub(s,path);
+
+        Area(l) = sum(pi*(I.^2)/1000);
+        Hor(l) = I(end) + I(end/2);
+        Ver(l) = I(round((3*s(2))/4)) + I(round((s(2))/4));
+
+         %hold on
+         %plot(J,I,'r','LineWidth',2)
+         %drawnow
+    end
+
+    %{
+        figure;plot(Area)
+        figure;plot(Hor)
+        figure;plot(Ver)
+        figure;plot(d)
+    %}
+
+%% find lowestcost path from all lowest cost past with equal end and start row
+    %TODO:  apply area/horizontal/vertical distance brain constrained
+    %       find max value of hor and ver
+    [mx,mr] = min(lengthd)
+    [path,~]= shortestpath(DGraph,a(mr),b(mr),'Method','acyclic');
     [I,J] = ind2sub(s,path);
-    
-    Area(l) = sum(pi*(I.^2)/1000);
-    Hor(l) = I(end) + I(end/2);
-    Ver(l) = I(round((3*s(2))/4)) + I(round((s(2))/4));
 
-     %hold on
-     %plot(J,I,'r','LineWidth',2)
-     %drawnow
-end
-
-%{
-    figure;plot(Area)
-    figure;plot(Hor)
-    figure;plot(Ver)
-    figure;plot(d)
-%}
-
-%% find lowestcost path from all lowest cost past with equal end and
-%start row
-%TODO:  apply area/horizontal/vertical distance brain constrained
-%       find max value of hor and ver
-[mx,mr] = min(lengthd)
-a = sub2ind(s,rows(mr),1);
-b = sub2ind(s,rows(mr),s(2)); 
-[path,~]= shortestpath(DGraph,a,b,'Method','acyclic');
-[I,J] = ind2sub(s,path);
-
-%{
-figure;imagesc(INorm3);sng_imfix;hold on;plot(J,I,'r','LineWidth',2)
-figure;imagesc(INorm2);sng_imfix;hold on;plot(J,I,'r','LineWidth',2)
-%}
+    %{
+    figure;imagesc(INorm3);sng_imfix;hold on;plot(J,I,'r','LineWidth',2)
+    figure;imagesc(INorm2);sng_imfix;hold on;plot(J,I,'r','LineWidth',2)
+    %}
 
 
 
 %% create mask in cartesian space
-path2 = zeros(s);
-path2(path) = 1;       
-%make everything below the path one 
-for kk = 1:size(path2,2);
-    path2(1:I(kk),kk) = 1;
-end
+    path2 = zeros(s);
+    path2(path) = 1;       
+    %make everything below the path one 
+    for kk = 1:size(path2,2);
+        path2(1:I(kk),kk) = 1;
+    end
 
-%{
-    figure;imagesc(path2);sng_imfix
-%}
-
-
-path3 = permute(path2,[2,1]); %restore original permutation
-Mask =  sng_Polar2Im(path3);
-    
-%{
-    figure;imagesc(path3)
-    figure;imagesc(uint8(Mask));sng_imfix
-
-%}
-    
-frame = false(siz(1:2)+400);
-frame(rangey,rangex) = Mask;
-Ibrain = frame(201:end-200,201:end-200);
-
-%{
-    figure;imagesc(uint8(AlignedFish))
-
-    figure;imagesc(uint8(Ibrain))
-    figure;plot(J,I)
-
-    IA = double(AlignedFish);
-    IA(:,:,3) = IA(:,:,3) + 110 * double(IBrain);
-    IA(:,:,2) = IA(:,:,2) + 50 * double(IBrain);
-    figure;imagesc(uint8(IA));sng_imfix
-
-bc = bwboundaries(Ibrain)
-figure;imagesc(uint8(AlignedFish));sng_imfix
-hold on;plot(bc{1}(:,2),bc{1}(:,1),'Color',[0,176/255,240/255],'LineWidth',2)
-
-%}
+    %{
+        figure;imagesc(path2);sng_imfix
+    %}
 
 
-bwbb = bwboundaries(Ibrain);
+    path3 = permute(path2,[2,1]); %restore original permutation
+    Mask =  sng_Polar2Im(path3);
+
+    %{
+        figure;imagesc(path3)
+        figure;imagesc(uint8(Mask));sng_imfix
+
+    %}
+
+    frame = false(siz(1:2)+400);
+    frame(rangey,rangex) = Mask;
+    Ibrain = frame(201:end-200,201:end-200);
+
+    %{
+        figure;imagesc(uint8(AlignedFish))
+
+        figure;imagesc(uint8(Ibrain))
+        figure;plot(J,I)
+
+        IA = double(AlignedFish);
+        IA(:,:,3) = IA(:,:,3) + 110 * double(IBrain);
+        IA(:,:,2) = IA(:,:,2) + 50 * double(IBrain);
+        figure;imagesc(uint8(IA));sng_imfix
+
+    bc = bwboundaries(Ibrain)
+    figure;imagesc(uint8(AlignedFish));sng_imfix
+    hold on;plot(bc{1}(:,2),bc{1}(:,1),'Color',[0,176/255,240/255],'LineWidth',2)
+
+    %}
+
+
+    bwbb = bwboundaries(Ibrain);
 
 %%
 
@@ -287,7 +287,7 @@ Parameters.ShortestPathValue = mx;
 
 Parameters.BrainEdge = bwbb{1}
 
-
+Parameters.PolarTransform = INorm3
 
 
 
