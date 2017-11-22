@@ -1,4 +1,4 @@
-    function obj = BrainOptimization(obj, fishnumbers)
+    function BrainOptimization(obj, fishnumbers)
             
             %CompleteTemplate = LoadTemplateLink3([obj.SourcePath, '/', 'Template 3 dpf']);
             
@@ -75,10 +75,10 @@
                 
                 
                 
-                objTemp = objTemp.BrainVal(BrainSegmentationInfo(1:5),1:5);
+                objTemp = objTemp.BrainVal(BrainSegmentationInfo,1:numel(BrainSegmentationInfo));
                 
                 objTemp.ShowBoxPlot
-                
+                %{
                 disp(num2str(mean([obj.SpotInfo.F1score])));
                 
                 %disp([num2str(l2),' ',num2str(l1),' ',num2str(mean([obj.SpotInfo.F1score]))]);
@@ -109,8 +109,8 @@
                 SpotOpt.F1score = [obj.SpotInfo.F1score];
                 SpotOpt.AbsDifference = [obj.SpotInfo.AbsDifference];
                 SpotOpt.RelDifference = [obj.SpotInfo.RelDifference];
-                
-                SpotOpt.date = date;
+                %}
+                BrainOpt.date = date;
                 
                 if isempty(BrainOptList)
                     BrainOptList = SpotOpt;
