@@ -1,77 +1,62 @@
-function CheckBrain(obj, fishnumbers)
+function CheckBrain(obj, ifish)
 %application to adjust brain region
 
-if ~exist('fishnumbers', 'var')
-    fishnumbers = 1:numel(obj.StackInfo);
-elseif max(fishnumbers) > numel(obj.StackInfo)
-    error('at least one fish does not exist in RegistrationInfo')
+%fishnumbers = 1:numel(obj.StackInfo);
+if ~exist('ifish', 'var') || (ifish > numel(obj.StackInfo))
+    ifish = 1;
 end
 
-nfishes = numel(fishnumbers);
-
 SpotParameters = [];
-k1 = 1;
 n = 0;
 xy = [];
+cxy = fliplr(obj.CompleteTemplate.CenterMidBrain);
+nfishes = numel(obj.StackInfo);
+checkupOrg(nfishes) = struct('Midbrain', [], 'Spots', []);
 
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected')
 
-cxy = fliplr(obj.CompleteTemplate.CenterMidBrain);
+%fill adaptive variable containing initial brains ans spots
+%checkupOrg stays unchanged, checkup is adaptive
+
+for k = 1:nfishes
+    checkupOrg(k).Spots = reshape([SpotsDetected{k}.Centroid], 2, numel(SpotsDetected{k}))'; %#ok<IDISVAR,USENS>
+    checkupOrg(k).Midbrain = fliplr(BrainSegmentationInfo(k).BrainEdge);
+end
+
+load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup')
+if ~exist('checkup','var')
+    checkup = checkupOrg;
+    [checkup(1:nfishes).changed] = deal(false);
+end
 
 %initialize figure with axes and plots
 fh = figure;
-sh = imshow(ones(obj.CompleteTemplate.Size),...
-    'Border',...
-    'tight',...
+sh = imshow(ones(obj.CompleteTemplate.Size), ...
+    'Border', ...
+    'tight', ...
     'InitialMagnification', 50);
 hold on
-ln = plot(0,0,...
-    'Color', [255, 75, 75]/255,...
+ln = plot(0, 0, ...
+    'Color', [255, 75, 75]/255, ...
     'LineWidth', 2);
-sc = scatter(0,0, 400,...
-    'LineWidth', 2,...
+sc = scatter(0, 0, 400, ...
+    'LineWidth', 2, ...
     'MarkerEdgeColor', 1/255*[255, 75, 75]);
-str = sprintf(['Fish: %.0f of %.0f','\n',...
-    'Computed Spots: %.0f'],0,0,0)
+str = sprintf(['Fish: %.0f of %.0f', '\n', ...
+    'Computed Spots: %.0f'], 0, 0, 0);
 
-ah = annotation('textbox', [.05, .63, .7, .3],...
-    'String', str,...
+ah = annotation('textbox', [.05, .63, .7, .3], ...
+    'String', str, ...
     'FitBoxToText', 'on', 'FontSize', 15);
-ph = plot(0, 0,...
+ph = plot(0, 0, ...
     'bo');
 
 
+%[XbOrg, YbOrg, XsOrg, YsOrg] = IniFish(ifish);
+IniFish
 
-[XbOrg, YbOrg, XsOrg, YsOrg] = IniFish(fishnumbers(k1));
 
-
-    function [XbOrg, YbOrg, XsOrg, YsOrg] = IniFish(fn)
-        
-        %figure handles
-        %obj.ShowFish(fn);
-        
-        cmbr = BrainSegmentationInfo(fn).BrainEdge;
-        AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
-        cmbs = reshape([SpotsDetected{fn}.Centroid], 2, numel(SpotsDetected{fn}))';
-        
-        sh.CData = uint8(AlignedFish);
-        ln.XData = cmbr(:, 2);
-        ln.YData = cmbr(:, 1);
-        sc.XData = cmbs(:, 1);
-        sc.YData = cmbs(:, 2);              
-        ah.String = sprintf(['Fish: %.0f of %.0f','\n',...
-            'Computed Spots: %.0f'],k1,nfishes,size(cmbs, 1))
-        ph.XData = [];
-        ph.YData = [];
-        
-        %story original brain and spot values for reset function
-        XbOrg = get(ln, 'XData');
-        YbOrg = get(ln, 'YData');
-        XsOrg = get(sc, 'XData');
-        YsOrg = get(sc, 'YData');
-        drawnow
-    end
 
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters');
 
@@ -82,18 +67,18 @@ barcor = 22; %size of the close-minimalization-figure bar
 
 
 %{
-        figh = findobj('type', 'figure');
-        figs = numel(figh);
+            figh = findobj('type', 'figure');
+            figs = numel(figh);
  
-        %error if no figure is available
-        if figs == 0
-            error('no figure present')
-        elseif figs == 1
-            fignumber = get(figh, 'Number');
-        else
-            fignumber = cell2mat(get(figh, 'Number'));
-            [~, order] = sort(fignumber);
-        end
+            %error if no figure is available
+            if figs == 0
+                error('no figure present')
+            elseif figs == 1
+                fignumber = get(figh, 'Number');
+            else
+                fignumber = cell2mat(get(figh, 'Number'));
+                [~, order] = sort(fignumber);
+            end
 %}
 
 %%
@@ -113,40 +98,41 @@ set(gcf, 'Toolbar', 'none');
 set(gcf, 'Menubar', 'none');
 
 
-%[x, y] = ginput(1)
 
-%initialize Correct Brain button
+%initialize Buttons
 btn = uicontrol('Style', 'pushbutton', 'String', 'Correct Brain', ...
-    'Position', [30, 30, 100, 22], ...
-    'Callback', {@CorrectBrainButton}); %#ok<NASGU>
-%initialize Correct Brain button
+    'Position', [30, 10, 100, 22], ...
+    'Callback', {@CorrectBrainButton});%#ok<NASGU>
 
 btn2 = uicontrol('Style', 'pushbutton', 'String', 'Reset', ...
-    'Position', [130, 30, 100, 22], ...
-    'Callback', {@ResetButton}); %#ok<NASGU>
+    'Position', [130, 10, 100, 22], ...
+    'Callback', {@ResetButton});%#ok<NASGU>
 
-btn3 = uicontrol('Style', 'pushbutton', 'String', 'Save and proceed', ...
-    'Position', [230, 30, 100, 22], ...
-    'Callback', {@SaveButton});
+sliderstep = 1 / (nfishes - 1);
+sld = uicontrol('Style', 'slider', ...
+    'Min', 1, 'Max', nfishes, 'Value', ifish, ...
+    'Position', [30, 30, 200, 30], ...
+    'Callback', @FishSlider, ...
+    'SliderStep', [sliderstep, sliderstep], ...
+    'Units', 'Normalized');
 
-uicontrol(btn3);
+btn3 = uicontrol('Style', 'pushbutton', 'String', 'Save and Quit', ...
+    'Position', [530, 10, 100, 22], ...
+    'Callback', {@SaveButton});%#ok<NASGU>
+uicontrol(sld);
 
 %% correct button
     function CorrectBrainButton(~, ~) %evenveel + 2 variabelen als in uicontrol
         %f = figure(figh(figs))
-        fn = fishnumbers(k1);
         
         
-
-        PolarN = BrainSegmentationInfo(fn).PolarTransform;
+        PolarN = BrainSegmentationInfo(ifish).PolarTransform;
         sp = fliplr(size(PolarN));
         si = size(PolarN);
         
         figure(fh)
         hold on
-        
         rectangle('Position', [cxy(2) - 500, cxy(1) - 500, 1000, 1000]);
-        
         
         but = 1;
         
@@ -185,25 +171,25 @@ uicontrol(btn3);
             Y3 = Y2 + cxy(1) - si(1) / 2;
             
             %{
-             AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);
-             figure;imagesc(AlignedFish)
-             hold on
-             scatter(coord(2),coord(1))
+                 AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);
+                 figure;imagesc(AlignedFish)
+                 hold on
+                 scatter(coord(2),coord(1))
  
-             X = coord2(2)
-             Y = coord2(1)
-             [Isquare] = sng_boxaroundcenter(AlignedFish,fliplr(cxy));
-             Isquare(Y-5:Y+5,X-5:X+5,1) = 20;
-             figure;imshow(uint8(Isquare))
+                 X = coord2(2)
+                 Y = coord2(1)
+                 [Isquare] = sng_boxaroundcenter(AlignedFish,fliplr(cxy));
+                 Isquare(Y-5:Y+5,X-5:X+5,1) = 20;
+                 figure;imshow(uint8(Isquare))
  
-             Ipolar = sng_Im2Polar3(Isquare);
-             figure;imshow(uint8(Ipolar))
-             sp = size(Ipolar)
-             si = size(Isquare)
+                 Ipolar = sng_Im2Polar3(Isquare);
+                 figure;imshow(uint8(Ipolar))
+                 sp = size(Ipolar)
+                 si = size(Isquare)
  
-               figure;imshow(uint8(Isquare))
-               hold on
-               plot(X2,Y2)
+                   figure;imshow(uint8(Isquare))
+                   hold on
+                   plot(X2,Y2)
             %}
             
             %% set the new line object
@@ -212,69 +198,76 @@ uicontrol(btn3);
             set(ln, 'Marker', 'none')
             
             %% compute new spots insite area
-            [rc] = reshape([SpotParameters{fn}.Centroid], 2, numel(SpotParameters{fn}))';
+            [rc] = reshape([SpotParameters{ifish}.Centroid], 2, numel(SpotParameters{ifish}))';
             [in, ~] = inpolygon(rc(:, 1), rc(:, 2), X3, Y3);
             
             %temp = num2cell(in); [Regions1.Insite] = temp{:};
             
-            SpotsDetec = SpotParameters{fn}(in' == 1 & ...
-                [SpotParameters{fn}.LargerThan] == 1 & ...
-                [SpotParameters{fn}.SmallerThan] == 1 & ...
-                [SpotParameters{fn}.MinProbability] == 1);
+            SpotsDetec = SpotParameters{ifish}(in' == 1 & ...
+                [SpotParameters{ifish}.LargerThan] == 1 & ...
+                [SpotParameters{ifish}.SmallerThan] == 1 & ...
+                [SpotParameters{ifish}.MinProbability] == 1);
             
             [rc] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
             
             set(sc, 'XData', rc(:, 1))
             set(sc, 'YData', rc(:, 2))
         end
-        
-        figure(uifignumber);
+        updatecheckup
+        %figure(uifignumber);
+        uicontrol(sld);
+
     end
 
 
 %% reset button
     function ResetButton(~, ~) %evenveel + 2 variabelen als in uicontrol
-        
         n = 0;
         xy = [];
         ph.XData = [];
         ph.YData = [];
+        ln.XData = checkupOrg(ifish).Midbrain(:, 1);
+        ln.YData = checkupOrg(ifish).Midbrain(:, 2);
+        sc.XData = checkupOrg(ifish).Spots(:, 1);
+        sc.YData = checkupOrg(ifish).Spots(:, 2);
         
-        set(ln, 'XData', XbOrg);
-        set(ln, 'YData', YbOrg);
-        set(sc, 'XData', XsOrg);
-        set(sc, 'YData', YsOrg);
+        updatecheckup
+        
+        uicontrol(sld);        
+    end
+
+%% fish slider
+    function FishSlider(source, ~) %evenveel + 2 variabelen als in uicontrol        
+        ifish = round(source.Value)     
+        IniFish;       
     end
 
 %% save button
     function SaveButton(~, ~) %evenveel + 2 variabelen als in uicontrol
-
-        %%SAVE
-        
-        n = 0;
-        xy = [];
-        if k1 < nfishes
-            k1 = k1 + 1;
-            [XbOrg, YbOrg, XsOrg, YsOrg] = IniFish(fishnumbers(k1));
-        end
-        
-        
+        updatecheckup
+        save([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup', '-append');
+        obj.buildsheet
     end
 
+%% update checkup variable
+    function updatecheckup
+            checkup(ifish).changed = true;                        
+            checkup(ifish).Midbrain = [ln.XData',ln.YData'];
+            checkup(ifish).Spots = [sc.XData',sc.YData'];
+        n = 0;
+        xy = [];
+    end
 
-%{
-         fig = uifigure('Position',posb);
-         btn = uibutton(fig,'push',...
-             'Position',[30 30 100 22],...
-             'ButtonPushedFcn', @(btn,event) CorrectBrainPushed(btn));
-%}
-
-%{
-function CorrectBrainPushed(btn)
-         disp('push')
-         [x, y] = ginput(1)
-         figure(sliderfignumber);
-         end
-%}
-
+    function IniFish
+        AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(ifish).stackname, '.tif']);        
+        ln.XData = checkup(ifish).Midbrain(:, 1);
+        ln.YData = checkup(ifish).Midbrain(:, 2);
+        sc.XData = checkup(ifish).Spots(:, 1);
+        sc.YData = checkup(ifish).Spots(:, 2);       
+        sh.CData = uint8(AlignedFish);
+        ah.String = sprintf(['Fish: %.0f of %.0f', '\n', ...
+            'Computed Spots: %.0f'], ifish, nfishes, numel(sc.XData));
+        ph.XData = [];
+        ph.YData = [];        
+    end
 end
