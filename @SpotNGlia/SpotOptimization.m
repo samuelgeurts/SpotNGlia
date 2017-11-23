@@ -78,7 +78,7 @@ for k2 = 1:numel(ZFParametersTemp)
         
         AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
         
-        [~, SpotParameters{k1}] = SpotDetectionSNG(AlignedFish, CompleteTemplate, fliplr(ambr), ZFParametersTemp{k2});
+        [pars, SpotParameters{k1}] = SpotDetectionSNG(AlignedFish, CompleteTemplate, fliplr(ambr), ZFParametersTemp{k2});
     end
     
     %% assign new threshold logical array to obj.SpotParameters

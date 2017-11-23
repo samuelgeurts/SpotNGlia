@@ -9,13 +9,13 @@ clear zfinputlist
 %zfinputlist.ColorToGrayVectorL = {[-0.380803509067153;0.847820881126686;-0.369037181064066]};
 
 zfinputlist.ColorToGrayVectorL = {[0; 1; 0]};
-zfinputlist.ScaleBaseL = {0.6};
+zfinputlist.ScaleBaseL = {0.333};
 zfinputlist.KthresholdL = {0};
 %zfinputlist.MPlevelsL = {4:6;5:7;6:8;4:7;5:8};
-zfinputlist.MPlevelsL = {5:7};
+zfinputlist.MPlevelsL = {7:10};
 
 %zfinputlist.MPthresholdL = {0.5 1 2 4 8 16 32 64};
-zfinputlist.MPthresholdL = {255 280 330 355};
+zfinputlist.MPthresholdL = {450 475 500};
 
 %{
 zfinputlist.MinSpotSizeL = {8.4084}
@@ -25,14 +25,14 @@ zfinputlist.MinSpotRange = 1
 zfinputlist.MaxSpotRange = 1
 zfinputlist.MinProbabilityRange = 1
 %}
-zfinputlist.MinSpotRange = [0:0.05:0.2]
-zfinputlist.MaxSpotRange = [0.4:0.05:1.2]
-zfinputlist.MinProbabilityRange = [0:0.05:0.4]
+zfinputlist.MinSpotRange = [0:0.1:0.8]
+zfinputlist.MaxSpotRange = [0.4:0.1:1.2]
+zfinputlist.MinProbabilityRange = [0:0.1:0.7]
 
 
 
         
-obj.SpotOptimization(1:40,zfinputlist)
+obj.SpotOptimization(1:3,zfinputlist)
 
 %%
 

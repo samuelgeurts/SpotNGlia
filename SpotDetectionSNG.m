@@ -14,6 +14,15 @@ ZFParameters = obj.ZFParameters;
 ZFParameters = ZFParametersTemp{1}
 
 %}
+%{
+Ialigned = AlignedFish;
+CompleteTemplate = obj.CompleteTemplate;
+cmbr = fliplr(ambr), 
+ZFParameters =  ZFParametersTemp{1}
+%}
+
+
+
 
 sng_zfinputAssign(ZFParameters,'SpotDetection')
 
@@ -39,6 +48,13 @@ GI = sng_RGB2Gray(Ialigned,ColorToGrayVector,false);
 %{
 figure;imagesc(Ialigned)
 figure;imagesc(MultiProductTh)
+
+for k = 1:size(A,3)
+figure;imagesc(W(:,:,k))
+end
+
+
+
 %}
 
 %% SpotMeasure
