@@ -163,7 +163,8 @@ delete(h)
         if ~isempty(xy)
             %% transform coordinates to polar
             coord = fliplr(xy); %(y,x)
-            coord2 = coord - cxy; %set center to cxy
+            coord2 = coord - repmat(cxy,size(coord,1),1); %set center to cxy
+           
             %transform to polar coordinates
             [T, R] = cart2pol(coord2(:, 2), coord2(:, 1));
             %transform polar coordinates to pixel coordinates
