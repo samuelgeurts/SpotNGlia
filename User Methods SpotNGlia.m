@@ -23,3 +23,5 @@ obj.ShowFish(1:5)
 %display all fishes
 obj.ShowFish
 
+%Correct fishbrains
+obj.CheckBrain
