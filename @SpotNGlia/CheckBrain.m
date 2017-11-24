@@ -1,6 +1,8 @@
 function CheckBrain(obj, ifish)
 %application to adjust brain region
 
+h = waitbar(0, 'loading data', 'Name', 'Loading Data');
+
 %fishnumbers = 1:numel(obj.StackInfo);
 if ~exist('ifish', 'var') || (ifish > numel(obj.StackInfo))
     ifish = 1;
@@ -11,9 +13,14 @@ cxy = fliplr(obj.CompleteTemplate.CenterMidBrain);
 nfishes = numel(obj.StackInfo);
 checkupOrg(nfishes) = struct('Midbrain', [], 'Spots', []);
 
+waitbar(0.25/7, h,'BrainSegmentationInfo')
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
+waitbar(2/7, h,'SpotsDetected')
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected')
+waitbar(3/7, h,'SpotParameters')
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters');
+waitbar(6.75/7, h,'checkup')
+
 
 %fill adaptive variable containing initial brains ans spots
 %checkupOrg stays unchanged, checkup is adaptive
@@ -24,10 +31,13 @@ for k = 1:nfishes
 end
 
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup')
-if ~exist('checkup','var')
+if ~exist('checkup', 'var')
     checkup = checkupOrg;
-    checkup(1).Corrections = []
+    checkup(1).Corrections = [];
+    [checkup.Include] = deal(true);    
 end
+waitbar(7/7, h,'Image')
+
 
 %initialize figure with axes and plots
 fh = figure;
@@ -56,27 +66,24 @@ ph = plot(0, 0, ...
 IniFish
 
 
-
-
-
 %buttonfigure parameters
 sizb = 70;
 barcor = 22; %size of the close-minimalization-figure bar
 
 
 %{
-            figh = findobj('type', 'figure');
-            figs = numel(figh);
+             figh = findobj('type', 'figure');
+             figs = numel(figh);
  
-            %error if no figure is available
-            if figs == 0
-                error('no figure present')
-            elseif figs == 1
-                fignumber = get(figh, 'Number');
-            else
-                fignumber = cell2mat(get(figh, 'Number'));
-                [~, order] = sort(fignumber);
-            end
+             %error if no figure is available
+             if figs == 0
+                 error('no figure present')
+             elseif figs == 1
+                 fignumber = get(figh, 'Number');
+             else
+                 fignumber = cell2mat(get(figh, 'Number'));
+                 [~, order] = sort(fignumber);
+             end
 %}
 
 %%
@@ -96,7 +103,6 @@ set(gcf, 'Toolbar', 'none');
 set(gcf, 'Menubar', 'none');
 
 
-
 %initialize Buttons
 btn = uicontrol('Style', 'pushbutton', 'String', 'Correct Brain', ...
     'Position', [30, 10, 100, 22], ...
@@ -114,10 +120,16 @@ sld = uicontrol('Style', 'slider', ...
     'SliderStep', [sliderstep, sliderstep], ...
     'Units', 'Normalized');
 
+cbh = uicontrol('Style', 'checkbox', 'String', 'Include Fish', ...
+    'Value', checkup(ifish).Include, 'Position', [240, 41, 100, 22], ...
+    'Callback', @checkBoxCallback);
+
 btn3 = uicontrol('Style', 'pushbutton', 'String', 'Save', ...
     'Position', [530, 10, 100, 22], ...
     'Callback', {@SaveButton});%#ok<NASGU>
 uicontrol(sld);
+
+delete(h)
 
 %% correct button
     function CorrectBrainButton(~, ~) %evenveel + 2 variabelen als in uicontrol
@@ -134,7 +146,7 @@ uicontrol(sld);
         
         but = 1;
         xy = checkup(ifish).Corrections;
-        n = size(checkup(ifish).Corrections,1);
+        n = size(checkup(ifish).Corrections, 1);
         
         %% pick input and display
         while but == 1
@@ -171,25 +183,25 @@ uicontrol(sld);
             Y3 = Y2 + cxy(1) - si(1) / 2;
             
             %{
-                 AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);
-                 figure;imagesc(AlignedFish)
-                 hold on
-                 scatter(coord(2),coord(1))
+                  AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);
+                  figure;imagesc(AlignedFish)
+                  hold on
+                  scatter(coord(2),coord(1))
  
-                 X = coord2(2)
-                 Y = coord2(1)
-                 [Isquare] = sng_boxaroundcenter(AlignedFish,fliplr(cxy));
-                 Isquare(Y-5:Y+5,X-5:X+5,1) = 20;
-                 figure;imshow(uint8(Isquare))
+                  X = coord2(2)
+                  Y = coord2(1)
+                  [Isquare] = sng_boxaroundcenter(AlignedFish,fliplr(cxy));
+                  Isquare(Y-5:Y+5,X-5:X+5,1) = 20;
+                  figure;imshow(uint8(Isquare))
  
-                 Ipolar = sng_Im2Polar3(Isquare);
-                 figure;imshow(uint8(Ipolar))
-                 sp = size(Ipolar)
-                 si = size(Isquare)
+                  Ipolar = sng_Im2Polar3(Isquare);
+                  figure;imshow(uint8(Ipolar))
+                  sp = size(Ipolar)
+                  si = size(Isquare)
  
-                   figure;imshow(uint8(Isquare))
-                   hold on
-                   plot(X2,Y2)
+                    figure;imshow(uint8(Isquare))
+                    hold on
+                    plot(X2,Y2)
             %}
             
             %% set the new line object
@@ -199,7 +211,7 @@ uicontrol(sld);
             
             ln.XData = X3;
             ln.YData = Y3;
-            ln.Marker = 'none';    
+            ln.Marker = 'none';
             
             %% compute new spots insite area
             [rc] = reshape([SpotParameters{ifish}.Centroid], 2, numel(SpotParameters{ifish}))';
@@ -217,7 +229,7 @@ uicontrol(sld);
             %% set the new spots
             sc.XData = rc(:, 1);
             sc.YData = rc(:, 2);
-
+            
         end
         updatecheckup
     end
@@ -232,15 +244,34 @@ uicontrol(sld);
         ln.YData = checkupOrg(ifish).Midbrain(:, 2);
         sc.XData = checkupOrg(ifish).Spots(:, 1);
         sc.YData = checkupOrg(ifish).Spots(:, 2);
-        
+        cbh.Value = true;
+
         updatecheckup
         
     end
 
 %% fish slider
-    function FishSlider(source, ~) %evenveel + 2 variabelen als in uicontrol        
-        ifish = round(source.Value);     
-        IniFish;       
+    function FishSlider(source, ~) %evenveel + 2 variabelen als in uicontrol
+        ifish = round(source.Value);
+        IniFish;
+    end
+
+%% checkbox include
+    function checkBoxCallback(source, ~) %evenveel + 2 variabelen als in uicontrol
+        checkup(ifish).Include = source.Value;
+        
+        if ~source.Value           
+            ph.XData = [];
+            ph.YData = [];
+            ln.XData = [];
+            ln.YData = [];
+            sc.XData = [];
+            sc.YData = [];
+
+            updatecheckup
+        else
+            ResetButton
+        end
     end
 
 %% save button
@@ -252,27 +283,31 @@ uicontrol(sld);
 
 %% update checkup variable
     function updatecheckup
-        checkup(ifish).Midbrain = [ln.XData',ln.YData'];
-        checkup(ifish).Spots = [sc.XData',sc.YData'];
-        checkup(ifish).Corrections = [ph.XData',ph.YData'];
-        uicontrol(sld);                
+        checkup(ifish).Midbrain = [ln.XData', ln.YData'];
+        checkup(ifish).Spots = [sc.XData', sc.YData'];
+        checkup(ifish).Corrections = [ph.XData', ph.YData'];
+        checkup(ifish).Include = cbh.Value;
+        uicontrol(sld);
     end
 
     function IniFish
-        AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(ifish).stackname, '.tif']);        
+        AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(ifish).stackname, '.tif']);
+        
         ln.XData = checkup(ifish).Midbrain(:, 1);
         ln.YData = checkup(ifish).Midbrain(:, 2);
         sc.XData = checkup(ifish).Spots(:, 1);
-        sc.YData = checkup(ifish).Spots(:, 2);       
+        sc.YData = checkup(ifish).Spots(:, 2);
         sh.CData = uint8(AlignedFish);
         ah.String = sprintf(['Fish: %.0f of %.0f', '\n', ...
             'Computed Spots: %.0f'], ifish, nfishes, numel(sc.XData));
         if ~isempty(checkup(ifish).Corrections)
-        ph.XData = checkup(ifish).Corrections(:, 1);   
-        ph.YData = checkup(ifish).Corrections(:, 2);
+            ph.XData = checkup(ifish).Corrections(:, 1);
+            ph.YData = checkup(ifish).Corrections(:, 2);
         else
-        ph.XData = [];
-        ph.YData = [];
+            ph.XData = [];
+            ph.YData = [];
         end
+        
+        cbh.Value = checkup(ifish).Include; 
     end
 end
