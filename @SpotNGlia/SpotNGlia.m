@@ -13,12 +13,13 @@ classdef SpotNGlia
         
         User = []
         OS = []
+        Delimiter = ','
         
         fishnumbers = []
         slicenumbers = []
         savedate = []
-        ZFParameters = []
-        
+
+        ZFParameters = []        
         CompleteTemplate = []
         
         StackInfo = []
@@ -57,13 +58,15 @@ classdef SpotNGlia
     %    %stackinfo
     %end
     
-    methods(Hidden = false)
+    methods(Hidden = true)
         Mask = BrainMask(obj, fishnumbers)
         BrainOptimization(obj, fishnumbers)
         SpotOptimization(obj, fishnumbers, zfinputlist)
-        CheckBrain(obj, ifish)
     end
     
+    methods
+        CheckBrain(obj, ifish)
+    end
     
     methods
         
@@ -82,7 +85,8 @@ classdef SpotNGlia
             
             load([obj.SourcePath, '/', 'zfinput.mat']); %#ok<LOAD>
             obj.ZFParameters = zfinput;
-            
+            obj.CompleteTemplate = LoadTemplateSNG([obj.SourcePath, '/', 'Template 3 dpf']);
+                        
             %file which contains all batch specific computation info
             matObj = matfile([obj.SavePath, '/', obj.InfoName, '.mat']);
             obj.InfoResult = whos(matObj);
@@ -436,11 +440,7 @@ classdef SpotNGlia
         
         function obj = Registration(obj, fishnumbers)
             
-            h = waitbar(0, 'Registration', 'Name', 'SpotNGlia');
-            
-            if isempty(obj.CompleteTemplate)
-                obj.CompleteTemplate = LoadTemplateSNG([obj.SourcePath, '/', 'Template 3 dpf']);
-            end
+            h = waitbar(0, 'Registration', 'Name', 'SpotNGlia'); 
             
             if ~exist('fishnumbers', 'var')
                 fishnumbers = 1:numel(obj.StackInfo);
@@ -540,7 +540,6 @@ classdef SpotNGlia
                 fn = fishnumbers(k1);
                 waitbar(k1/nfishes, h)
                 AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
-                %[~,SpotDetectionInfo{k1,1}] = SpotDetectionLink2(AlignedFish,obj.CompleteTemplate,BrainSegmentationInfo(k1).BrainEdge,obj.ZFParameters);
                 [SpotsDetected{k1}, SpotParameters{k1}, SpotDetectionInfo(k1)] = SpotDetectionSNG(AlignedFish, obj.CompleteTemplate, BrainSegmentationInfo(k1).BrainEdge, obj.ZFParameters);
             end
             
@@ -549,61 +548,11 @@ classdef SpotNGlia
             save([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected', '-append')
             save([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters', '-append')
             
-            %load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
-            %             if exist('SpotsDetected','var')
-            %                 for k1 = 1:numel(SpotsDetected)
-            %                     nspots(k1, 1) = numel(SpotsDetected{k1});
-            %                 end
-            %
-            %                 Sheet = [{obj.StackInfo.stackname}', {obj.StackInfo.stacksize}', num2cell(nspots)];
-            %                 title = {obj.InfoName, 'images', 'nspots'};
-            %
-            %                 ds = cell2dataset([title; Sheet]);
-            %                 export(ds, 'file', [obj.SavePath, '/', obj.InfoName, '.csv'], 'delimiter', ',')
-            %             end
             obj.buildsheet
-            
-            
+                      
             delete(h)
         end
-        
-        function buildsheet(obj)
-            if ~exist('SpotsDetected', 'var')
-                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected')
-            end
-            if ~exist('checkup', 'var')
-                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup')
-            end
-            
-            if exist('SpotsDetected', 'var')
-                for k1 = 1:numel(SpotsDetected)
-                    nspots1(k1, 1) = numel(SpotsDetected{k1});
-                end
-            else
-                error('no spot information found')
-            end
-            
-            if exist('checkup', 'var')
-                for k1 = 1:numel(checkup)
-                    nspots2(k1, 1) = size(checkup(k1).Spots, 1);
-                end
-                Sheet = [{obj.StackInfo.stackname}', ...
-                    {obj.StackInfo.stacksize}', ...
-                    num2cell(nspots1), ...
-                    num2cell(nspots2)];
-                title = {obj.InfoName, 'images', 'nspots', 'corrected'};
                 
-            else
-                Sheet = [{obj.StackInfo.stackname}', ...
-                    {obj.StackInfo.stacksize}', ...
-                    num2cell(nspots1)];
-                title = {obj.InfoName, 'images', 'nspots'};
-            end
-            ds = cell2dataset([title; Sheet]);
-            export(ds, 'file', [obj.SavePath, '/', obj.InfoName, '.csv'], 'delimiter', ',')
-        end
-        
-        
         function obj = CompleteProgram(obj, fishnumbers)
             
             [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
@@ -627,6 +576,48 @@ classdef SpotNGlia
     end
     
     methods(Hidden = true)
+        
+        function buildsheet(obj)
+            if ~exist('SpotsDetected', 'var')
+                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected')
+            end
+            if ~exist('checkup', 'var')
+                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup')
+            end
+            
+            if exist('SpotsDetected', 'var')
+                nspots1 = zeros(numel(SpotsDetected),1);                 %#ok<*USENS>
+                for k1 = 1:numel(SpotsDetected)
+                    nspots1(k1, 1) = numel(SpotsDetected{k1});
+                end                
+            else
+                error('no spot information found')
+            end
+            
+            if exist('checkup', 'var')
+                nspots2 = zeros(numel(checkup),1);
+                for k1 = 1:numel(checkup)
+                    if checkup(k1).Include == 1                    
+                        nspots2(k1, 1) = size(checkup(k1).Spots, 1);
+                    else
+                        nspots2(k1, 1) = NaN;
+                    end
+                end
+                Sheet = [{obj.StackInfo.stackname}', ...
+                    {obj.StackInfo.stacksize}', ...
+                    num2cell(nspots1), ...
+                    num2cell(nspots2)];
+                title = {obj.InfoName, 'images', 'nspots', 'corrected'};
+                
+            else
+                Sheet = [{obj.StackInfo.stackname}', ...
+                    {obj.StackInfo.stacksize}', ...
+                    num2cell(nspots1)];
+                title = {obj.InfoName, 'images', 'nspots'};
+            end
+            ds = cell2dataset([title; Sheet]);
+            export(ds, 'file', [obj.SavePath, '/', obj.InfoName, '.csv'], 'delimiter', obj.Delimiter)
+        end        
         
         function obj = LoadAnnotations(obj)
             
