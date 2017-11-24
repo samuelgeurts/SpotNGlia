@@ -7,14 +7,13 @@ if ~exist('ifish', 'var') || (ifish > numel(obj.StackInfo))
 end
 
 SpotParameters = [];
-n = 0;
-xy = [];
 cxy = fliplr(obj.CompleteTemplate.CenterMidBrain);
 nfishes = numel(obj.StackInfo);
 checkupOrg(nfishes) = struct('Midbrain', [], 'Spots', []);
 
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected')
+load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters');
 
 %fill adaptive variable containing initial brains ans spots
 %checkupOrg stays unchanged, checkup is adaptive
@@ -27,7 +26,7 @@ end
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup')
 if ~exist('checkup','var')
     checkup = checkupOrg;
-    [checkup(1:nfishes).changed] = deal(false);
+    checkup(1).Corrections = []
 end
 
 %initialize figure with axes and plots
@@ -58,7 +57,6 @@ IniFish
 
 
 
-load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters');
 
 
 %buttonfigure parameters
@@ -116,7 +114,7 @@ sld = uicontrol('Style', 'slider', ...
     'SliderStep', [sliderstep, sliderstep], ...
     'Units', 'Normalized');
 
-btn3 = uicontrol('Style', 'pushbutton', 'String', 'Save and Quit', ...
+btn3 = uicontrol('Style', 'pushbutton', 'String', 'Save', ...
     'Position', [530, 10, 100, 22], ...
     'Callback', {@SaveButton});%#ok<NASGU>
 uicontrol(sld);
@@ -135,6 +133,8 @@ uicontrol(sld);
         rectangle('Position', [cxy(2) - 500, cxy(1) - 500, 1000, 1000]);
         
         but = 1;
+        xy = checkup(ifish).Corrections;
+        n = size(checkup(ifish).Corrections,1);
         
         %% pick input and display
         while but == 1
@@ -193,9 +193,13 @@ uicontrol(sld);
             %}
             
             %% set the new line object
-            set(ln, 'XData', X3)
-            set(ln, 'YData', Y3)
-            set(ln, 'Marker', 'none')
+            %set(ln, 'XData', X3)
+            %set(ln, 'YData', Y3)
+            %set(ln, 'Marker', 'none')
+            
+            ln.XData = X3;
+            ln.YData = Y3;
+            ln.Marker = 'none';    
             
             %% compute new spots insite area
             [rc] = reshape([SpotParameters{ifish}.Centroid], 2, numel(SpotParameters{ifish}))';
@@ -210,20 +214,18 @@ uicontrol(sld);
             
             [rc] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
             
-            set(sc, 'XData', rc(:, 1))
-            set(sc, 'YData', rc(:, 2))
+            %% set the new spots
+            sc.XData = rc(:, 1);
+            sc.YData = rc(:, 2);
+
         end
         updatecheckup
-        %figure(uifignumber);
-        uicontrol(sld);
-
     end
 
 
 %% reset button
     function ResetButton(~, ~) %evenveel + 2 variabelen als in uicontrol
-        n = 0;
-        xy = [];
+        
         ph.XData = [];
         ph.YData = [];
         ln.XData = checkupOrg(ifish).Midbrain(:, 1);
@@ -233,12 +235,11 @@ uicontrol(sld);
         
         updatecheckup
         
-        uicontrol(sld);        
     end
 
 %% fish slider
     function FishSlider(source, ~) %evenveel + 2 variabelen als in uicontrol        
-        ifish = round(source.Value)     
+        ifish = round(source.Value);     
         IniFish;       
     end
 
@@ -251,11 +252,10 @@ uicontrol(sld);
 
 %% update checkup variable
     function updatecheckup
-            checkup(ifish).changed = true;                        
-            checkup(ifish).Midbrain = [ln.XData',ln.YData'];
-            checkup(ifish).Spots = [sc.XData',sc.YData'];
-        n = 0;
-        xy = [];
+        checkup(ifish).Midbrain = [ln.XData',ln.YData'];
+        checkup(ifish).Spots = [sc.XData',sc.YData'];
+        checkup(ifish).Corrections = [ph.XData',ph.YData'];
+        uicontrol(sld);                
     end
 
     function IniFish
@@ -267,7 +267,12 @@ uicontrol(sld);
         sh.CData = uint8(AlignedFish);
         ah.String = sprintf(['Fish: %.0f of %.0f', '\n', ...
             'Computed Spots: %.0f'], ifish, nfishes, numel(sc.XData));
+        if ~isempty(checkup(ifish).Corrections)
+        ph.XData = checkup(ifish).Corrections(:, 1);   
+        ph.YData = checkup(ifish).Corrections(:, 2);
+        else
         ph.XData = [];
-        ph.YData = [];        
+        ph.YData = [];
+        end
     end
 end
