@@ -29,47 +29,19 @@ classdef SpotNGlia
         
         Annotations = []
         
-        %CorrectedFish = []
-        %CombinedFish = []
-        %AlignedFish = []
-    end
-    
-    properties
-        
         BrainInfo = []
         BrainStats = []
-        
         SpotInfo = []
-        SpotStats = []
-        %SpotSelection = []
-        
+        SpotStats = []   
         SpotBrainInfo = []
         SpotBrainStats = []
-    end
-    
-    properties
+
         ImageInfoChecked_TF = false
-        Sorting = []
-        
-    end
-    
-    
-    %properties (Access = private)
-    %    %stackinfo
-    %end
-    
-    methods(Hidden = true)
-        Mask = BrainMask(obj, fishnumbers)
-        BrainOptimization(obj, fishnumbers)
-        SpotOptimization(obj, fishnumbers, zfinputlist)
+        Sorting = []        
     end
     
     methods
-        CheckBrain(obj, ifish)
-    end
-    
-    methods
-        
+        CheckBrain(obj, ifish)        
         %constructor function
         function obj = SpotNGlia(mode1)
             
@@ -93,6 +65,8 @@ classdef SpotNGlia
         end
         
         function obj = NewPath(obj, mode1)
+            %obj.NewPath(0)
+            %obj.NewPath(12) switch between own pc's for MultiBatch on Seagate harddisk
             
             msg1 = ['select image folder to process:  ', obj.FishPath];
             msg2 = ['select destination folder to save:  ', obj.SavePath];
@@ -106,13 +80,13 @@ classdef SpotNGlia
                 
                 % find path where SpotNGlia.m is saved and reconstruct source path
                 SpotNGliaPath = mfilename('fullpath');
-                expression = ['\', filesep];
-                splitStr = regexp(SpotNGliaPath, expression, 'split');
+                %expression = ['\', filesep];
+                splitStr = regexp(SpotNGliaPath, filesep, 'split');
                 path = [];
                 for k1 = 1:numel(splitStr) - 3
-                    path = [path, filesep, splitStr{k1}]; %#ok<AGROW>
+                    path = [path, splitStr{k1}, filesep]; %#ok<AGROW>
                 end
-                obj.SourcePath = [path, filesep, 'Source'];
+                obj.SourcePath = [path, 'Source'];
                 
                 obj.OS = getenv('OS');
                 if isempty(obj.OS)
@@ -181,6 +155,18 @@ classdef SpotNGlia
                             obj.FishPath = filename;
                         end
                     end
+
+                    if strcmp(User, 'samuelgeurts') && strcmp(obj.User, 'SNGeu') %#ok<PROPLC>
+                        expression = '\/';
+                        splitStr = regexp(obj.FishPath, expression, 'split');                       
+                        if strcmp(splitStr{1}, 'D:')
+                            filename = '/Volumes/Seagate Expansion Drive';
+                            for k2 = 2:numel(splitStr)
+                                filename = [filename, '/', splitStr{k2}]; %#ok<AGROW>
+                            end
+                            obj.FishPath = filename;
+                        end
+                    end                 
                     
                     if strcmp(User, '260018') && strcmp(obj.User, 'samuelgeurts') %#ok<PROPLC>
                         expression = '\/';
@@ -576,6 +562,10 @@ classdef SpotNGlia
     end
     
     methods(Hidden = true)
+        
+        Mask = BrainMask(obj, fishnumbers)
+        BrainOptimization(obj, fishnumbers)
+        SpotOptimization(obj, fishnumbers, zfinputlist)
         
         function buildsheet(obj)
             if ~exist('SpotsDetected', 'var')
@@ -1215,9 +1205,6 @@ classdef SpotNGlia
             end
         end
         
-    end
-    
-    methods
         function ShowFish(obj, fishnumbers, saveimage)
             
             if ~exist('fishnumbers', 'var') || isempty(fishnumbers)
@@ -1291,7 +1278,12 @@ classdef SpotNGlia
                     export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
                 end
             %}
-        end
+        end        
+        
+    end
+    
+    methods
+
     end
 end
 
