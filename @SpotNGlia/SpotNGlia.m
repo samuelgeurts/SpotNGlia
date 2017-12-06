@@ -18,8 +18,8 @@ classdef SpotNGlia
         fishnumbers = []
         slicenumbers = []
         savedate = []
-
-        ZFParameters = []        
+        
+        ZFParameters = []
         CompleteTemplate = []
         
         StackInfo = []
@@ -32,18 +32,23 @@ classdef SpotNGlia
         BrainInfo = []
         BrainStats = []
         SpotInfo = []
-        SpotStats = []   
+        SpotStats = []
         SpotBrainInfo = []
         SpotBrainStats = []
-
+        
         ImageInfoChecked_TF = false
-        Sorting = []        
+        Sorting = []
     end
     
     methods
-        CheckBrain(obj, ifish)        
         %constructor function
         function obj = SpotNGlia(mode1)
+            %obj.NewPath(0) default mode, UI for FishPath and SavePath, source is assumed to be in SpotNGlia folder
+            %obj.NewPath(1) UI for FishPath, SavePath and SourcePath
+            %mode 10,11,12 only works for S Geurts own pc's
+            %obj.NewPath(10) this mode assumes the trainingset and set known paths
+            %obj.NewPath(11) this mode assumes that Fishpath and SavePath are equal and user UI to select new path
+            %obj.NewPath(12) switch between own pc's for MultiBatch on Seagate harddisk
             
             if ~exist('mode1', 'var')
                 mode1 = 0;
@@ -57,16 +62,26 @@ classdef SpotNGlia
             
             load([obj.SourcePath, '/', 'zfinput.mat']); %#ok<LOAD>
             obj.ZFParameters = zfinput;
-            obj.CompleteTemplate = LoadTemplateSNG([obj.SourcePath, '/', 'Template 3 dpf']);
+            %obj.CompleteTemplate = LoadTemplateSNG([obj.SourcePath, '/', 'Template 3 dpf']);
+            obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat'])
+
                         
             %file which contains all batch specific computation info
             matObj = matfile([obj.SavePath, '/', obj.InfoName, '.mat']);
             obj.InfoResult = whos(matObj);
         end
-        
+             
         function obj = NewPath(obj, mode1)
-            %obj.NewPath(0)
+            %obj.NewPath(0) default mode, UI for FishPath and SavePath, source is assumed to be in SpotNGlia folder
+            %obj.NewPath(1) UI for FishPath, SavePath and SourcePath
+            %mode 10,11,12 only works for S Geurts own pc's
+            %obj.NewPath(10) this mode assumes the trainingset and set known paths
+            %obj.NewPath(11) this mode assumes that Fishpath and SavePath are equal and user UI to select new path
             %obj.NewPath(12) switch between own pc's for MultiBatch on Seagate harddisk
+            
+            %msg1 = ['select image folder to process'];
+            %msg2 = ['select destination folder to save'];
+            %msg3 = ['select program source folder'];
             
             msg1 = ['select image folder to process:  ', obj.FishPath];
             msg2 = ['select destination folder to save:  ', obj.SavePath];
@@ -155,10 +170,10 @@ classdef SpotNGlia
                             obj.FishPath = filename;
                         end
                     end
-
+                    
                     if strcmp(User, 'samuelgeurts') && strcmp(obj.User, 'SNGeu') %#ok<PROPLC>
                         expression = '\/';
-                        splitStr = regexp(obj.FishPath, expression, 'split');                       
+                        splitStr = regexp(obj.FishPath, expression, 'split');
                         if strcmp(splitStr{1}, 'D:')
                             filename = '/Volumes/Seagate Expansion Drive';
                             for k2 = 2:numel(splitStr)
@@ -166,7 +181,7 @@ classdef SpotNGlia
                             end
                             obj.FishPath = filename;
                         end
-                    end                 
+                    end
                     
                     if strcmp(User, '260018') && strcmp(obj.User, 'samuelgeurts') %#ok<PROPLC>
                         expression = '\/';
@@ -201,7 +216,7 @@ classdef SpotNGlia
                 error('unknown mode')
             end
         end
-        
+               
         function obj = SliceCombination(obj, slicenumbers)
             %computes imageinfo and stackinfo
             %       sorting = ['date'/'name']
@@ -381,21 +396,21 @@ classdef SpotNGlia
             %fix later fishnumber
             
             %{
-                      %Stack has to be added but than input parameters are needed,
-                      so the function PreprocessionSNG has to be separated in that
-                      case. For now we choose to store every image the object. If it
-                      leads to memory issue on other obtion has to be made. For
-                      example save the images in a folder outsite the object.
+                         %Stack has to be added but than input parameters are needed,
+                         so the function PreprocessionSNG has to be separated in that
+                         case. For now we choose to store every image the object. If it
+                         leads to memory issue on other obtion has to be made. For
+                         example save the images in a folder outsite the object.
  
-                      for k1 = 1:nfishes
-                          fn = fishnumbers(k1);
-                          ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
-                          for k2 = 1:numel(ImageSlice)
-                          ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
-                          [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
-                          %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
-                          end
-                      end
+                         for k1 = 1:nfishes
+                             fn = fishnumbers(k1);
+                             ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
+                             for k2 = 1:numel(ImageSlice)
+                             ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
+                             [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
+                             %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
+                             end
+                         end
             %}
             if nfishes > 1
                 ExtendedDeptOfFieldInfo(nfishes) = struct('IndexMatrix', [], ...
@@ -426,7 +441,7 @@ classdef SpotNGlia
         
         function obj = Registration(obj, fishnumbers)
             
-            h = waitbar(0, 'Registration', 'Name', 'SpotNGlia'); 
+            h = waitbar(0, 'Registration', 'Name', 'SpotNGlia');
             
             if ~exist('fishnumbers', 'var')
                 fishnumbers = 1:numel(obj.StackInfo);
@@ -535,10 +550,10 @@ classdef SpotNGlia
             save([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters', '-append')
             
             obj.buildsheet
-                      
+            
             delete(h)
         end
-                
+        
         function obj = CompleteProgram(obj, fishnumbers)
             
             [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
@@ -559,6 +574,8 @@ classdef SpotNGlia
             
             
         end
+        
+        CheckBrain(obj, ifish)
     end
     
     methods(Hidden = true)
@@ -576,18 +593,18 @@ classdef SpotNGlia
             end
             
             if exist('SpotsDetected', 'var')
-                nspots1 = zeros(numel(SpotsDetected),1);                 %#ok<*USENS>
+                nspots1 = zeros(numel(SpotsDetected), 1); %#ok<*USENS>
                 for k1 = 1:numel(SpotsDetected)
                     nspots1(k1, 1) = numel(SpotsDetected{k1});
-                end                
+                end
             else
                 error('no spot information found')
             end
             
             if exist('checkup', 'var')
-                nspots2 = zeros(numel(checkup),1);
+                nspots2 = zeros(numel(checkup), 1);
                 for k1 = 1:numel(checkup)
-                    if checkup(k1).Include == 1                    
+                    if checkup(k1).Include == 1
                         nspots2(k1, 1) = size(checkup(k1).Spots, 1);
                     else
                         nspots2(k1, 1) = NaN;
@@ -607,7 +624,7 @@ classdef SpotNGlia
             end
             ds = cell2dataset([title; Sheet]);
             export(ds, 'file', [obj.SavePath, '/', obj.InfoName, '.csv'], 'delimiter', obj.Delimiter)
-        end        
+        end
         
         function obj = LoadAnnotations(obj)
             
@@ -966,11 +983,14 @@ classdef SpotNGlia
                 boxplot(g1, [ ...
                     obj.BrainInfo.Jaccard; ...
                     obj.BrainInfo.Dice]', {'Jaccard', 'Dice'});
-                title('Brain Validation')
-                setfigax2(h1, g1)
+                %title('Brain Validation')
                 
-                text(1.2, bj, sprintf('%.3f', bj))
-                text(2.2, bd, sprintf('%.3f', bd))
+                setfigax2(g1)
+                text(1.2, bj, sprintf('%.2f', bj), 'FontName', 'arial', 'FontSize', 8)
+                text(2.2, bd, sprintf('%.2f', bd), 'FontName', 'arial', 'FontSize', 8)
+                realsizeandsave(h1)
+                
+                
             end
             
             if isfield(obj.SpotInfo, 'Precision')
@@ -982,13 +1002,13 @@ classdef SpotNGlia
                     obj.SpotInfo.Precision; ...
                     obj.SpotInfo.Recall; ...
                     obj.SpotInfo.F1score]', {'Precision', 'Recall', 'F1score'});
-                title('Spot Validation')
-                setfigax2(h2, g2)
-                
-                text(1.3, sp, sprintf('%.3f', sp))
-                text(2.3, sr, sprintf('%.3f', sr))
-                text(3.3, sf, sprintf('%.3f', sf))
+                %title('Spot Validation')
+                setfigax2(g2)
+                text(1.3, sp, sprintf('%.2f', sp), 'FontName', 'arial', 'FontSize', 8)
+                text(2.3, sr, sprintf('%.2f', sr), 'FontName', 'arial', 'FontSize', 8)
+                text(3.3, sf, sprintf('%.2f', sf), 'FontName', 'arial', 'FontSize', 8)
                 set(gca, 'XLim', [0.5, 3.8])
+                realsizeandsave(h2)
             end
             
             if isfield(obj.SpotBrainInfo, 'Precision')
@@ -1001,93 +1021,16 @@ classdef SpotNGlia
                     obj.SpotBrainInfo.Precision; ...
                     obj.SpotBrainInfo.Recall; ...
                     obj.SpotBrainInfo.F1score]', {'Precision', 'Recall', 'F1score'});
-                title('Spot Validation on Computed Brain')
-                setfigax2(h3, g3)
+                %title('Spot Validation on Computed Brain')
                 
-                text(1.3, bsp, sprintf('%.3f', bsp))
-                text(2.3, bsr, sprintf('%.3f', bsr))
-                text(3.3, bsf, sprintf('%.3f', bsf))
+                setfigax2(g3)
+                
+                text(1.3, bsp, sprintf('%.2f', bsp), 'FontName', 'arial', 'FontSize', 8)
+                text(2.3, bsr, sprintf('%.2f', bsr), 'FontName', 'arial', 'FontSize', 8)
+                text(3.3, bsf, sprintf('%.2f', bsf), 'FontName', 'arial', 'FontSize', 8)
                 set(gca, 'XLim', [0.5, 3.8])
+                realsizeandsave(h3)
             end
-            
-            %{
-                     if isfield(obj.SpotInfo,'AbsDifference')
-                         [h4,g4] = setfigax1;
-                         boxplot(g4,[...
-                             obj.SpotInfo.AbsDifference]',{'AbsDifference'});
-                         title('Spot Validation')
- 
-                         set(g4,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
-                         set(g4,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7])
- 
-                         if exist('exportit','var') && exportit
-                             export_fig(h4 ,['/Users/samuelgeurts/Desktop/','boxplot',num2str(h4.Number)], '-png', '-r600', '-nocrop');
-                         end
- 
-                         ScaledFigure.calibrateDisplay(113.6) %113.6 for this screen
-                         ScaledFigure(h4,'reuse')
-                         set(h4,'Units','Centimeters')
-                         set(h4,'Position',(get(h4,'Position') + [fsx 0 0 0]))
-                     end
- 
-                     if isfield(obj.SpotBrainInfo,'AbsDifference')
-                         [h5,g5] = setfigax1;
-                         boxplot(g5,[...
-                             obj.SpotBrainInfo.AbsDifference]',{'AbsDifference'});
-                         title('Spot Validation on Computed Brain')
- 
-                         set(g5,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
-                         set(g5,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7])
- 
-                         if exist('exportit','var') && exportit
-                             export_fig(h5 ,['/Users/samuelgeurts/Desktop/','boxplot',num2str(h5.Number)], '-png', '-r600', '-nocrop');
-                         end
- 
-                         ScaledFigure.calibrateDisplay(113.6) %113.6 for this screen
-                         ScaledFigure(h5,'reuse')
-                         set(h5,'Units','Centimeters')
-                         set(h5,'Position',(get(h5,'Position') + [fsx 0 0 0]))
-                     end
- 
-                     if isfield(obj.SpotInfo,'RelDifference')
-                         [h6,g6] = setfigax1;
-                         boxplot(g6,[...
-                             obj.SpotInfo.RelDifference]',{'RelDifference'});
-                         title('Spot Validation')
- 
-                         set(g6,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
-                         set(g6,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7])
- 
-                         if exist('exportit','var') && exportit
-                             export_fig(h6 ,['/Users/samuelgeurts/Desktop/','boxplot',num2str(h6.Number)], '-png', '-r600', '-nocrop');
-                         end
- 
-                         ScaledFigure.calibrateDisplay(113.6) %113.6 for this screen
-                         ScaledFigure(h6,'reuse')
-                         set(h6,'Units','Centimeters')
-                         set(h6,'Position',(get(h6,'Position') + [fsx 0 0 0]))
-                     end
- 
-                     if isfield(obj.SpotBrainInfo,'RelDifference')
-                         [h7,g7] = setfigax1;
-                         boxplot(g7,[...
-                             obj.SpotBrainInfo.RelDifference]',{'RelDifference'});
-                         title('Spot Validation on Computed Brain')
- 
-                         set(g7,'FontName','arial','FontSize',8,'XGrid','on','YGrid','on');
-                         set(g7,'Units','centimeters','Position',[1.2 1.2 fsx-1.7 fsy-1.7])
- 
-                         if exist('exportit','var') && exportit
-                             export_fig(h7 ,['/Users/samuelgeurts/Desktop/','boxplot',num2str(h7.Number)], '-png', '-r600', '-nocrop');
-                         end
- 
-                         ScaledFigure.calibrateDisplay(113.6) %113.6 for this screen
-                         ScaledFigure(h7,'reuse')
-                         set(h7,'Units','Centimeters')
-                         set(h7,'Position',(get(h7,'Position') + [fsx 0 0 0]))
-                     end
-            %}
-            
             
             function [figurehandle, axishandle] = setfigax1
                 %fsx = 5;fsy = 10;
@@ -1095,15 +1038,15 @@ classdef SpotNGlia
                 axishandle = gca;
                 sng_figcm(fsx, fsy);
             end
-            function setfigax2(figurehandle, axishandle)
+            function setfigax2(axishandle)
                 set(axishandle, 'FontName', 'arial', 'FontSize', 8, 'XGrid', 'on', 'YGrid', 'on');
                 set(axishandle, 'Units', 'centimeters', 'Position', [1.2, 1.2, fsx - 1.7, fsy - 1.7]);
                 set(axishandle, 'YLim', [-0.02, 1.02]);
-                
+            end
+            function realsizeandsave(figurehandle)
                 if exist('exportit', 'var') && exportit
                     export_fig(figurehandle, ['/Users/samuelgeurts/Desktop/', 'boxplot', num2str(figurehandle.Number)], '-png', '-r600', '-nocrop');
                 end
-                
                 ScaledFigure.calibrateDisplay(113.6); %113.6 for this screen
                 ScaledFigure(figurehandle, 'reuse');
                 set(figurehandle, 'Units', 'Centimeters');
@@ -1179,8 +1122,8 @@ classdef SpotNGlia
                 
                 nc = size(Correct, 1) + size(FalsePos, 1); %number of computed spots
                 na = size(Correct, 1) + size(FalseNeg, 1); %number of annotated spots
-                jb = obj.BrainInfo(val(k)).Jaccard; %Jaccard number
-                db = obj.BrainInfo(val(k)).Dice; % Dice number
+                jb = obj.BrainInfo(fn(k1)).Jaccard; %Jaccard number
+                db = obj.BrainInfo(fn(k1)).Dice; % Dice number
                 
                 
                 str = sprintf(['BRAIN PARAMETERS', ...
@@ -1265,25 +1208,21 @@ classdef SpotNGlia
             
             
             %{
-                load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
-                if exist('SpotsDetected')
-                    for k1 = 1:numel(SpotsDetected)
-                        nspots(k1,1) = numel(SpotsDetected{k1});
-                    end
+                   load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
+                   if exist('SpotsDetected')
+                       for k1 = 1:numel(SpotsDetected)
+                           nspots(k1,1) = numel(SpotsDetected{k1});
+                       end
  
-                    Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
-                    title = {obj.InfoName,'images','nspots'}
+                       Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
+                       title = {obj.InfoName,'images','nspots'}
  
-                    ds = cell2dataset([title;Sheet]);
-                    export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
-                end
+                       ds = cell2dataset([title;Sheet]);
+                       export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
+                   end
             %}
-        end        
+        end
         
-    end
-    
-    methods
-
     end
 end
 
