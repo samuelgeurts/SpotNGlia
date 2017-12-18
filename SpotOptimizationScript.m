@@ -15,7 +15,9 @@ zfinputlist.KthresholdL = {0};
 zfinputlist.MPlevelsL = {6:11};
 
 %zfinputlist.MPthresholdL = {0.5 1 2 4 8 16 32 64};
-zfinputlist.MPthresholdL = {4000 5000 6000 7000};
+%zfinputlist.MPthresholdL = {1100 1200 1300 1400 1500 1600 1700};
+zfinputlist.MPthresholdL = {1500};
+
 
 %{
 zfinputlist.MinSpotSizeL = {8.4084}
@@ -25,9 +27,9 @@ zfinputlist.MinSpotRange = 1
 zfinputlist.MaxSpotRange = 1
 zfinputlist.MinProbabilityRange = 1
 %}
-zfinputlist.MinSpotRange = [0:0.0333:0.2]
-zfinputlist.MaxSpotRange = [0.8:0.05:1.2]
-zfinputlist.MinProbabilityRange = [0:0.033:0.2]
+zfinputlist.MinSpotRange = [0.0375:0.00125:0.0437]
+zfinputlist.MaxSpotRange = [0.52:0.0025:0.54]
+zfinputlist.MinProbabilityRange = [0.05:0.0025:0.07]
 
 
 
@@ -42,12 +44,13 @@ obj.SpotOptimization(1:50,zfinputlist)
     figure;plot([SpotOptList.MeanF1score])
 
     
-    [SpotOptList.MeanF1score]
+    %[SpotOptList.MeanF1score]
     
-       
+%{       
 %% remove duplicates    
 [~,ia] = unique([[SpotOptList.MeanF1score]',[SpotOptList.MeanPrecision]',[SpotOptList.MeanRecall]'],'rows')    
 SpotOptList2 = SpotOptList(sort(ia))
+   
     
 %% sort spotoptlist based on Color2GrayVector -> MPlevels -> MPthreshold
 [~,ia,types] = unique([SpotOptList2.ColorToGrayVectorL]','rows')
@@ -79,12 +82,12 @@ for k1 = 1:numel(ia)
          end
     end
 end
-    
-figure;plot([SpotOptList3.MeanF1score])
+    %}
+%figure;plot([SpotOptList3.MeanF1score])
 
 %%
 
-save([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList')
+%save([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList')
 
 %%
 

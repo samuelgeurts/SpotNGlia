@@ -64,13 +64,13 @@ classdef SpotNGlia
             obj.ZFParameters = zfinput;
             %obj.CompleteTemplate = LoadTemplateSNG([obj.SourcePath, '/', 'Template 3 dpf']);
             obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat'])
-
-                        
+            
+            
             %file which contains all batch specific computation info
             matObj = matfile([obj.SavePath, '/', obj.InfoName, '.mat']);
             obj.InfoResult = whos(matObj);
         end
-             
+        
         function obj = NewPath(obj, mode1)
             %obj.NewPath(0) default mode, UI for FishPath and SavePath, source is assumed to be in SpotNGlia folder
             %obj.NewPath(1) UI for FishPath, SavePath and SourcePath
@@ -158,7 +158,7 @@ classdef SpotNGlia
                 elseif mode1 == 12
                     %this mode automatically changes paths between users '260018' and 'samuelgeurts' an SNGeu
                     %i.e. between macbookpro and erasmus pc and medion pc.
-                    %Pnly when fishes are on harddisk
+                    %Only when fishes are on harddisk
                     
                     if strcmp(User, 'SNGeu') && strcmp(obj.User, 'samuelgeurts') %#ok<PROPLC>
                         splitStr = regexp(obj.FishPath, '\/', 'split');
@@ -216,7 +216,7 @@ classdef SpotNGlia
                 error('unknown mode')
             end
         end
-               
+        
         function obj = SliceCombination(obj, slicenumbers)
             %computes imageinfo and stackinfo
             %       sorting = ['date'/'name']
@@ -396,21 +396,21 @@ classdef SpotNGlia
             %fix later fishnumber
             
             %{
-                         %Stack has to be added but than input parameters are needed,
-                         so the function PreprocessionSNG has to be separated in that
-                         case. For now we choose to store every image the object. If it
-                         leads to memory issue on other obtion has to be made. For
-                         example save the images in a folder outsite the object.
+                          %Stack has to be added but than input parameters are needed,
+                          so the function PreprocessionSNG has to be separated in that
+                          case. For now we choose to store every image the object. If it
+                          leads to memory issue on other obtion has to be made. For
+                          example save the images in a folder outsite the object.
  
-                         for k1 = 1:nfishes
-                             fn = fishnumbers(k1);
-                             ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
-                             for k2 = 1:numel(ImageSlice)
-                             ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
-                             [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
-                             %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
-                             end
-                         end
+                          for k1 = 1:nfishes
+                              fn = fishnumbers(k1);
+                              ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
+                              for k2 = 1:numel(ImageSlice)
+                              ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
+                              [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
+                              %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
+                              end
+                          end
             %}
             if nfishes > 1
                 ExtendedDeptOfFieldInfo(nfishes) = struct('IndexMatrix', [], ...
@@ -542,6 +542,27 @@ classdef SpotNGlia
                 waitbar(k1/nfishes, h)
                 AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
                 [SpotsDetected{k1}, SpotParameters{k1}, SpotDetectionInfo(k1)] = SpotDetectionSNG(AlignedFish, obj.CompleteTemplate, BrainSegmentationInfo(k1).BrainEdge, obj.ZFParameters);
+            end
+            
+            %update checkup if checkup exists, only when new spot-parameters are tested (ZFParameters)
+            load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
+            if exist('checkup', 'var')              
+                for k3 = 1:numel(checkup)
+                    if checkup(k3).Include == 1 
+                        Xrow = checkup(k3).Midbrain(:,1);
+                        Yrow = checkup(k3).Midbrain(:,2);                 
+                        %% compute new spots insite area
+                        [rc] = reshape([SpotParameters{k3}.Centroid], 2, numel(SpotParameters{k3}))';
+                        [in, ~] = inpolygon(rc(:, 1), rc(:, 2), Xrow, Yrow);                      
+                        SpotsDetec = SpotParameters{k3}(in' == 1 & ...
+                            [SpotParameters{k3}.LargerThan] == 1 & ...
+                            [SpotParameters{k3}.SmallerThan] == 1 & ...
+                            [SpotParameters{k3}.MinProbability] == 1);
+                        [rc] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
+                        checkup(k3).Spots = [rc(:,1), rc(:,2)];
+                    end
+                end
+                save([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup', '-append');
             end
             
             obj.saveit
@@ -1208,18 +1229,18 @@ classdef SpotNGlia
             
             
             %{
-                   load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
-                   if exist('SpotsDetected')
-                       for k1 = 1:numel(SpotsDetected)
-                           nspots(k1,1) = numel(SpotsDetected{k1});
-                       end
+                    load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
+                    if exist('SpotsDetected')
+                        for k1 = 1:numel(SpotsDetected)
+                            nspots(k1,1) = numel(SpotsDetected{k1});
+                        end
  
-                       Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
-                       title = {obj.InfoName,'images','nspots'}
+                        Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
+                        title = {obj.InfoName,'images','nspots'}
  
-                       ds = cell2dataset([title;Sheet]);
-                       export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
-                   end
+                        ds = cell2dataset([title;Sheet]);
+                        export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
+                    end
             %}
         end
         
