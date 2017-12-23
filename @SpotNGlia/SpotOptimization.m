@@ -1,6 +1,5 @@
 
-function SpotOptimization(obj, fishnumbers, zfinputlist)
-
+function objTemp = SpotOptimization(obj, fishnumbers, zfinputlist)
 
 %{
 fishnumbers = 1:5
@@ -23,7 +22,6 @@ elseif max(fishnumbers) > numel(obj.StackInfo)
 end
 
 nfishes = numel(fishnumbers);
-
 
 if exist('zfinputlist', 'var')
     
