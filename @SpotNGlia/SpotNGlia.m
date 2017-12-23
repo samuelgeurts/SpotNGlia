@@ -24,6 +24,7 @@ classdef SpotNGlia
         
         StackInfo = []
         ImageInfo = []
+        BatchInfo = []
         
         InfoResult = []
         
@@ -63,7 +64,7 @@ classdef SpotNGlia
             load([obj.SourcePath, '/', 'zfinput.mat']); %#ok<LOAD>
             obj.ZFParameters = zfinput;
             %obj.CompleteTemplate = LoadTemplateSNG([obj.SourcePath, '/', 'Template 3 dpf']);
-            obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat'])
+            obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
             
             
             %file which contains all batch specific computation info
@@ -396,21 +397,21 @@ classdef SpotNGlia
             %fix later fishnumber
             
             %{
-                          %Stack has to be added but than input parameters are needed,
-                          so the function PreprocessionSNG has to be separated in that
-                          case. For now we choose to store every image the object. If it
-                          leads to memory issue on other obtion has to be made. For
-                          example save the images in a folder outsite the object.
+                           %Stack has to be added but than input parameters are needed,
+                           so the function PreprocessionSNG has to be separated in that
+                           case. For now we choose to store every image the object. If it
+                           leads to memory issue on other obtion has to be made. For
+                           example save the images in a folder outsite the object.
  
-                          for k1 = 1:nfishes
-                              fn = fishnumbers(k1);
-                              ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
-                              for k2 = 1:numel(ImageSlice)
-                              ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
-                              [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
-                              %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
-                              end
-                          end
+                           for k1 = 1:nfishes
+                               fn = fishnumbers(k1);
+                               ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
+                               for k2 = 1:numel(ImageSlice)
+                               ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
+                               [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
+                               %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
+                               end
+                           end
             %}
             if nfishes > 1
                 ExtendedDeptOfFieldInfo(nfishes) = struct('IndexMatrix', [], ...
@@ -456,7 +457,8 @@ classdef SpotNGlia
             if ~exist(TempFolderName, 'dir')
                 mkdir(TempFolderName)
             end
-            
+            MaxFishColor = zeros(nfishes, 3);
+            MeanFishColor = zeros(nfishes, 3);
             RegistrationInfo = cell(nfishes, 1);
             for k1 = 1:nfishes
                 waitbar(k1/nfishes, h)
@@ -467,7 +469,16 @@ classdef SpotNGlia
                 %takes to much space
                 imwrite(uint8(AlignedFishTemp), [TempFolderName, '/', obj.StackInfo(k1).stackname, '.tif'], ...
                     'WriteMode', 'overwrite', 'Compression', 'none');
+                %generates matrix with MeanFishColors
+                MeanFishColor(k1, 1:3) = RegistrationInfo{k1}(strcmp({RegistrationInfo{k1}.name}, 'MeanFishColor')).value;
+                MaxFishColor(k1, 1:3) = RegistrationInfo{k1}(strcmp({RegistrationInfo{k1}.name}, 'MaxFishColor')).value;
+                
             end
+            obj.BatchInfo.MeanMaxFishColor = mean(MaxFishColor(:));
+            obj.BatchInfo.StdMaxFishColor = std(MaxFishColor(:));            
+            obj.BatchInfo.MeanFishColor = mean(MeanFishColor(:));
+            obj.BatchInfo.StdFishColor = std(MeanFishColor(:));
+            
             
             obj.saveit
             save([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo', '-append')
@@ -542,24 +553,25 @@ classdef SpotNGlia
                 waitbar(k1/nfishes, h)
                 AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
                 [SpotsDetected{k1}, SpotParameters{k1}, SpotDetectionInfo(k1)] = SpotDetectionSNG(AlignedFish, obj.CompleteTemplate, BrainSegmentationInfo(k1).BrainEdge, obj.ZFParameters);
+                obj.StackInfo(k1).Counts = numel(SpotsDetected{k1});
             end
             
             %update checkup if checkup exists, only when new spot-parameters are tested (ZFParameters)
             load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
-            if exist('checkup', 'var')              
+            if exist('checkup', 'var')
                 for k3 = 1:numel(checkup)
-                    if checkup(k3).Include == 1 
-                        Xrow = checkup(k3).Midbrain(:,1);
-                        Yrow = checkup(k3).Midbrain(:,2);                 
+                    if checkup(k3).Include == 1
+                        Xrow = checkup(k3).Midbrain(:, 1);
+                        Yrow = checkup(k3).Midbrain(:, 2);
                         %% compute new spots insite area
                         [rc] = reshape([SpotParameters{k3}.Centroid], 2, numel(SpotParameters{k3}))';
-                        [in, ~] = inpolygon(rc(:, 1), rc(:, 2), Xrow, Yrow);                      
+                        [in, ~] = inpolygon(rc(:, 1), rc(:, 2), Xrow, Yrow);
                         SpotsDetec = SpotParameters{k3}(in' == 1 & ...
                             [SpotParameters{k3}.LargerThan] == 1 & ...
                             [SpotParameters{k3}.SmallerThan] == 1 & ...
                             [SpotParameters{k3}.MinProbability] == 1);
                         [rc] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
-                        checkup(k3).Spots = [rc(:,1), rc(:,2)];
+                        checkup(k3).Spots = [rc(:, 1), rc(:, 2)];
                     end
                 end
                 save([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup', '-append');
@@ -596,6 +608,51 @@ classdef SpotNGlia
             
         end
         
+        function obj = HistPar(obj, fishnumbers)
+            %function to add a mean fish color parameter to the RegisterationInfo variable saved in INFO_...
+            %its function can be removed later on as it is also added to Registration
+            
+            load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo')
+            
+            if ~exist('fishnumbers', 'var')
+                fishnumbers = 1:numel(obj.StackInfo);
+            elseif max(fishnumbers) > numel(obj.StackInfo)
+                error('at least one fish does not exist in RegistrationInfo')
+            end
+            
+            nfishes = numel(fishnumbers);
+            for k1 = 1:nfishes
+                fn = fishnumbers(k1);
+                AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
+                threshold = RegistrationInfo{k1}(find(strcmp({RegistrationInfo{k1}.name}, 'BackgroundThreshold'))).value;
+                
+                %figure;imagesc(AlignedFish(:,700:end,:));
+
+                for k3 = 1:3
+                    Img = AlignedFish(:,700:end, k3);           
+                    MeanFishColor(k1, k3) = mean(Img(:) < threshold(k3));                
+                    h = hist(Img(:),0:1:255);
+                    h2 = smoothdata(h,'gaussian',6);                    
+                    [~,MaxFishColor(k1,k3)] = max(h2(1:floor(threshold(k3))))
+                end               
+                
+                row = find(strcmp({RegistrationInfo{k1}.name}, 'MeanFishColor'));
+                RegistrationInfo{k1} = sng_StructFill(RegistrationInfo{k1}, {'Registration', 'Background Removal', 'MeanFishColor', MeanFishColor(k1, :)}, row);
+                row = find(strcmp({RegistrationInfo{k1}.name}, 'MaxFishColor'));
+                RegistrationInfo{k1} = sng_StructFill(RegistrationInfo{k1}, {'Registration', 'Background Removal', 'MaxFishColor', MaxFishColor(k1, :)}, row);
+
+            end
+            save([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo', '-append')
+            
+            obj.BatchInfo.MeanMaxFishColor = mean(MaxFishColor(:));
+            obj.BatchInfo.StdMaxFishColor = std(MaxFishColor(:));
+            obj.BatchInfo.MeanFishColor = mean(MeanFishColor(:));
+            obj.BatchInfo.StdMeanFishColor = std(MeanFishColor(:));           
+        end
+        
+
+        ShowFishHeadHist(obj,fishnumber)
+        ShowMaxFishHist(obj,fishnumber)
         CheckBrain(obj, ifish)
     end
     
@@ -603,7 +660,7 @@ classdef SpotNGlia
         
         Mask = BrainMask(obj, fishnumbers)
         BrainOptimization(obj, fishnumbers)
-        SpotOptimization(obj, fishnumbers, zfinputlist)
+        obj2 = SpotOptimization(obj, fishnumbers, zfinputlist)
         
         function buildsheet(obj)
             if ~exist('SpotsDetected', 'var')
@@ -655,7 +712,7 @@ classdef SpotNGlia
                 %annotated brain and spots
                 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo')
                 for k1 = 1:nfishes
-                    tform_1234{k1} = RegistrationInfo{k1}(strcmp({RegistrationInfo{k1}.name}, 'tform_complete')).value; %#ok<USENS>
+                    tform_1234{k1} = RegistrationInfo{k1}(strcmp({RegistrationInfo{k1}.name}, 'tform_complete')).value; 
                 end
             end
             
@@ -849,24 +906,22 @@ classdef SpotNGlia
                 AbsDifference(k1) = nFalsePos(k1) - nFalseNeg(k1);
                 RelDifference(k1) = (nFalsePos(k1) - nFalseNeg(k1)) / nCorrect(k1);
                 
-                
-                obj.SpotStats.FiveNumberSummaryPrecision = sng_FiveNumberSum(Precision);
-                obj.SpotStats.MeanPrecision = mean(Precision);
-                
-                obj.SpotStats.FiveNumberSummaryRecall = sng_FiveNumberSum(Recall);
-                obj.SpotStats.MeanRecall = mean(Recall);
-                
-                obj.SpotStats.FiveNumberSummaryF1score = sng_FiveNumberSum(F1score);
-                obj.SpotStats.MeanF1score = mean(F1score);
-                
-                obj.SpotStats.FiveNumberSummaryAbsDifference = sng_FiveNumberSum(AbsDifference);
-                obj.SpotStats.MeanAbsDifference = mean(AbsDifference);
-                
-                obj.SpotStats.FiveNumberSummaryRelDifference = sng_FiveNumberSum(RelDifference);
-                obj.SpotStats.MeanRelDifference = mean(RelDifference);
-                
-                
             end
+            obj.SpotStats.FiveNumberSummaryPrecision = sng_FiveNumberSum(Precision);
+            obj.SpotStats.MeanPrecision = mean(Precision);
+            
+            obj.SpotStats.FiveNumberSummaryRecall = sng_FiveNumberSum(Recall);
+            obj.SpotStats.MeanRecall = mean(Recall);
+            
+            obj.SpotStats.FiveNumberSummaryF1score = sng_FiveNumberSum(F1score);
+            obj.SpotStats.MeanF1score = mean(F1score);
+            
+            obj.SpotStats.FiveNumberSummaryAbsDifference = sng_FiveNumberSum(AbsDifference);
+            obj.SpotStats.MeanAbsDifference = mean(AbsDifference);
+            
+            obj.SpotStats.FiveNumberSummaryRelDifference = sng_FiveNumberSum(RelDifference);
+            obj.SpotStats.MeanRelDifference = mean(RelDifference);
+            
             
             %store variables in obj.SpotInfo
             [obj.SpotInfo(1:nfishes).LinkDistance] = LinkDistance{:};
@@ -886,14 +941,49 @@ classdef SpotNGlia
             
         end
         
+        function obj = TtestVal(obj)
+            %computes t-test if the number of spots are known and saved ouder
+            
+            %load([obj.SavePath,'/',obj.InfoName,'.mat'],'SpotParameters')
+            load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected')
+            ccs = zeros(1, numel(SpotsDetected));
+            for l1 = 1:numel(SpotsDetected)
+                ccs(l1) = numel(SpotsDetected{l1});
+                obj.StackInfo(l1).Counts = numel(SpotsDetected{l1});
+            end
+            
+            ccs = [obj.StackInfo.Counts];
+            
+            %nfishes = numel(obj.StackInfo);
+            
+            if ~isfield((obj.Annotations), 'Counts')
+                for l2 = 1:numel(obj.Annotations)
+                    obj.Annotations(l2).Counts = size(obj.Annotations(l2).Spots, 1);
+                end
+            end
+            
+            hcs = [obj.Annotations.Counts];
+            ind = ~isnan(hcs);
+            
+            [h, p] = ttest(hcs(ind)', ccs(ind)');
+            mn = mean(abs(ccs(ind)-hcs(ind)));
+            st = std(abs(ccs(ind)-hcs(ind)));
+            RMSD = sqrt(mean((hcs(ind)' - ccs(ind)').^2));
+            
+            obj.SpotBrainStats.ttest = h;
+            obj.SpotBrainStats.ttestval = p;
+            obj.SpotBrainStats.MeanAbsDifference = mn;
+            obj.SpotBrainStats.StdAbsDifference = st;
+            obj.SpotBrainStats.RMSD = RMSD;
+            
+        end
+        %}
         function obj = SpotBrainVal(obj)
             
             %load([obj.SavePath,'/',obj.InfoName,'.mat'],'SpotParameters')
             load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected')
             
-            
             nfishes = numel(obj.StackInfo);
-            
             
             LinkDistance = cell(nfishes, 1);
             CorrectSpots = cell(nfishes, 1);
@@ -952,25 +1042,19 @@ classdef SpotNGlia
                 Precision(k1) = nCorrect(k1) / (nCorrect(k1) + nFalsePos(k1) + a);
                 Recall(k1) = nCorrect(k1) / (nCorrect(k1) + nFalseNeg(k1) + a);
                 F1score(k1) = 2 * (Precision(k1) * Recall(k1)) / (Precision(k1) + Recall(k1) + a);
-                AbsDifference(k1) = nFalsePos(k1) - nFalseNeg(k1);
-                RelDifference(k1) = (nFalsePos(k1) - nFalseNeg(k1)) / nCorrect(k1);
-                
-                obj.SpotBrainStats.FiveNumberSummaryPrecision = sng_FiveNumberSum(Precision);
-                obj.SpotBrainStats.MeanPrecision = mean(Precision);
-                
-                obj.SpotBrainStats.FiveNumberSummaryRecall = sng_FiveNumberSum(Recall);
-                obj.SpotBrainStats.MeanRecall = mean(Recall);
-                
-                obj.SpotBrainStats.FiveNumberSummaryF1score = sng_FiveNumberSum(F1score);
-                obj.SpotBrainStats.MeanF1score = mean(F1score);
-                
-                obj.SpotBrainStats.FiveNumberSummaryAbsDifference = sng_FiveNumberSum(AbsDifference);
-                obj.SpotBrainStats.MeanAbsDifference = mean(AbsDifference);
-                
-                obj.SpotBrainStats.FiveNumberSummaryRelDifference = sng_FiveNumberSum(RelDifference);
-                obj.SpotBrainStats.MeanRelDifference = mean(RelDifference);
-                
+                AbsDifference(k1) = abs(nFalsePos(k1)-nFalseNeg(k1));
+                RelDifference(k1) = abs(nFalsePos(k1)-nFalseNeg(k1)) / nCorrect(k1);
             end
+            obj.SpotBrainStats.FiveNumberSummaryPrecision = sng_FiveNumberSum(Precision);
+            obj.SpotBrainStats.MeanPrecision = mean(Precision);
+            obj.SpotBrainStats.FiveNumberSummaryRecall = sng_FiveNumberSum(Recall);
+            obj.SpotBrainStats.MeanRecall = mean(Recall);
+            obj.SpotBrainStats.FiveNumberSummaryF1score = sng_FiveNumberSum(F1score);
+            obj.SpotBrainStats.MeanF1score = mean(F1score);
+            obj.SpotBrainStats.FiveNumberSummaryAbsDifference = sng_FiveNumberSum(AbsDifference);
+            obj.SpotBrainStats.MeanAbsDifference = mean(abs(AbsDifference));
+            obj.SpotBrainStats.FiveNumberSummaryRelDifference = sng_FiveNumberSum(RelDifference);
+            obj.SpotBrainStats.MeanRelDifference = mean(RelDifference);
             
             %store variables in obj.SpotInfo
             [obj.SpotBrainInfo(1:nfishes).LinkDistance] = LinkDistance{:};
@@ -1192,7 +1276,7 @@ classdef SpotNGlia
                 
                 cmbr = BrainSegmentationInfo(fn).BrainEdge;
                 AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
-                cmbs = reshape([SpotsDetected{fn}.Centroid], 2, numel(SpotsDetected{fn}))'; %#ok<IDISVAR,USENS>
+                cmbs = reshape([SpotsDetected{fn}.Centroid], 2, numel(SpotsDetected{fn}))';
                 
                 if exist('saveimage', 'var') && saveimage
                     figure('visible', 'off')
@@ -1229,20 +1313,25 @@ classdef SpotNGlia
             
             
             %{
-                    load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
-                    if exist('SpotsDetected')
-                        for k1 = 1:numel(SpotsDetected)
-                            nspots(k1,1) = numel(SpotsDetected{k1});
-                        end
+                     load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
+                     if exist('SpotsDetected')
+                         for k1 = 1:numel(SpotsDetected)
+                             nspots(k1,1) = numel(SpotsDetected{k1});
+                         end
  
-                        Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
-                        title = {obj.InfoName,'images','nspots'}
+                         Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
+                         title = {obj.InfoName,'images','nspots'}
  
-                        ds = cell2dataset([title;Sheet]);
-                        export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
-                    end
+                         ds = cell2dataset([title;Sheet]);
+                         export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
+                     end
             %}
         end
+        
+        
+        
+        
+        
         
     end
 end
