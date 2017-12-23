@@ -1,6 +1,6 @@
-load([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList')
  
 obj = obj.NewPath(10)
+load([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList')
 
 %%
 CompleteTemplate = LoadTemplateSNG([obj.SourcePath, '/', 'Template 3 dpf']);
@@ -16,7 +16,7 @@ zfinputlist.MPlevelsL = {6:11};
 
 %zfinputlist.MPthresholdL = {0.5 1 2 4 8 16 32 64};
 %zfinputlist.MPthresholdL = {1100 1200 1300 1400 1500 1600 1700};
-zfinputlist.MPthresholdL = {1500};
+zfinputlist.MPthresholdL = {1450 1550 1650 1750};
 
 
 %{
@@ -27,14 +27,29 @@ zfinputlist.MinSpotRange = 1
 zfinputlist.MaxSpotRange = 1
 zfinputlist.MinProbabilityRange = 1
 %}
-zfinputlist.MinSpotRange = [0.0375:0.00125:0.0437]
-zfinputlist.MaxSpotRange = [0.52:0.0025:0.54]
-zfinputlist.MinProbabilityRange = [0.05:0.0025:0.07]
+
+%{
+zfinputlist.ColorToGrayVectorL = {[0; 1; 0]};
+zfinputlist.ScaleBaseL = {0.5};
+zfinputlist.KthresholdL = {0};
+zfinputlist.MPlevelsL = {5:7};
+zfinputlist.MPthresholdL = {100};
+zfinputlist.MinSpotSizeL = {8.4084}
+zfinputlist.MaxSpotSizeL = {458}
+zfinputlist.MinProbabilityL = {0.03}
+zfinputlist.MinSpotRange = 1
+zfinputlist.MaxSpotRange = 1
+zfinputlist.MinProbabilityRange = 1
+%}
+
+zfinputlist.MinSpotRange = [0:0.01:0.06]
+zfinputlist.MaxSpotRange = [0.3:0.1:0.7]
+zfinputlist.MinProbabilityRange = [0:0.05:0.5]
 
 
 
         
-obj.SpotOptimization(1:50,zfinputlist)
+obj2 = obj.SpotOptimization(1:50,zfinputlist)
 
 %%
 
