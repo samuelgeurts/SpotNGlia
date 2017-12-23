@@ -116,6 +116,18 @@ end
 tform_1234 = affine2d(tform1.T*tform2.T*tform3.T*tform4.T);
 
 Ialligned = imwarp(I10,tform_1234,'FillValues',255,'OutputView',imref2d(size(template(:,:,1))));
+%% extra mean fish color parameter
+%get image - take front(head) - compute histogram - smooth - find second max peak (no background)
+for k3 = 1:3
+    Img = Ialligned(:,700:end,k3);                                        
+    MeanFishColor(k3) = mean(Img(:) < BackgroundThreshold(k3));
+    h = hist(Img(:),0:1:255);
+    h2 = smoothdata(h,'gaussian',6);                    
+    [~,MaxFishColor(k3)] = max(h2(1:floor(BackgroundThreshold(k3))));    
+end
+
+
+
 
 
 %{
@@ -172,11 +184,8 @@ rgoutput = sng_StructFill(rgoutput,{'Registration','Background Removal','Backgro
 rgoutput = sng_StructFill(rgoutput,{'Registration','Background Removal','BackgroundThreshold',BackgroundThreshold});
 rgoutput = sng_StructFill(rgoutput,{'Registration','Background Removal','stretchlim_0procent',stretchlim_0procent});
 rgoutput = sng_StructFill(rgoutput,{'Registration','Background Removal','stretchlim_1procent',stretchlim_1procent});
-
-
-
-
-
+rgoutput = sng_StructFill(rgoutput,{'Registration','Background Removal','MeanFishColor',MeanFishColor});
+rgoutput = sng_StructFill(rgoutput,{'Registration','Background Removal','MeanFishColor',MaxFishColor});
 
 %% show background removal
 %{
