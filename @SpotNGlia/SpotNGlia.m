@@ -15,6 +15,7 @@ classdef SpotNGlia
         OS = []
         Delimiter = ','
         
+        nfishes = []
         fishnumbers = []
         slicenumbers = []
         savedate = []
@@ -291,7 +292,7 @@ classdef SpotNGlia
                 msgbox(str);
             end
             obj.saveit
-            
+            obj.nfishes = numel(obj.StackInfo);
             
         end
         
@@ -299,6 +300,7 @@ classdef SpotNGlia
             
             h = waitbar(0, 'Preprocession', 'Name', 'SpotNGlia');
             [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
+            obj.nfishes = numel(obj.StackInfo);
             
             %if ~isempty(obj.ImageInfo)
             %    [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
