@@ -277,5 +277,10 @@ function NewPath(objb, mode)
             end
         end
         
+        function BrainSegmentation(objb)
+            for k1 = 1:10
+                objb.Objects{k1} = objb.Objects{k1}.BrainSegmentation;              
+            end        
+        end
     end
 end
