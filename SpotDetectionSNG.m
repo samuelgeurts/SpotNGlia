@@ -1,4 +1,4 @@
-function [SpotsDetected,SpotParameters,SpotDetectionInfo] = SpotDetectionSNG(Ialigned,CompleteTemplate,cmbr,ZFParameters)
+function [SpotsDetected,SpotParameters,SpotDetectionInfo,SpotN] = SpotDetectionSNG(Ialigned,CompleteTemplate,cmbr,ZFParameters)
 
 
 %Version SpotDetectionLink3
@@ -243,6 +243,7 @@ SpotDetectionInfo.Multiproduct = MultiProduct;
 SpotDetectionInfo.MultiproductThreshold = MultiProductTh;
 %SpotDetectionInfo.SpotFilter = Ifilt;
 
+SpotN = numel(SpotsDetected);
 
 
 
