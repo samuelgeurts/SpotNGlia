@@ -15,27 +15,28 @@ clear zfinputlist
 objb.Objects{2}.BrainSegmentation
 objb.Objects{2}.CheckBrain
 
-for k4 = 1
-obj = objb.Objects{1}
-obj = obj.BrainSegmentation
-obj.CheckBrain
+for k1 = 5:10
+k1
+    obj = objb.Objects{k1};
+%obj = obj.BrainSegmentation
+%obj.CheckBrain
 
 
 zfinputlist.ColorToGrayVectorL = {[0; 1; 0]};
 zfinputlist.ScaleBaseL = {0.5};
 zfinputlist.KthresholdL = {0};
 zfinputlist.MPlevelsL = {5:7};
-zfinputlist.MPthresholdL = {150 175 200 225 250 275 300 325}
+zfinputlist.MPthresholdL = {150 175 200 225 250 275 300 325};
 zfinputlist.MinSpotSizeL = [1,5:5:40];
 zfinputlist.MaxSpotSizeL = [200:50:500];
-zfinputlist.MinProbabilityL = [0:0.5:5]/100;
+zfinputlist.MinProbabilityL = [0:0.25:5]/100;
 
 
-objTemp = obj.SpotOptimizationRMSD([],zfinputlist,'Correction')
+objTemp = obj.SpotOptimizationRMSD([],zfinputlist,'Correction');
 
 %%
-
-load([obj.SavePath, '/', 'SpotOptListRMSD', '.mat'], 'SpotOptListRMSD')
+%load([obj.SavePath, '/', 'SpotOptListRMSD', '.mat'], 'SpotOptListRMSD')
+%open SpotOptListRMSD
 end
 %figure;plot([SpotOptList.MeanF1score])
     

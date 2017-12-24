@@ -21,10 +21,10 @@ classdef SpotNGliaBatch
         function objb = SpotNGliaBatch
             
             %{
-                obj = obj.NewPath(1)
-                filename = obj.SavePath
-                infoname = obj.InfoName
-                sngname = obj.SaveName
+                   obj = obj.NewPath(1)
+                   filename = obj.SavePath
+                   infoname = obj.InfoName
+                   sngname = obj.SaveName
             %}
             
             %% initialize locations and file names
@@ -156,7 +156,7 @@ classdef SpotNGliaBatch
                     [obj.Annotations(16:26).Counts] = num2{:};
                     [obj.Annotations(27:41).Counts] = num3{:};
                     [obj.Annotations(42:48).Counts] = num4{:};
-                    
+                    NAN tot 59
                 end
                 
                 if k1 == 9
@@ -183,41 +183,44 @@ classdef SpotNGliaBatch
             end
         end
         
-        function Computation(objb)
-            fprintf('%d ', k1)
-            for k1 = 1:10
-                objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'RgbToGray', 'ColorToGrayVector', [0; 1; 0], ''); %color selection
-                objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'Wavelet', 'ScaleBase', 0.333, ''); %color selection
-                objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'MultiProduct', 'MPlevels', 6:11, ''); %color selection
-                objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'MultiProduct', 'MPthreshold', 1500, ''); %color selection
-                objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'SpotSelection', 'MinSpotSize', 27.7, ''); %color selection
-                objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'SpotSelection', 'MaxSpotSize', 417, ''); %color selection
-                objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'SpotSelection', 'MinProbability', 0.0719, ''); %color selection
-                
-                %zf = load([ob{k1}.obj.SourcePath, '/', 'zfinput.mat']);
-                %obj.ZFParameters = zf.zfinput;
-            end
-            
-            cellobject = objb.Objects;
-            parfor k1 = 1:10
-                k1
-                cellobject{k1} = cellobject{k1}.SpotDetection;
-            end
-            objb.Objects = cellobject;
-        end
+        %{
+function Computation(objb)
+             for k1 = 1:10
+             fprintf('%d ', k1)
+                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'RgbToGray', 'ColorToGrayVector', [0; 1; 0], ''); %color selection
+                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'Wavelet', 'ScaleBase', 0.333, ''); %color selection
+                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'MultiProduct', 'MPlevels', 6:11, ''); %color selection
+                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'MultiProduct', 'MPthreshold', 1500, ''); %color selection
+                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'SpotSelection', 'MinSpotSize', 27.7, ''); %color selection
+                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'SpotSelection', 'MaxSpotSize', 417, ''); %color selection
+                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'SpotSelection', 'MinProbability', 0.0719, ''); %color selection
+ 
+                 %zf = load([ob{k1}.obj.SourcePath, '/', 'zfinput.mat']);
+                 %obj.ZFParameters = zf.zfinput;
+             end
+ 
+             cellobject = objb.Objects;
+             parfor k1 = 1:10
+                 k1
+                 cellobject{k1} = cellobject{k1}.SpotDetection;
+             end
+             objb.Objects = cellobject;
+         end
+        %}
+        
         %{
 function NewPath(objb, mode)
-              %% change savepath and fishpath to new path only for
-              for k1 = 1:numel(objb.FilePaths)
-                  obj = objb.Objects.(['obj', num2str(k1)])
-                  tempvar = obj.SavePath
-                  obj = obj.NewPath(mode);
-                  if ~isequal(obj.SavePath, tempvar)
-                      obj.saveit;
-                  end
-              end
-              %%
-          end
+                 %% change savepath and fishpath to new path only for
+                 for k1 = 1:numel(objb.FilePaths)
+                     obj = objb.Objects.(['obj', num2str(k1)])
+                     tempvar = obj.SavePath
+                     obj = obj.NewPath(mode);
+                     if ~isequal(obj.SavePath, tempvar)
+                         obj.saveit;
+                     end
+                 end
+                 %%
+             end
         %}
         
         function objb = computeTscores(objb)
@@ -264,23 +267,32 @@ function NewPath(objb, mode)
             objb.SaveName = name;
             save(strcat(objb.MainFolder, '/', name, '.mat'), 'objb');
         end
-                
-        function ShowFishHeadHist(objb,batchnumber,fishnumber)
-                obj = objb.Objects{batchnumber};                
-                ShowFishHeadHist(obj, fishnumber);
+        
+        function ShowFishHeadHist(objb, batchnumber, fishnumber)
+            obj = objb.Objects{batchnumber};
+            ShowFishHeadHist(obj, fishnumber);
         end
         
         function ShowMaxFishHist(objb)
             for k1 = 1:10
-                obj = objb.Objects{k1};              
+                obj = objb.Objects{k1};
                 ShowMaxFishHist(obj);
             end
         end
         
         function BrainSegmentation(objb)
             for k1 = 1:10
-                objb.Objects{k1} = objb.Objects{k1}.BrainSegmentation;              
-            end        
+                objb.Objects{k1} = objb.Objects{k1}.BrainSegmentation;
+            end
         end
+        
+        function ClearAllSpotOptListRMSD(objb)
+            for k1 = 1:10
+                if exist([objb.Objects{k1}.SavePath, '/', 'SpotOptListRMSD', '.mat'], 'file')
+                    delete([objb.Objects{k1}.SavePath, '/', 'SpotOptListRMSD', '.mat'], 'SpotOptListRMSD')
+                end
+            end
+        end
+        
     end
 end
