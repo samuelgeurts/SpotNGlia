@@ -162,7 +162,7 @@ classdef SpotNGlia
                     %i.e. between macbookpro and erasmus pc and medion pc.
                     %Only when fishes are on harddisk
                     
-                    if strcmp(User, 'SNGeu') && strcmp(obj.User, 'samuelgeurts') %#ok<PROPLC>
+                    if strcmp(User, 'SNGeu') && strcmp(obj.User, 'samuelgeurts') 
                         splitStr = regexp(obj.FishPath, '\/', 'split');
                         if strcmp(splitStr{2}, 'Volumes')
                             filename = 'D:';
@@ -173,7 +173,7 @@ classdef SpotNGlia
                         end
                     end
                     
-                    if strcmp(User, 'samuelgeurts') && strcmp(obj.User, 'SNGeu') %#ok<PROPLC>
+                    if strcmp(User, 'samuelgeurts') && strcmp(obj.User, 'SNGeu') 
                         expression = '\/';
                         splitStr = regexp(obj.FishPath, expression, 'split');
                         if strcmp(splitStr{1}, 'D:')
@@ -185,7 +185,7 @@ classdef SpotNGlia
                         end
                     end
                     
-                    if strcmp(User, '260018') && strcmp(obj.User, 'samuelgeurts') %#ok<PROPLC>
+                    if strcmp(User, '260018') && strcmp(obj.User, 'samuelgeurts') 
                         expression = '\/';
                         splitStr = regexp(obj.FishPath, expression, 'split');
                         
@@ -198,7 +198,7 @@ classdef SpotNGlia
                         end
                     end
                     
-                    if strcmp(User, 'samuelgeurts') && strcmp(obj.User, '260018') %#ok<PROPLC>
+                    if strcmp(User, 'samuelgeurts') && strcmp(obj.User, '260018') 
                         expression = '\\';
                         splitStr = regexp(obj.FishPath, expression, 'split');
                         
@@ -213,7 +213,7 @@ classdef SpotNGlia
                     obj.SavePath = obj.FishPath;
                     obj.SourcePath = [BasePath, '/', 'SpotNGlia Source'];
                 end
-                obj.User = User; %#ok<PROPLC>
+                obj.User = User; 
             else
                 error('unknown mode')
             end
@@ -272,8 +272,8 @@ classdef SpotNGlia
                 [obj.ImageInfo] = ImageInfoSNG(obj.ImageInfo, obj.ZFParameters);
                 [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
                 
-                ImageInfo = obj.ImageInfo; %#ok<NASGU,PROPLC>
-                StackInfo = obj.StackInfo; %#ok<NASGU,PROPLC>
+                ImageInfo = obj.ImageInfo; %#ok<NASGU>
+                StackInfo = obj.StackInfo; %#ok<NASGU>
                 
                 save([obj.SavePath, '/', obj.InfoName, '.mat'], 'ImageInfo')
                 save([obj.SavePath, '/', obj.InfoName, '.mat'], 'StackInfo', '-append')
@@ -325,7 +325,7 @@ classdef SpotNGlia
                 elseif (max(fishnumbers) > numel(obj.StackInfo))
                     error('at least one fish does not exist in StackInfo')
                 end
-                nfishes = numel(fishnumbers);
+                nfishes = numel(fishnumbers); %#ok<*PROPLC>
                 obj.fishnumbers.preprocession = fishnumbers;
                 
                 %only preallocate if more than 1 fish has to be processed
@@ -559,9 +559,10 @@ classdef SpotNGlia
             end
             
             %update checkup if checkup exists, only when new spot-parameters are tested (ZFParameters)
-            load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
-            if exist('checkup', 'var')
-                for k3 = 1:numel(checkup)
+            VariableList = who('-file',[obj.SavePath, '/', obj.InfoName, '.mat']);
+            if ismember('checkup',VariableList)
+            	load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
+                for k3 = 1:numel(checkup) %#ok<NODEF>
                     if checkup(k3).Include == 1
                         Xrow = checkup(k3).Midbrain(:, 1);
                         Yrow = checkup(k3).Midbrain(:, 2);
@@ -573,7 +574,7 @@ classdef SpotNGlia
                             [SpotParameters{k3}.SmallerThan] == 1 & ...
                             [SpotParameters{k3}.MinProbability] == 1);
                         [rc] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
-                        checkup(k3).Spots = [rc(:, 1), rc(:, 2)];
+                        checkup(k3).Spots = [rc(:, 1), rc(:, 2)]; %#ok<AGROW>
                     end
                 end
                 save([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup', '-append');
@@ -626,7 +627,7 @@ classdef SpotNGlia
             for k1 = 1:nfishes
                 fn = fishnumbers(k1);
                 AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
-                threshold = RegistrationInfo{k1}(find(strcmp({RegistrationInfo{k1}.name}, 'BackgroundThreshold'))).value;
+                threshold = RegistrationInfo{k1}(strcmp({RegistrationInfo{k1}.name}, 'BackgroundThreshold')).value;
                 
                 %figure;imagesc(AlignedFish(:,700:end,:));
 
@@ -943,22 +944,27 @@ classdef SpotNGlia
             
         end
         
-        function obj = TtestVal(obj, SpotsDetected)
+        function obj = TtestVal(obj, SpotN)
             %computes t-test if the number of spots are known and saved ouder
-            
-            if ~exist('SpotsDetected', 'var')
-                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected');
-            end
-            
-            ccs = zeros(1, numel(SpotsDetected));
-            for l1 = 1:numel(SpotsDetected)
-                ccs(l1) = numel(SpotsDetected{l1});
-                obj.StackInfo(l1).Counts = numel(SpotsDetected{l1});
-            end
-            
-            ccs = [obj.StackInfo.Counts];
-            
-            %nfishes = numel(obj.StackInfo);
+            %if checkup is generated, TtestVal will compute on those and store in
+            %obj.SpotBrainStats. This is not very pretty and should be changed later
+                       
+            if ~exist('SpotN', 'var')
+                SpotN = [obj.StackInfo.Counts];
+                
+                VariableList = who('-file',[obj.SavePath, '/', obj.InfoName, '.mat']);
+                if ismember('checkup',VariableList)
+                    load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
+                end
+
+                %would be easier if SpotN containes a counts column
+                for k1 = 1:numel(checkup)
+                    SpotN(k1) = size(checkup(k1).Spots,1);
+                    if checkup(k1).Include == 0
+                        SpotN(k1) = NaN;
+                    end
+                end
+            end                      
             
             if ~isfield((obj.Annotations), 'Counts')
                 for l2 = 1:numel(obj.Annotations)
@@ -966,13 +972,13 @@ classdef SpotNGlia
                 end
             end
             
-            hcs = [obj.Annotations.Counts];
-            ind = ~isnan(hcs);
+            SpotAnnN = [obj.Annotations.Counts];
+            ind = boolean(~isnan(SpotAnnN) .* ~isnan(SPOTN)) ;
             
-            [h, p] = ttest(hcs(ind)', ccs(ind)');
-            mn = mean(abs(ccs(ind)-hcs(ind)));
-            st = std(abs(ccs(ind)-hcs(ind)));
-            RMSD = sqrt(mean((hcs(ind)' - ccs(ind)').^2));
+            [h, p] = ttest(SpotAnnN(ind)', SPOTN(ind)');
+            mn = mean(abs(SPOTN(ind)-SpotAnnN(ind)));
+            st = std(abs(SPOTN(ind)-SpotAnnN(ind)));
+            RMSD = sqrt(mean((SpotAnnN(ind)' - SPOTN(ind)').^2));
             
             obj.SpotBrainStats.ttest = h;
             obj.SpotBrainStats.ttestval = p;
@@ -989,7 +995,7 @@ classdef SpotNGlia
             
             nfishes = numel(obj.StackInfo);
             
-            LinkDistance = cell(nfishes, 1);
+            LinkDistance = cell(nfishes, 1); 
             CorrectSpots = cell(nfishes, 1);
             nCorrect = zeros(nfishes, 1);
             FalsePosSpots = cell(nfishes, 1);
