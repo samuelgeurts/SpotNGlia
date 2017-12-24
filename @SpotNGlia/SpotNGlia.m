@@ -943,11 +943,13 @@ classdef SpotNGlia
             
         end
         
-        function obj = TtestVal(obj)
+        function obj = TtestVal(obj, SpotsDetected)
             %computes t-test if the number of spots are known and saved ouder
             
-            %load([obj.SavePath,'/',obj.InfoName,'.mat'],'SpotParameters')
-            load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected')
+            if ~exist('SpotsDetected', 'var')
+                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected');
+            end
+            
             ccs = zeros(1, numel(SpotsDetected));
             for l1 = 1:numel(SpotsDetected)
                 ccs(l1) = numel(SpotsDetected{l1});

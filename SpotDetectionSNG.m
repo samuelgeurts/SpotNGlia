@@ -15,9 +15,9 @@ ZFParameters = ZFParametersTemp{1}
 
 %}
 %{
-Ialigned = AlignedFish;
+Ialigned = AlignedFish{k1};
 CompleteTemplate = obj.CompleteTemplate;
-cmbr = fliplr(ambr), 
+cmbr = MidBrain;
 ZFParameters =  ZFParametersTemp{1}
 %}
 

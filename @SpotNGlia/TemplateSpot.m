@@ -17,7 +17,6 @@ obj.ZFParameters
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo')
 
 
-
 ColorToGrayVector = CompleteTemplate.SpotContrastVector;
 %ColorToGrayVector = [0 1 0]
 %ColorToGrayVector = [-0.378629920630393;0.865619921584407;-0.327630179561694]        
