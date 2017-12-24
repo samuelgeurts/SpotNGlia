@@ -3,7 +3,6 @@ function objTemp = SpotOptimizationRMSD(obj, fishnumbers, zfinputlist, brain_sw,
 % first for a single object
 % than apply in SNGbatch
 % than apply
-
 %obj            SpotNGlia object
 %fishnumber     fishnumbers to proces, if input is nothing than all are processed
 %zfinputlist    structure with cell with parameters to test: see SpotOptimizationScript.m
@@ -11,6 +10,12 @@ function objTemp = SpotOptimizationRMSD(obj, fishnumbers, zfinputlist, brain_sw,
 %               Annotation: when spot and brain annotations are known, optimized on fscore
 %               Computation: use the computed brain en optimize on RMSD
 %               Correction: use corrected braindata in checkout.mat and optimize on RMSD
+
+%Example
+%   objTemp = obj.SpotOptimizationRMSD([],zfinputlist,'Correction')
+
+
+
 
 %minspotsize:   0-20-60
 %maxspotsize    200-300-470
@@ -123,7 +128,7 @@ if ~exist('SpotsDetected', 'var')
     
     
 else
-    ZFParametersTemp = 1
+    ZFParametersTemp = 1;
 end
 
 %% compute spot parameters for certain ZFParameter input
@@ -132,12 +137,21 @@ for k2 = 1:numel(ZFParametersTemp)
         
         SpotsDetected = cell(1, obj.nfishes);
         SpotN = NaN(1, obj.nfishes);
+        
         for k1 = 1:nfishes
             fn = fishnumbers(k1);
             %fprintf([num2str(a(k2)), ',', num2str(b(k2)), ',', num2str(c(k2)), ',', num2str(d(k2)), ',', num2str(e(k2)), ',', num2str(k1), '\n'])
             fprintf('%d ', fn)
-            [SpotsDetected{fn},~,~,SpotN(fn)] = SpotDetectionSNG(AlignedFish{fn}, CompleteTemplate, MidBrain{fn}, ZFParametersTemp{k2}); %#ok<PFBNS>
+            [SpotsDetected{fn},~,~,SpotN(fn)] = SpotDetectionSNG(AlignedFish{fn}, CompleteTemplate, MidBrain{fn}, ZFParametersTemp{k2}); 
         end
+        %{
+        fn = fishnumbers;
+        parfor k1 = 1:nfishes
+            %fprintf([num2str(a(k2)), ',', num2str(b(k2)), ',', num2str(c(k2)), ',', num2str(d(k2)), ',', num2str(e(k2)), ',', num2str(k1), '\n'])
+            fprintf('%d ', fn(k1))
+            [SpotsDetected{fn(k1)},~,~,SpotN(fn(k1))] = SpotDetectionSNG(AlignedFish{fn(k1)}, CompleteTemplate, MidBrain{fn(k1)}, ZFParametersTemp{k2}); 
+        end
+        %}
     end
     
     %{
@@ -244,7 +258,7 @@ for k2 = 1:numel(ZFParametersTemp)
     minRMSD = 1000;
     maxttest = 0;
     for k3 = 1:numel(f)
-        if round(k3/50) == k3 / 100; fprintf('%d ', k3); end;
+        if round(k3/100) == k3 / 100; fprintf('%d ', k3); end
         SpotsDetectedTemp = SpotsDetected;
         %%% assign new threshold logical array to obj.SpotParameters
         for k1 = 1:nfishes
@@ -252,7 +266,7 @@ for k2 = 1:numel(ZFParametersTemp)
             SpotsDetectedTemp{fn} = SpotsDetectedTemp{fn}([SpotsDetectedTemp{fn}.Area] >= MinSpotSizeL(f(k3)));
             SpotsDetectedTemp{fn} = SpotsDetectedTemp{fn}([SpotsDetectedTemp{fn}.Area] <= MaxSpotSizeL(g(k3)));
             SpotsDetectedTemp{fn} = SpotsDetectedTemp{fn}([SpotsDetectedTemp{fn}.ColorProbability] >= MinProbabilityL(h(k3)));
-            SpotN(fn) = numel(SpotsDetectedTemp{fn})
+            SpotN(fn) = numel(SpotsDetectedTemp{fn});
         end
         
         
@@ -263,8 +277,9 @@ for k2 = 1:numel(ZFParametersTemp)
         meanRMSDlist = objTemp.SpotBrainStats.RMSD;
         if meanRMSDlist < minRMSD
             minRMSD = meanRMSDlist;
-            indx = k3;
+            %indx = k3;
             minobjTemp = objTemp;
+            StoreSpotOpt(objTemp,k3,'RMSD')
         end
         
         
@@ -276,8 +291,8 @@ for k2 = 1:numel(ZFParametersTemp)
             %minobjTemp = objTemp;
             
             if maxttest >= 1
-                optimode = 'ttest';
-                StoreSpotOpt(objTemp)
+                %optimode = 'ttest';
+                StoreSpotOpt(objTemp,k3,'ttest')
             end
         end
         %}
@@ -286,26 +301,27 @@ for k2 = 1:numel(ZFParametersTemp)
         % meanf1list(k3) = objTemp.SpotStats.MeanF1score;
     end
     clear SpotsDetected
-    optimode = 'RMSD';
-    StoreSpotOpt
+    %optimode = 'RMSD';
+    %StoreSpotOpt(minobjTemp,indx)
     disp(num2str(minobjTemp.SpotBrainStats.RMSD));
+    
 end
 
-    function StoreSpotOpt(objTemp)
+    function StoreSpotOpt(Object2Store,index,optimode)
         
-        if nargin == 0
-            objTemp = minobjTemp;
-        end
+        %if nargin == 0
+        %    objTemp = minobjTemp;
+        %end
         
-        MinSpotSize = MinSpotSizeL(f(indx));
-        MaxSpotSize = MaxSpotSizeL(g(indx));
-        MinProbability = MinProbabilityL(h(indx));
+        MinSpotSize = MinSpotSizeL(f(index));
+        MaxSpotSize = MaxSpotSizeL(g(index));
+        MinProbability = MinProbabilityL(h(index));
         
-        SpotOpt.ttest = objTemp.SpotBrainStats.ttest;
-        SpotOpt.ttestval = objTemp.SpotBrainStats.ttestval;
-        SpotOpt.MeanAbsDifference = objTemp.SpotBrainStats.MeanAbsDifference;
-        SpotOpt.StdAbsDifference = objTemp.SpotBrainStats.StdAbsDifference;
-        SpotOpt.RMSD = objTemp.SpotBrainStats.RMSD;
+        SpotOpt.ttest = Object2Store.SpotBrainStats.ttest;
+        SpotOpt.ttestval = Object2Store.SpotBrainStats.ttestval;
+        SpotOpt.MeanAbsDifference = Object2Store.SpotBrainStats.MeanAbsDifference;
+        SpotOpt.StdAbsDifference = Object2Store.SpotBrainStats.StdAbsDifference;
+        SpotOpt.RMSD = Object2Store.SpotBrainStats.RMSD;
         
         %test if one of the thresholds found is on the edge of the seeking range
         if (MinSpotSize == min(MinSpotSizeL)) && (MinSpotSize ~= 0) || (MinSpotSize == max(MinSpotSizeL)) || ...
