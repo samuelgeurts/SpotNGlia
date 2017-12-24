@@ -16,11 +16,17 @@ function objTemp = SpotOptimizationRMSD(obj, fishnumbers, zfinputlist, brain_sw,
 %maxspotsize    200-300-470
 %MinProbability 0.03-0.06-0.12
 
+%nfishes is the number of fishes to process
+%obj.nfishes is the total number of available fishes (nfishes <= obj.nfishes) = true
+
+
+
 
 %{
        fishnumbers = 1:5
 %}
-
+load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
+include = boolean([checkup.Include]);
 
 if exist([obj.SavePath, '/', 'SpotOptListRMSD', '.mat'], 'file')
     load([obj.SavePath, '/', 'SpotOptListRMSD', '.mat'], 'SpotOptListRMSD')
@@ -36,9 +42,12 @@ elseif max(fishnumbers) > numel(obj.StackInfo)
     error('at least one fish does not exist in RegistrationInfo')
 end
 
+%removes excluded number according checkup.include, slim he :)
+fishnumbers = fishnumbers(include(fishnumbers));
+
 nfishes = numel(fishnumbers);
 
-if exist('zfinputlist', 'var')
+if exist('zfinputlist', 'var') && ~isempty(zfinputlist)
     ColorToGrayVectorL = zfinputlist.ColorToGrayVectorL;
     ScaleBaseL = zfinputlist.ScaleBaseL;
     KthresholdL = zfinputlist.KthresholdL;
@@ -53,7 +62,7 @@ else
     KthresholdL = {0};
     MPlevelsL = {5:7};
     MPthresholdL = {200};
-    MinSpotSizeL = 4084;
+    MinSpotSizeL = 8.4;
     MaxSpotSizeL = 458;
     MinProbabilityL = 0.066;
 end
@@ -86,19 +95,18 @@ if ~exist('SpotsDetected', 'var')
     MidBrain = cell(1, obj.nfishes);
     switch brain_sw
         case 'Annotation'
-            for k1 = 1:obj.nfishes
+            for k1 = 1:nfishes
                 fn = fishnumbers(k1);
                 MidBrain{fn} = fliplr([obj.Annotations(fn).MidBrain]);
             end
         case 'Computation'
             load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
-            for k1 = 1:obj.nfishes
+            for k1 = 1:nfishes
                 fn = fishnumbers(k1);
                 MidBrain{fn} = fliplr(BrainSegmentationInfo(fn).BrainEdge);
             end
         case 'Correction'
-            load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup')
-            for k1 = 1:obj.nfishes
+            for k1 = 1:nfishes
                 fn = fishnumbers(k1);
                 MidBrain{fn} = fliplr(checkup(fn).Midbrain);
             end
@@ -107,10 +115,10 @@ if ~exist('SpotsDetected', 'var')
     end
     
     %store AlignedFish in memory for speed
-    AlignedFish = cell(1, 50);
+    AlignedFish = cell(1, obj.nfishes);
     for k1 = 1:nfishes
         fn = fishnumbers(k1);
-        AlignedFish{k1} = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
+        AlignedFish{fn} = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
     end
     
     
@@ -123,11 +131,12 @@ for k2 = 1:numel(ZFParametersTemp)
     if ~exist('SpotsDetected', 'var')
         
         SpotsDetected = cell(1, obj.nfishes);
-        
-        for k1 = fishnumbers
+        SpotN = NaN(1, obj.nfishes);
+        for k1 = 1:nfishes
+            fn = fishnumbers(k1);
             %fprintf([num2str(a(k2)), ',', num2str(b(k2)), ',', num2str(c(k2)), ',', num2str(d(k2)), ',', num2str(e(k2)), ',', num2str(k1), '\n'])
-            fprintf('%d ', k1)
-            [SpotsDetected{k1}] = SpotDetectionSNG(AlignedFish{k1}, CompleteTemplate, MidBrain{k1}, ZFParametersTemp{k2}); %#ok<PFBNS>
+            fprintf('%d ', fn)
+            [SpotsDetected{fn},~,~,SpotN(fn)] = SpotDetectionSNG(AlignedFish{fn}, CompleteTemplate, MidBrain{fn}, ZFParametersTemp{k2}); %#ok<PFBNS>
         end
     end
     
@@ -238,13 +247,17 @@ for k2 = 1:numel(ZFParametersTemp)
         if round(k3/50) == k3 / 100; fprintf('%d ', k3); end;
         SpotsDetectedTemp = SpotsDetected;
         %%% assign new threshold logical array to obj.SpotParameters
-        for k5 = 1:nfishes
-            SpotsDetectedTemp{k5} = SpotsDetectedTemp{k5}([SpotsDetectedTemp{k5}.Area] >= MinSpotSizeL(f(k3)));
-            SpotsDetectedTemp{k5} = SpotsDetectedTemp{k5}([SpotsDetectedTemp{k5}.Area] <= MaxSpotSizeL(g(k3)));
-            SpotsDetectedTemp{k5} = SpotsDetectedTemp{k5}([SpotsDetectedTemp{k5}.ColorProbability] >= MinProbabilityL(h(k3)));
+        for k1 = 1:nfishes
+            fn = fishnumbers(k1);
+            SpotsDetectedTemp{fn} = SpotsDetectedTemp{fn}([SpotsDetectedTemp{fn}.Area] >= MinSpotSizeL(f(k3)));
+            SpotsDetectedTemp{fn} = SpotsDetectedTemp{fn}([SpotsDetectedTemp{fn}.Area] <= MaxSpotSizeL(g(k3)));
+            SpotsDetectedTemp{fn} = SpotsDetectedTemp{fn}([SpotsDetectedTemp{fn}.ColorProbability] >= MinProbabilityL(h(k3)));
+            SpotN(fn) = numel(SpotsDetectedTemp{fn})
         end
         
-        objTemp = objTemp.TtestVal(SpotsDetectedTemp);
+        
+        
+        objTemp = objTemp.TtestVal(SpotN);
         
         %for selecting on RMSD
         meanRMSDlist = objTemp.SpotBrainStats.RMSD;
