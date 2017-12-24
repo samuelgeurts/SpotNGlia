@@ -973,12 +973,16 @@ classdef SpotNGlia
             end
             
             SpotAnnN = [obj.Annotations.Counts];
-            ind = boolean(~isnan(SpotAnnN) .* ~isnan(SPOTN)) ;
+            ind = boolean(~isnan(SpotAnnN) .* ~isnan(SpotN));
             
-            [h, p] = ttest(SpotAnnN(ind)', SPOTN(ind)');
-            mn = mean(abs(SPOTN(ind)-SpotAnnN(ind)));
-            st = std(abs(SPOTN(ind)-SpotAnnN(ind)));
-            RMSD = sqrt(mean((SpotAnnN(ind)' - SPOTN(ind)').^2));
+            %removes emptys and nans
+            SAN = SpotAnnN(ind);
+            SN = SpotN(ind);
+            
+            [h, p] = ttest(SAN, SN);
+            mn = mean(abs(SN-SAN));
+            st = std(abs(SN-SAN));
+            RMSD = sqrt(mean((SAN - SN).^2));
             
             obj.SpotBrainStats.ttest = h;
             obj.SpotBrainStats.ttestval = p;
