@@ -12,7 +12,7 @@ classdef SpotNGliaBatch
         BatchStats = [];
         SpotsAnnotated = [];
         SpotsComputed = [];
-        
+        SpotsTopTen = [];
     end
     
     methods
@@ -21,10 +21,10 @@ classdef SpotNGliaBatch
         function objb = SpotNGliaBatch
             
             %{
-                   obj = obj.NewPath(1)
-                   filename = obj.SavePath
-                   infoname = obj.InfoName
-                   sngname = obj.SaveName
+                      obj = obj.NewPath(1)
+                      filename = obj.SavePath
+                      infoname = obj.InfoName
+                      sngname = obj.SaveName
             %}
             
             %% initialize locations and file names
@@ -185,42 +185,42 @@ classdef SpotNGliaBatch
         
         %{
 function Computation(objb)
-             for k1 = 1:10
-             fprintf('%d ', k1)
-                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'RgbToGray', 'ColorToGrayVector', [0; 1; 0], ''); %color selection
-                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'Wavelet', 'ScaleBase', 0.333, ''); %color selection
-                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'MultiProduct', 'MPlevels', 6:11, ''); %color selection
-                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'MultiProduct', 'MPthreshold', 1500, ''); %color selection
-                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'SpotSelection', 'MinSpotSize', 27.7, ''); %color selection
-                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'SpotSelection', 'MaxSpotSize', 417, ''); %color selection
-                 objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'SpotSelection', 'MinProbability', 0.0719, ''); %color selection
+                for k1 = 1:10
+                fprintf('%d ', k1)
+                    objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'RgbToGray', 'ColorToGrayVector', [0; 1; 0], ''); %color selection
+                    objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'Wavelet', 'ScaleBase', 0.333, ''); %color selection
+                    objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'MultiProduct', 'MPlevels', 6:11, ''); %color selection
+                    objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'MultiProduct', 'MPthreshold', 1500, ''); %color selection
+                    objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'SpotSelection', 'MinSpotSize', 27.7, ''); %color selection
+                    objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'SpotSelection', 'MaxSpotSize', 417, ''); %color selection
+                    objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters, 0, 'SpotDetection', 'SpotSelection', 'MinProbability', 0.0719, ''); %color selection
  
-                 %zf = load([ob{k1}.obj.SourcePath, '/', 'zfinput.mat']);
-                 %obj.ZFParameters = zf.zfinput;
-             end
+                    %zf = load([ob{k1}.obj.SourcePath, '/', 'zfinput.mat']);
+                    %obj.ZFParameters = zf.zfinput;
+                end
  
-             cellobject = objb.Objects;
-             parfor k1 = 1:10
-                 k1
-                 cellobject{k1} = cellobject{k1}.SpotDetection;
-             end
-             objb.Objects = cellobject;
-         end
+                cellobject = objb.Objects;
+                parfor k1 = 1:10
+                    k1
+                    cellobject{k1} = cellobject{k1}.SpotDetection;
+                end
+                objb.Objects = cellobject;
+            end
         %}
         
         %{
 function NewPath(objb, mode)
-                 %% change savepath and fishpath to new path only for
-                 for k1 = 1:numel(objb.FilePaths)
-                     obj = objb.Objects.(['obj', num2str(k1)])
-                     tempvar = obj.SavePath
-                     obj = obj.NewPath(mode);
-                     if ~isequal(obj.SavePath, tempvar)
-                         obj.saveit;
-                     end
-                 end
-                 %%
-             end
+                    %% change savepath and fishpath to new path only for
+                    for k1 = 1:numel(objb.FilePaths)
+                        obj = objb.Objects.(['obj', num2str(k1)])
+                        tempvar = obj.SavePath
+                        obj = obj.NewPath(mode);
+                        if ~isequal(obj.SavePath, tempvar)
+                            obj.saveit;
+                        end
+                    end
+                    %%
+                end
         %}
         
         function objb = computeTscores(objb)
@@ -231,21 +231,26 @@ function NewPath(objb, mode)
                 obj = obj.TtestVal;
                 obj.saveit
                 
+                
+            end
+        end
+        
+        function objb = FillBatchStats(objb)
+            for k1 = 1:10
+                obj = objb.Objects{k1};
                 objb.BatchStats(k1).ttest = obj.SpotBrainStats.ttest;
                 objb.BatchStats(k1).ttestval = obj.SpotBrainStats.ttestval;
                 objb.BatchStats(k1).MeanAbsDif = obj.SpotBrainStats.MeanAbsDifference;
                 objb.BatchStats(k1).StdAbsDif = obj.SpotBrainStats.StdAbsDifference;
                 objb.BatchStats(k1).RMSD = obj.SpotBrainStats.RMSD;
-                
-                %load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected');
-                %ccs = zeros(1, numel(SpotsDetected));
-                %ccs = obj.StackInfo.Counts
-                %for l1 = 1:numel(SpotsDetected)
-                %    ccs(l1) = numel(SpotsDetected{l1});
-                %end
-                %temp = {ob{k1}.obj.Annotations.Counts};
                 objb.SpotsAnnotated{k1} = [obj.Annotations.Counts];
                 objb.SpotsComputed{k1} = [obj.StackInfo.Counts];
+                
+                objb.BatchStats(k1).meanNAnn = mean(objb.SpotsAnnotated{k1}(~isnan(objb.SpotsAnnotated{k1})))
+                objb.BatchStats(k1).meanNCom = mean(objb.SpotsComputed{k1}(~isnan(objb.SpotsComputed{k1})))
+
+                
+                
             end
         end
         
@@ -293,6 +298,53 @@ function NewPath(objb, mode)
                 end
             end
         end
+        
+        function OpenSpotOptList(objb)
+            for k1 = 1:10
+                obj = objb.Objects{k1}
+                SOLB{k1} = load([obj.SavePath, '/', 'SpotOptListRMSD', '.mat'], 'SpotOptListRMSD')
+            end
+            for k1 = 1:10
+                [~,index] = sortrows([SOLB{1, k1}.SpotOptListRMSD.RMSD].'); 
+                SOLB{1, k1}.SpotOptListRMSD = SOLB{1, k1}.SpotOptListRMSD(index); clear index
+                   
+            objb.SpotsTopTen{1,k1} = table([SOLB{1, k1}.SpotOptListRMSD(1:10).ttestval]',...
+                [SOLB{1, k1}.SpotOptListRMSD(1:10).RMSD]',...
+                [SOLB{1, k1}.SpotOptListRMSD(1:10).MPthresholdL]',...
+                [SOLB{1, k1}.SpotOptListRMSD(1:10).MinSpotSize]',...
+                [SOLB{1, k1}.SpotOptListRMSD(1:10).MaxSpotSize]',...
+                [SOLB{1, k1}.SpotOptListRMSD(1:10).MinProbability]','VariableNames',{'tt','rmsd','thr','min','max','prob'})          
+            end
+            
+            
+            for k1 = 1:10                        
+                objb.BatchStats(k1).MeanMPThres10 = mean([SOLB{1, k1}.SpotOptListRMSD(1:10).MPthresholdL])
+                objb.BatchStats(k1).MeanMinProb10 = mean([SOLB{1, k1}.SpotOptListRMSD(1:10).MinProbability])
+                objb.BatchStats(k1).MeanMinSpot10 = mean([SOLB{1, k1}.SpotOptListRMSD(1:10).MinSpotSize])
+                objb.BatchStats(k1).MeanMaxSpot10 = mean([SOLB{1, k1}.SpotOptListRMSD(1:10).MaxSpotSize])
+            end
+            
+            
+            
+            
+            
+            
+            %{
+            openvar('SOLB{1,1}.SpotOptListRMSD')
+            openvar('SOLB{1,2}.SpotOptListRMSD')
+            openvar('SOLB{1,3}.SpotOptListRMSD')
+            openvar('SOLB{1,4}.SpotOptListRMSD')
+            openvar('SOLB{1,5}.SpotOptListRMSD')
+            openvar('SOLB{1,6}.SpotOptListRMSD')
+            openvar('SOLB{1,7}.SpotOptListRMSD')
+            openvar('SOLB{1,8}.SpotOptListRMSD')
+            openvar('SOLB{1,9}.SpotOptListRMSD')
+            openvar('SOLB{1,10}.SpotOptListRMSD')
+            %}
+            
+            
+        end
+        
         
     end
 end
