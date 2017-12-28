@@ -651,8 +651,7 @@ classdef SpotNGlia
             obj.BatchInfo.StdMaxFishColor = std(MaxFishColor(:));
             obj.BatchInfo.MeanFishColor = mean(MeanFishColor(:));
             obj.BatchInfo.StdMeanFishColor = std(MeanFishColor(:));           
-        end
-        
+        end       
 
         ShowFishHeadHist(obj,fishnumber)
         ShowMaxFishHist(obj,fishnumber)
@@ -848,8 +847,7 @@ classdef SpotNGlia
                 Spotpar = SpotParameters{k1};
                 ambr = obj.Annotations(k1).MidBrain;
                 ambs = obj.Annotations(k1).Spots;
-                
-                
+                              
                 if ~isempty(Spotpar)
                     
                     %select spot insite annotated brainregion
@@ -973,6 +971,13 @@ classdef SpotNGlia
             end
             
             SpotAnnN = [obj.Annotations.Counts];
+            
+            
+            if numel(SpotN) ~= numel(SpotAnnN)
+                warning('number of computed fishes is different from annotated fishes');
+                SpotN = SpotN(1:numel(SpotAnnN));
+            end 
+            
             ind = boolean(~isnan(SpotAnnN) .* ~isnan(SpotN));
             
             %removes emptys and nans
@@ -991,7 +996,7 @@ classdef SpotNGlia
             obj.SpotBrainStats.RMSD = RMSD;
             
         end
-        %}
+        
         function obj = SpotBrainVal(obj)
             
             %load([obj.SavePath,'/',obj.InfoName,'.mat'],'SpotParameters')
@@ -1087,9 +1092,9 @@ classdef SpotNGlia
         
         function ShowBoxPlot(obj, exportit)
             %Example show and save
-            %   show(obj,1)
+            %   ShowBoxPlot(obj,1)
             %Example only show
-            %   obj.show
+            %   obj.ShowBoxPlot
             
             %%% brainval spotval
             fsx = 6; fsy = 10;
@@ -1341,12 +1346,7 @@ classdef SpotNGlia
                      end
             %}
         end
-        
-        
-        
-        
-        
-        
+         
     end
 end
 
