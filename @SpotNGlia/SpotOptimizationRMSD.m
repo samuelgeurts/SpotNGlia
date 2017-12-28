@@ -15,8 +15,6 @@ function objTemp = SpotOptimizationRMSD(obj, fishnumbers, zfinputlist, brain_sw,
 %   objTemp = obj.SpotOptimizationRMSD([],zfinputlist,'Correction')
 
 
-
-
 %minspotsize:   0-20-60
 %maxspotsize    200-300-470
 %MinProbability 0.03-0.06-0.12
@@ -24,11 +22,14 @@ function objTemp = SpotOptimizationRMSD(obj, fishnumbers, zfinputlist, brain_sw,
 %nfishes is the number of fishes to process
 %obj.nfishes is the total number of available fishes (nfishes <= obj.nfishes) = true
 
+%{
+brain_sw = 'Correction'
 
+%}
 
 
 %{
-       fishnumbers = 1:5
+        fishnumbers = 1:5
 %}
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
 include = boolean([checkup.Include]);
@@ -142,101 +143,101 @@ for k2 = 1:numel(ZFParametersTemp)
             fn = fishnumbers(k1);
             %fprintf([num2str(a(k2)), ',', num2str(b(k2)), ',', num2str(c(k2)), ',', num2str(d(k2)), ',', num2str(e(k2)), ',', num2str(k1), '\n'])
             fprintf('%d ', fn)
-            [SpotsDetected{fn},~,~,SpotN(fn)] = SpotDetectionSNG(AlignedFish{fn}, CompleteTemplate, MidBrain{fn}, ZFParametersTemp{k2}); 
+            [SpotsDetected{fn}, ~, ~, SpotN(fn)] = SpotDetectionSNG(AlignedFish{fn}, CompleteTemplate, MidBrain{fn}, ZFParametersTemp{k2});
         end
         %{
-        fn = fishnumbers;
-        parfor k1 = 1:nfishes
-            %fprintf([num2str(a(k2)), ',', num2str(b(k2)), ',', num2str(c(k2)), ',', num2str(d(k2)), ',', num2str(e(k2)), ',', num2str(k1), '\n'])
-            fprintf('%d ', fn(k1))
-            [SpotsDetected{fn(k1)},~,~,SpotN(fn(k1))] = SpotDetectionSNG(AlignedFish{fn(k1)}, CompleteTemplate, MidBrain{fn(k1)}, ZFParametersTemp{k2}); 
-        end
+         fn = fishnumbers;
+         parfor k1 = 1:nfishes
+             %fprintf([num2str(a(k2)), ',', num2str(b(k2)), ',', num2str(c(k2)), ',', num2str(d(k2)), ',', num2str(e(k2)), ',', num2str(k1), '\n'])
+             fprintf('%d ', fn(k1))
+             [SpotsDetected{fn(k1)},~,~,SpotN(fn(k1))] = SpotDetectionSNG(AlignedFish{fn(k1)}, CompleteTemplate, MidBrain{fn(k1)}, ZFParametersTemp{k2});
+         end
         %}
     end
     
     %{
  
  
-      for k5 = 1:obj.nfishes
-          temp = num2cell([SpotParameters{k5}.Area] >= MinSpotSize);
-          [SpotParameters{k5}.LargerThan] = temp{:};
-          temp = num2cell([SpotParameters{k5}.Area] <= MaxSpotSize);
-          [SpotParameters{k5}.SmallerThan] = temp{:};
-          temp = num2cell([SpotParameters{k5}.ColorProbability] >= MinProbability);
-          [SpotParameters{k5}.MinProbability] = temp{:};
-      end
+       for k5 = 1:obj.nfishes
+           temp = num2cell([SpotParameters{k5}.Area] >= MinSpotSize);
+           [SpotParameters{k5}.LargerThan] = temp{:};
+           temp = num2cell([SpotParameters{k5}.Area] <= MaxSpotSize);
+           [SpotParameters{k5}.SmallerThan] = temp{:};
+           temp = num2cell([SpotParameters{k5}.ColorProbability] >= MinProbability);
+           [SpotParameters{k5}.MinProbability] = temp{:};
+       end
  
  
-        %% selects spot sizes and color probabilities, correct & incorrect
-        AreaC = [];
-        AreaI = [];
-        ColorC = [];
-        ColorI = [];
+         %% selects spot sizes and color probabilities, correct & incorrect
+         AreaC = [];
+         AreaI = [];
+         ColorC = [];
+         ColorI = [];
  
-        for k5 = 1:obj.nfishes
-            %Spotpar = SpotParameters{k5}([SpotParameters{k5}.Insite]); %selects only insite brain region
-            SpotCom = reshape([SpotsDetected{k5}.Centroid], 2, numel(SpotsDetected{k5}))';
-            [atemp] = ismember(SpotCom, obj.SpotInfo(k5).CorrectSpots);
+         for k5 = 1:obj.nfishes
+             %Spotpar = SpotParameters{k5}([SpotParameters{k5}.Insite]); %selects only insite brain region
+             SpotCom = reshape([SpotsDetected{k5}.Centroid], 2, numel(SpotsDetected{k5}))';
+             [atemp] = ismember(SpotCom, obj.SpotInfo(k5).CorrectSpots);
  
-            AreaC = [AreaC, [Spotpar(atemp(:, 1)).Area]];
-            AreaI = [AreaI, [Spotpar(~atemp(:, 1)).Area]];
+             AreaC = [AreaC, [Spotpar(atemp(:, 1)).Area]];
+             AreaI = [AreaI, [Spotpar(~atemp(:, 1)).Area]];
  
-            ColorC = [ColorC, [Spotpar(atemp(:, 1)).ColorProbability]];
-            ColorI = [ColorI, [Spotpar(~atemp(:, 1)).ColorProbability]];
-        end
+             ColorC = [ColorC, [Spotpar(atemp(:, 1)).ColorProbability]];
+             ColorI = [ColorI, [Spotpar(~atemp(:, 1)).ColorProbability]];
+         end
     %{
-                                  if fig_tf
-                                      figure;imagesc(Spotpar(3).Image)
-                                  end
+                                   if fig_tf
+                                       figure;imagesc(Spotpar(3).Image)
+                                   end
     %}
  
-        %% Compute Threshold for area, larger than and smaller than!
-        x = linspace(0, 1000, 1000); %histogram bins
-        AreaHistCorrect = histcounts(AreaC, x); %correct spot area
-        AreaHistIncorrect = histcounts(AreaI, x); %incorrect spot area
-        %finds threshold, index is part of the right site of the histogram
-        for j = 1:size(AreaHistCorrect, 2)
-            FR(j) = sum(AreaHistIncorrect(1:j-1)) + sum(AreaHistCorrect(j:end));
-            FL(j) = sum(AreaHistCorrect(1:j-1)) + sum(AreaHistIncorrect(j:end));
-        end
-        [mxR, indexR] = max(FR);
-        MinSpotSize = x(indexR); %every area equal or larger than "LargerThan" is large enough
-        [mxL, indexL] = max(FL(indexR:end));
-        MaxSpotSize = x(indexL+indexR); %every area equal or larger than "SmallerThan" is small enough
+         %% Compute Threshold for area, larger than and smaller than!
+         x = linspace(0, 1000, 1000); %histogram bins
+         AreaHistCorrect = histcounts(AreaC, x); %correct spot area
+         AreaHistIncorrect = histcounts(AreaI, x); %incorrect spot area
+         %finds threshold, index is part of the right site of the histogram
+         for j = 1:size(AreaHistCorrect, 2)
+             FR(j) = sum(AreaHistIncorrect(1:j-1)) + sum(AreaHistCorrect(j:end));
+             FL(j) = sum(AreaHistCorrect(1:j-1)) + sum(AreaHistIncorrect(j:end));
+         end
+         [mxR, indexR] = max(FR);
+         MinSpotSize = x(indexR); %every area equal or larger than "LargerThan" is large enough
+         [mxL, indexL] = max(FL(indexR:end));
+         MaxSpotSize = x(indexL+indexR); %every area equal or larger than "SmallerThan" is small enough
     %{
-                                  if fig_tf2
-                                      sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),AreaHistCorrect,AreaHistIncorrect);
-                                      hold on;line([MinSpotSize MinSpotSize],get(gca,'Ylim'),'color',[0 0 0]);
-                                      hold on;line([MaxSpotSize MaxSpotSize],get(gca,'Ylim'),'color',[0 0 0]);
-                                  end
+                                   if fig_tf2
+                                       sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),AreaHistCorrect,AreaHistIncorrect);
+                                       hold on;line([MinSpotSize MinSpotSize],get(gca,'Ylim'),'color',[0 0 0]);
+                                       hold on;line([MaxSpotSize MaxSpotSize],get(gca,'Ylim'),'color',[0 0 0]);
+                                   end
     %}
  
-        %% Compute Threshold for color probability
-        x = linspace(0, 1.2, 1000);
-        ColorHistCorrect = histcounts(ColorC, x); %create bins
-        ColorHistIncorrect = histcounts(ColorI, x); %
-        for j = 1:size(ColorHistCorrect, 2)
-            FR(j) = sum(ColorHistIncorrect(1:j-1)) + sum(ColorHistCorrect(j:end));
-        end
-        [mxR, indexR] = max(FR);
-        MinProbability = x(indexR); %every area equal or larger than "LargerThan" is large enough
+         %% Compute Threshold for color probability
+         x = linspace(0, 1.2, 1000);
+         ColorHistCorrect = histcounts(ColorC, x); %create bins
+         ColorHistIncorrect = histcounts(ColorI, x); %
+         for j = 1:size(ColorHistCorrect, 2)
+             FR(j) = sum(ColorHistIncorrect(1:j-1)) + sum(ColorHistCorrect(j:end));
+         end
+         [mxR, indexR] = max(FR);
+         MinProbability = x(indexR); %every area equal or larger than "LargerThan" is large enough
     %{
-                                  if fig_tf2
-                                      sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),ColorHistCorrect,ColorHistIncorrect);
-                                      hold on;line([MinProbability MinProbability],get(gca,'Ylim'),'color',[0 0 0]);
-                                  end
+                                   if fig_tf2
+                                       sng_DistDifHistPlot((x(1:end-1)+((x(2)-x(1))/2)),ColorHistCorrect,ColorHistIncorrect);
+                                       hold on;line([MinProbability MinProbability],get(gca,'Ylim'),'color',[0 0 0]);
+                                   end
     %}
  
-        %using a machine learning technique would be an improvement
-        %DS = [[AreaC';AreaI'],[ColorC';ColorI']]
-        %lab = [ones(numel(AreaC),1);2*ones(numel(AreaI),1)]
-        %a = prdataset(DS,lab)
-        %a = a*scalem(a,'variance') %scaling
-        %figure;
-        %scatterd(a)
-        %wp = parzenc(a,0.25)
-        %plotc(wp)
-        %err{l1} = a*wp*testc %error of testset c on trained classifier wb
+         %using a machine learning technique would be an improvement
+         %DS = [[AreaC';AreaI'],[ColorC';ColorI']]
+         %lab = [ones(numel(AreaC),1);2*ones(numel(AreaI),1)]
+         %a = prdataset(DS,lab)
+         %a = a*scalem(a,'variance') %scaling
+         %figure;
+         %scatterd(a)
+         %wp = parzenc(a,0.25)
+         %plotc(wp)
+         %err{l1} = a*wp*testc %error of testset c on trained classifier wb
  
     %}
     
@@ -267,9 +268,7 @@ for k2 = 1:numel(ZFParametersTemp)
             SpotsDetectedTemp{fn} = SpotsDetectedTemp{fn}([SpotsDetectedTemp{fn}.Area] <= MaxSpotSizeL(g(k3)));
             SpotsDetectedTemp{fn} = SpotsDetectedTemp{fn}([SpotsDetectedTemp{fn}.ColorProbability] >= MinProbabilityL(h(k3)));
             SpotN(fn) = numel(SpotsDetectedTemp{fn});
-        end
-        
-        
+        end        
         
         objTemp = objTemp.TtestVal(SpotN);
         
@@ -279,7 +278,7 @@ for k2 = 1:numel(ZFParametersTemp)
             minRMSD = meanRMSDlist;
             %indx = k3;
             minobjTemp = objTemp;
-            StoreSpotOpt(objTemp,k3,'RMSD')
+            StoreSpotOpt(objTemp, k3, 'RMSD')
         end
         
         
@@ -292,7 +291,7 @@ for k2 = 1:numel(ZFParametersTemp)
             
             if maxttest >= 1
                 %optimode = 'ttest';
-                StoreSpotOpt(objTemp,k3,'ttest')
+                StoreSpotOpt(objTemp, k3, 'ttest')
             end
         end
         %}
@@ -307,7 +306,7 @@ for k2 = 1:numel(ZFParametersTemp)
     
 end
 
-    function StoreSpotOpt(Object2Store,index,optimode)
+    function StoreSpotOpt(Object2Store, index, optimode)
         
         %if nargin == 0
         %    objTemp = minobjTemp;
@@ -333,9 +332,9 @@ end
         end
         
         %{
-   SpotOpt.MeanF1score = mean([objTemp.SpotInfo.F1score]);
-   SpotOpt.MeanPrecision = mean([objTemp.SpotInfo.Precision]);
-   SpotOpt.MeanRecall = mean([objTemp.SpotInfo.Recall]);
+    SpotOpt.MeanF1score = mean([objTemp.SpotInfo.F1score]);
+    SpotOpt.MeanPrecision = mean([objTemp.SpotInfo.Precision]);
+    SpotOpt.MeanRecall = mean([objTemp.SpotInfo.Recall]);
         %}
         SpotOpt.optimode = optimode;
         
@@ -351,20 +350,20 @@ end
         SpotOpt.datetime = string(datetime);
         
         %{
-   SpotOpt.MeanAbsDifference = mean(abs([objTemp.SpotInfo.AbsDifference]));
-   SpotOpt.MeanRelDifference = mean(abs([objTemp.SpotInfo.RelDifference]));
+    SpotOpt.MeanAbsDifference = mean(abs([objTemp.SpotInfo.AbsDifference]));
+    SpotOpt.MeanRelDifference = mean(abs([objTemp.SpotInfo.RelDifference]));
  
-   SpotOpt.StdPrecision = std([objTemp.SpotInfo.Precision]);
-   SpotOpt.StdRecall = std([objTemp.SpotInfo.Recall]);
-   SpotOpt.StdF1score = std([objTemp.SpotInfo.F1score]);
-   SpotOpt.StdAbsDifference = std(abs([objTemp.SpotInfo.AbsDifference]));
-   SpotOpt.StdRelDifference = std(abs([objTemp.SpotInfo.RelDifference]));
+    SpotOpt.StdPrecision = std([objTemp.SpotInfo.Precision]);
+    SpotOpt.StdRecall = std([objTemp.SpotInfo.Recall]);
+    SpotOpt.StdF1score = std([objTemp.SpotInfo.F1score]);
+    SpotOpt.StdAbsDifference = std(abs([objTemp.SpotInfo.AbsDifference]));
+    SpotOpt.StdRelDifference = std(abs([objTemp.SpotInfo.RelDifference]));
  
-   SpotOpt.Precision = [objTemp.SpotInfo.Precision];
-   SpotOpt.Recall = [objTemp.SpotInfo.Recall];
-   SpotOpt.F1score = [objTemp.SpotInfo.F1score];
-   SpotOpt.AbsDifference = [objTemp.SpotInfo.AbsDifference];
-   SpotOpt.RelDifference = [objTemp.SpotInfo.RelDifference];
+    SpotOpt.Precision = [objTemp.SpotInfo.Precision];
+    SpotOpt.Recall = [objTemp.SpotInfo.Recall];
+    SpotOpt.F1score = [objTemp.SpotInfo.F1score];
+    SpotOpt.AbsDifference = [objTemp.SpotInfo.AbsDifference];
+    SpotOpt.RelDifference = [objTemp.SpotInfo.RelDifference];
         %}
         
         if isempty(SpotOptListRMSD)
