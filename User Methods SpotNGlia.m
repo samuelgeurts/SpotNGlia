@@ -4,24 +4,15 @@ obj = SpotNGlia
 %compute stacks
 obj = obj.SliceCombination
 
-%check the following file before proceeding
+%check the following variables before proceeding
 
 openvar('obj.ImageInfo')
 openvar('obj.StackInfo')
 
-%run all algorithms ans save final images
+%run all algorithms and save final images
 %when preprocession is completed, half of the time is passed
 
 obj = obj.CompleteProgram
 
-
-
-
-%display fishes number 1 to 5
-obj.ShowFish(1:5)
-
-%display all fishes
-obj.ShowFish
-
-%Correct fishbrains
+%Show fish and correct brainfishbrains
 obj.CheckBrain
