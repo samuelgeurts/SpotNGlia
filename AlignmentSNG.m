@@ -185,7 +185,7 @@ rgoutput = sng_StructFill(rgoutput,{'Registration','Background Removal','Backgro
 rgoutput = sng_StructFill(rgoutput,{'Registration','Background Removal','stretchlim_0procent',stretchlim_0procent});
 rgoutput = sng_StructFill(rgoutput,{'Registration','Background Removal','stretchlim_1procent',stretchlim_1procent});
 rgoutput = sng_StructFill(rgoutput,{'Registration','Background Removal','MeanFishColor',MeanFishColor});
-rgoutput = sng_StructFill(rgoutput,{'Registration','Background Removal','MeanFishColor',MaxFishColor});
+rgoutput = sng_StructFill(rgoutput,{'Registration','Background Removal','MaxFishColor',MaxFishColor});
 
 %% show background removal
 %{
