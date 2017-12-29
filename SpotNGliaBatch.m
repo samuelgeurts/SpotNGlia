@@ -324,8 +324,22 @@ function NewPath(objb, mode)
                 objb.BatchStats(k1).MeanMaxSpot10 = mean([SOLB{1, k1}.SpotOptListRMSD(1:10).MaxSpotSize])
             end
             
+            for k1 = 1:10
+            [~,index] = sortrows([SOLB{1, k1}.SpotOptListRMSD.datetime].'); 
+            SOLB{1, k1}.SpotOptListRMSD = SOLB{1, k1}.SpotOptListRMSD(index(end:-1:1)); clear index
+            end
             
+            tablex = table([],[],[],[],[],[],'VariableNames',{'tt','rmsd','thr','min','max','prob'})
+            for k1 = 1:10                                   
+            tablex.tt(k1) =[SOLB{1, k1}.SpotOptListRMSD(1).ttestval]
+            tablex.rmsd(k1) =[SOLB{1, k1}.SpotOptListRMSD(1).RMSD]
+            tablex.thr(k1) =[SOLB{1, k1}.SpotOptListRMSD(1).MPthresholdL]
+            tablex.min(k1) =[SOLB{1, k1}.SpotOptListRMSD(1).MinSpotSize]
+            tablex.max(k1) =[SOLB{1, k1}.SpotOptListRMSD(1).MaxSpotSize]
+            tablex.prob(k1) =[SOLB{1, k1}.SpotOptListRMSD(1).MinProbability]                
+            end
             
+            tablex.tt(2) = 1
             
             
             
