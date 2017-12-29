@@ -229,8 +229,9 @@ delete(h)
             
             %% set the new spots
             sc.XData = rc(:, 1);
-            sc.YData = rc(:, 2);
-            
+            sc.YData = rc(:, 2);                    
+            ah.String = sprintf(['Fish: %.0f of %.0f', '\n', ...
+                'Computed Spots: %.0f'], ifish, nfishes, numel(sc.XData));
         end
         updatecheckup
     end
@@ -246,7 +247,8 @@ delete(h)
         sc.XData = checkupOrg(ifish).Spots(:, 1);
         sc.YData = checkupOrg(ifish).Spots(:, 2);
         cbh.Value = true;
-
+        ah.String = sprintf(['Fish: %.0f of %.0f', '\n', ...
+            'Computed Spots: %.0f'], ifish, nfishes, numel(sc.XData));
         updatecheckup
         
     end
@@ -268,7 +270,8 @@ delete(h)
             ln.YData = [];
             sc.XData = [];
             sc.YData = [];
-
+            ah.String = sprintf(['Fish: %.0f of %.0f', '\n', ...
+                'Computed Spots: %.0f'], ifish, nfishes, numel(sc.XData));
             updatecheckup
         else
             ResetButton
