@@ -15,9 +15,6 @@ clear zfinputlist
 objb.Objects{2}.BrainSegmentation
 objb.Objects{2}.CheckBrain
 
-
-
-
 zfinputlist.ColorToGrayVectorL = {[0; 1; 0]};
 zfinputlist.ScaleBaseL = {0.5};
 zfinputlist.KthresholdL = {0};
@@ -26,8 +23,6 @@ zfinputlist.MPthresholdL = {200};
 zfinputlist.MinSpotSizeL = [20];
 zfinputlist.MaxSpotSizeL = [200];
 zfinputlist.MinProbabilityL = [0:0.25:7]/100;
-
-
 
 parfor k1 = 1:10
 k1
