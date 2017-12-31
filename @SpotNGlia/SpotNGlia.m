@@ -592,8 +592,8 @@ classdef SpotNGlia
         
         function obj = SpotDetection2(obj, fishnumbers)
             
-            INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo','BrainSegmentationInfo')
-            TEMPLATE = load([obj.SourcePath, '/', 'Template3dpf.mat'],'ref_temp','SVAP_index','SpotVectorArrayProbability')
+            INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo','BrainSegmentationInfo');
+            TEMPLATE = load([obj.SourcePath, '/', 'Template3dpf.mat'],'ref_temp','SVAP_index','SpotVectorArrayProbability');
             
             h = waitbar(0, 'SpotDetection', 'Name', 'SpotNGlia');
             
@@ -615,16 +615,16 @@ classdef SpotNGlia
             for k1 = 1:nfishes
                 fn = fishnumbers(k1);
                 waitbar(k1/nfishes, h)
-                
-                tform_complete = RegistrationInfo{fn}(strcmp({RegistrationInfo{fn}.name},'tform_complete')).value;
+                k1
+                tform_complete = INFO.RegistrationInfo{fn}(strcmp({INFO.RegistrationInfo{fn}.name},'tform_complete')).value;
                 CorrectedFish = sng_openimstack2([obj.SavePath, '/', 'CorrectedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
-
+                AlignedSlice = cell(1,numel(CorrectedFish));
                 for k2 = 1:numel(CorrectedFish)
                     AlignedSlice{k2} = imwarp(CorrectedFish{k2},tform_complete,'FillValues',255,'OutputView',TEMPLATE.ref_temp);
-                    [SpotsDetected{k2}, SpotParameters{k2}, SpotDetectionInfo(k2)] = SpotDetectionSliceSNG(AlignedSlice{k2}, obj.CompleteTemplate, BrainSegmentationInfo(k1).BrainEdge, obj.ZFParameters);                               
                 end
-                
-                obj.StackInfo(k1).Counts = numel(SpotsDetected{k1});
+                    [SpotsDetected{fn}, SpotParameters{fn}, SpotDetectionInfo(fn)] = SpotDetectionSliceSNG(AlignedSlice, TEMPLATE, INFO.BrainSegmentationInfo(fn).BrainEdge, obj.ZFParameters);                               
+
+                obj.StackInfo(fn).Counts = numel(SpotsDetected{fn});
             end
             
             %update checkup if checkup exists, only when new spot-parameters are tested (ZFParameters)
@@ -705,7 +705,7 @@ classdef SpotNGlia
                     MeanFishColor(k1, k3) = mean(Img(:) < threshold(k3));                
                     h = hist(Img(:),0:1:255);
                     h2 = smoothdata(h,'gaussian',6);                    
-                    [~,MaxFishColor(k1,k3)] = max(h2(1:floor(threshold(k3))))
+                    [~,MaxFishColor(k1,k3)] = max(h2(1:floor(threshold(k3))));
                 end               
                 
                 row = find(strcmp({RegistrationInfo{k1}.name}, 'MeanFishColor'));
