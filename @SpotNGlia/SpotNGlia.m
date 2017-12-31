@@ -590,6 +590,75 @@ classdef SpotNGlia
             delete(h)
         end
         
+        function obj = SpotDetection2(obj, fishnumbers)
+            
+            INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo','BrainSegmentationInfo')
+            TEMPLATE = load([obj.SourcePath, '/', 'Template3dpf.mat'],'ref_temp','SVAP_index','SpotVectorArrayProbability')
+            
+            h = waitbar(0, 'SpotDetection', 'Name', 'SpotNGlia');
+            
+            if ~exist('fishnumbers', 'var')
+                fishnumbers = 1:numel(obj.StackInfo);
+            elseif max(fishnumbers) > numel(obj.StackInfo)
+                error('at least one fish does not exist in BrainInfo')
+            end
+            
+            nfishes = numel(fishnumbers);
+                       
+            SpotsDetected = cell(nfishes, 1);
+            SpotParameters = cell(nfishes, 1);            
+            if nfishes > 1
+                SpotDetectionInfo(nfishes) = struct('Multiproduct', [], ...
+                    'MultiproductThreshold', []);
+            end
+                        
+            for k1 = 1:nfishes
+                fn = fishnumbers(k1);
+                waitbar(k1/nfishes, h)
+                
+                tform_complete = RegistrationInfo{fn}(strcmp({RegistrationInfo{fn}.name},'tform_complete')).value;
+                CorrectedFish = sng_openimstack2([obj.SavePath, '/', 'CorrectedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
+
+                for k2 = 1:numel(CorrectedFish)
+                    AlignedSlice{k2} = imwarp(CorrectedFish{k2},tform_complete,'FillValues',255,'OutputView',TEMPLATE.ref_temp);
+                    [SpotsDetected{k2}, SpotParameters{k2}, SpotDetectionInfo(k2)] = SpotDetectionSliceSNG(AlignedSlice{k2}, obj.CompleteTemplate, BrainSegmentationInfo(k1).BrainEdge, obj.ZFParameters);                               
+                end
+                
+                obj.StackInfo(k1).Counts = numel(SpotsDetected{k1});
+            end
+            
+            %update checkup if checkup exists, only when new spot-parameters are tested (ZFParameters)
+            VariableList = who('-file',[obj.SavePath, '/', obj.InfoName, '.mat']);
+            if ismember('checkup',VariableList)
+            	load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
+                for k3 = 1:numel(checkup) %#ok<NODEF>
+                    if checkup(k3).Include == 1
+                        Xrow = checkup(k3).Midbrain(:, 1);
+                        Yrow = checkup(k3).Midbrain(:, 2);
+                        %% compute new spots insite area
+                        [rc] = reshape([SpotParameters{k3}.Centroid], 2, numel(SpotParameters{k3}))';
+                        [in, ~] = inpolygon(rc(:, 1), rc(:, 2), Xrow, Yrow);
+                        SpotsDetec = SpotParameters{k3}(in' == 1 & ...
+                            [SpotParameters{k3}.LargerThan] == 1 & ...
+                            [SpotParameters{k3}.SmallerThan] == 1 & ...
+                            [SpotParameters{k3}.MinProbability] == 1);
+                        [rc] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
+                        checkup(k3).Spots = [rc(:, 1), rc(:, 2)]; %#ok<AGROW>
+                    end
+                end
+                save([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup', '-append');
+            end
+            
+            obj.saveit
+            save([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotDetectionInfo', '-append')
+            save([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected', '-append')
+            save([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters', '-append')
+            
+            obj.buildsheet
+            
+            delete(h)
+        end
+        
         function obj = CompleteProgram(obj, fishnumbers)
             
             [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
