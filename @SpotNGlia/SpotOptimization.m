@@ -1,17 +1,21 @@
 
-function objTemp = SpotOptimization(obj, fishnumbers, zfinputlist)
+function objTemp = SpotOptimization(obj, fishnumbers, zfinputlist,name)
+
+name = 'SpotOptListSlice'
 
 %{
 fishnumbers = 1:5
 %}
 CompleteTemplate = LoadTemplateSNG([obj.SourcePath, '/', 'Template 3 dpf']);
+INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo','BrainSegmentationInfo');
+TEMPLATE = load([obj.SourcePath, '/', 'Template3dpf.mat'],'ref_temp','SVAP_index','SpotVectorArrayProbability');
 
 
-if exist([obj.SavePath, '/', 'SpotOptList', '.mat'], 'file')
-    load([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList')
+if exist([obj.SavePath, '/', name, '.mat'], 'file')
+    load([obj.SavePath, '/', name, '.mat'], 'SpotOptList')
 else
     SpotOptList = [];
-    save([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList')
+    save([obj.SavePath, '/', name, '.mat'], 'SpotOptList')
 end
 
 
@@ -53,7 +57,9 @@ end
 
 %create different variable-sets to test select only spotinfo parameters
 for k2 = 1:numel(a)
+    
     ZFParametersTemp{k2} = obj.ZFParameters(strcmp({obj.ZFParameters.stage}, 'SpotDetection'));
+    ZFParametersTemp{k2} = sng_zfinput(ZFParametersTemp{k2}, 0, 'SpotDetection', 'SpotSelection', 'SpotDistLimit', zfinputlist.SpotDistLimit, ''); %color selection    
     ZFParametersTemp{k2} = sng_zfinput(ZFParametersTemp{k2}, 0, 'SpotDetection', 'RgbToGray', 'ColorToGrayVector', ColorToGrayVectorL{a(k2)}, ''); %color selection
     ZFParametersTemp{k2} = sng_zfinput(ZFParametersTemp{k2}, 0, 'SpotDetection', 'Wavelet', 'ScaleBase', ScaleBaseL{b(k2)}, ''); %color selection
     ZFParametersTemp{k2} = sng_zfinput(ZFParametersTemp{k2}, 0, 'SpotDetection', 'Wavelet', 'Kthreshold', KthresholdL{c(k2)}, ''); %color selection
@@ -69,15 +75,33 @@ end
 
 for k2 = 1:numel(ZFParametersTemp)
     %compute spot parameters for certain ZFParemeter input
+    %{
     for k1 = 1:nfishes
         fn = fishnumbers(k1);
         fprintf([num2str(a(k2)), ',', num2str(b(k2)), ',', num2str(c(k2)), ',', num2str(d(k2)), ',', num2str(e(k2)), ',', num2str(k1), '\n'])
-        ambr = [obj.Annotations(fn).MidBrain];
-        
-        AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
-        
+        ambr = [obj.Annotations(fn).MidBrain];        
+        AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);    
         [pars, SpotParameters{k1}] = SpotDetectionSNG(AlignedFish, CompleteTemplate, fliplr(ambr), ZFParametersTemp{k2});
     end
+    %}
+    %% use the slice version
+    for k1 = 1:nfishes
+        fn = fishnumbers(k1);
+        fprintf([num2str(a(k2)), ',', num2str(b(k2)), ',', num2str(c(k2)), ',', num2str(d(k2)), ',', num2str(e(k2)), ',', num2str(k1), '\n'])
+        ambr = [obj.Annotations(fn).MidBrain];  
+        
+        tform_complete = INFO.RegistrationInfo{fn}(strcmp({INFO.RegistrationInfo{fn}.name},'tform_complete')).value;
+        CorrectedFish = sng_openimstack2([obj.SavePath, '/', 'CorrectedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
+        AlignedSlice = cell(1,numel(CorrectedFish));
+        for k3 = 1:numel(CorrectedFish)
+            AlignedSlice{k3} = imwarp(CorrectedFish{k3},tform_complete,'FillValues',255,'OutputView',TEMPLATE.ref_temp);
+        end
+        
+        [~, SpotParameters{k1}] = SpotDetectionSliceSNG(AlignedSlice, TEMPLATE, fliplr(ambr), ZFParametersTemp{k2});                               
+    end
+    
+    
+    
     
     %% assign new threshold logical array to obj.SpotParameters
     
@@ -286,7 +310,7 @@ for k2 = 1:numel(ZFParametersTemp)
         SpotOptList(numel(SpotOptList)+1) = SpotOpt;
     end
     
-    save([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList');
+    save([obj.SavePath, '/', name, '.mat'], 'SpotOptList');
 end
 
 end
