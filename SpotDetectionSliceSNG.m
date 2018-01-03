@@ -25,7 +25,6 @@ function [SpotsDetected, SpotParameters, SpotDetectionInfo, SpotN] = SpotDetecti
 %}
 sng_zfinputAssign(ZFParameters, 'SpotDetection');
 ScaleLevels = max(MPlevels);
-limit = 5;
 
 %CubeSizeSpotErode = 4;
 %SE1 = strel('cube',CubeSizeSpotErode); %spot structure element for erode
@@ -77,7 +76,7 @@ end
 if numel(Ialigned) > 1
     Regions1 = Regions0{k3};
     for k3 = 1:numel(Ialigned) - 1
-        Regions1 = RemoveDoubleSpots(Regions1, Regions0{k3+1}, limit);
+        Regions1 = RemoveDoubleSpots(Regions1, Regions0{k3+1}, SpotDistLimit);
     end
 else
     Regions1 = Regions0;
