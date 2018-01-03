@@ -122,7 +122,8 @@ for k3 = 1:3
     Img = Ialligned(:,700:end,k3);                                        
     MeanFishColor(k3) = mean(Img(:) < BackgroundThreshold(k3));
     h = hist(Img(:),0:1:255);
-    h2 = smoothdata(h,'gaussian',6);                    
+    %h2 = smoothdata(h,'gaussian',6);
+    h2 = imgaussfilt(h,1); %gaussian filter function for matlab older than 2017a
     [~,MaxFishColor(k3)] = max(h2(1:floor(BackgroundThreshold(k3))));    
 end
 
