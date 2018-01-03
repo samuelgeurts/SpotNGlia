@@ -252,7 +252,21 @@ classdef SpotNGlia
             if isempty(obj.ImageInfo)
                 % compute ImageInfo and StackInfo
                 dirinfo = dir([obj.FishPath, '/*.', 'tif']);
-                imageinfotemp = rmfield(dirinfo, {'isdir', 'datenum', 'bytes'}); %removes unimportant fields
+                
+                %removes filenames from folder which starts with '._'
+                %an issue induces sometimes by extern harddisk and macs
+                ind = regexp({dirinfo.name},'._');
+                for k1 = 1:numel(ind)
+                    if ~isempty(ind{k1}) && ind{k1}(1) == 1
+                        TF(k1) = false;
+                    else
+                        TF(k1) = true;
+                    end
+                end
+                dirinfo = dirinfo(TF);
+                
+                %removes unimportant fields
+                imageinfotemp = rmfield(dirinfo, {'isdir', 'datenum', 'bytes'}); 
                 
                 if ~isfield(imageinfotemp, 'folder')
                     [imageinfotemp.folder] = deal(obj.FishPath);
