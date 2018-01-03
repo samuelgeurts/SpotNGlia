@@ -1,34 +1,38 @@
  
+name = 'SpotOptListSlice'
+%name = 'SpotOptList'
+
 obj = obj.NewPath(10)
-load([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList')
+load([obj.SavePath, '/', name, '.mat'], 'SpotOptList')
 
 %%
 clear zfinputlist
 %zfinputlist.ColorToGrayVectorL = {[-0.380803509067153;0.847820881126686;-0.369037181064066]};
 
-%{
+%
+zfinputlist.SpotDistLimit = 10;
 zfinputlist.ColorToGrayVectorL = {[0; 1; 0]};
 zfinputlist.ScaleBaseL = {0.5};
 zfinputlist.KthresholdL = {0};
-zfinputlist.MPlevelsL = {5:7};
-zfinputlist.MPthresholdL = {200};
-zfinputlist.MinSpotSizeL = {8.4084}
-zfinputlist.MaxSpotSizeL = {458}
-zfinputlist.MinProbabilityL = {0.066}
-zfinputlist.MinSpotRange = 1
-zfinputlist.MaxSpotRange = 1
-zfinputlist.MinProbabilityRange = 1
-%}
+zfinputlist.MPlevelsL = {4:6};
+zfinputlist.MPthresholdL = {80 60 40 20};
+%zfinputlist.MinSpotSizeL = {8.4084}
+%zfinputlist.MaxSpotSizeL = {458}
+%zfinputlist.MinProbabilityL = {0.066}
+%zfinputlist.MinSpotRange = 1
+%zfinputlist.MaxSpotRange = 1
+%zfinputlist.MinProbabilityRange = 1
+%
 
-zfinputlist.MinSpotRange = [0:0.01:0.06]
-zfinputlist.MaxSpotRange = [0.3:0.1:0.7]
-zfinputlist.MinProbabilityRange = [0:0.05:0.5]
+zfinputlist.MinSpotRange = [0:0.03:0.3]
+zfinputlist.MaxSpotRange = [0.5:0.5:1.2]
+zfinputlist.MinProbabilityRange = [0:0.02:0.2]
 
 objTemp = obj.SpotOptimization(1:50,zfinputlist)
 
 %%
 
-load([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList')
+load([obj.SavePath, '/', name, '.mat'], 'SpotOptList')
 figure;plot([SpotOptList.MeanF1score])
 
     

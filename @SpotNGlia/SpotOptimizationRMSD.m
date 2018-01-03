@@ -1,4 +1,9 @@
-function objTemp = SpotOptimizationRMSD(obj, fishnumbers, zfinputlist, brain_sw, SpotsDetected)
+function objTemp = SpotOptimizationRMSD(obj,...
+    fishnumbers,...
+    zfinputlist,...
+    brain_sw,...
+    SpotsDetected,...
+    name)
 %% spotoptimization based on minimizing RMSD
 % first for a single object
 % than apply in SNGbatch
@@ -10,29 +15,23 @@ function objTemp = SpotOptimizationRMSD(obj, fishnumbers, zfinputlist, brain_sw,
 %               Annotation: when spot and brain annotations are known, optimized on fscore
 %               Computation: use the computed brain en optimize on RMSD
 %               Correction: use corrected braindata in checkout.mat and optimize on RMSD
-
 %Example
 %   objTemp = obj.SpotOptimizationRMSD([],zfinputlist,'Correction')
-
-
 %minspotsize:   0-20-60
 %maxspotsize    200-300-470
 %MinProbability 0.03-0.06-0.12
-
 %nfishes is the number of fishes to process
 %obj.nfishes is the total number of available fishes (nfishes <= obj.nfishes) = true
 
 %{
 brain_sw = 'Correction'
-
 %}
 
 
 %{
         fishnumbers = 1:5
 %}
-load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
-include = boolean([checkup.Include]);
+
 
 if exist([obj.SavePath, '/', 'SpotOptListRMSD', '.mat'], 'file')
     load([obj.SavePath, '/', 'SpotOptListRMSD', '.mat'], 'SpotOptListRMSD')
@@ -47,11 +46,9 @@ if ~exist('fishnumbers', 'var') || isempty(fishnumbers)
 elseif max(fishnumbers) > numel(obj.StackInfo)
     error('at least one fish does not exist in RegistrationInfo')
 end
-
-%removes excluded number according checkup.include, slim he :)
-fishnumbers = fishnumbers(include(fishnumbers));
-
 nfishes = numel(fishnumbers);
+
+
 
 if exist('zfinputlist', 'var') && ~isempty(zfinputlist)
     ColorToGrayVectorL = zfinputlist.ColorToGrayVectorL;
@@ -112,6 +109,10 @@ if ~exist('SpotsDetected', 'var')
                 MidBrain{fn} = fliplr(BrainSegmentationInfo(fn).BrainEdge);
             end
         case 'Correction'
+            load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
+            include = boolean([checkup.Include]);
+            fishnumbers = fishnumbers(include(fishnumbers)); %removes excluded number according checkup.include, slim he :)
+            nfishes = numel(fishnumbers);
             for k1 = 1:nfishes
                 fn = fishnumbers(k1);
                 MidBrain{fn} = fliplr(checkup(fn).Midbrain);

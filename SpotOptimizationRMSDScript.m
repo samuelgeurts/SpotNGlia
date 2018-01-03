@@ -3,17 +3,16 @@
 %maxspotsize    200-300-470
 %MinProbability 0.03-0.06-0.12
 
-
+name = 'SpotOptListSlice'
 
 obj = obj.NewPath(10)
-load([obj.SavePath, '/', 'SpotOptList', '.mat'], 'SpotOptList')
+load([obj.SavePath, '/', name, '.mat'], 'SpotOptList')
 
 %%
 clear zfinputlist
 %zfinputlist.ColorToGrayVectorL = {[-0.380803509067153;0.847820881126686;-0.369037181064066]};
-
-objb.Objects{2}.BrainSegmentation
-objb.Objects{2}.CheckBrain
+%objb.Objects{2}.BrainSegmentation
+%objb.Objects{2}.CheckBrain
 
 zfinputlist.ColorToGrayVectorL = {[0; 1; 0]};
 zfinputlist.ScaleBaseL = {0.5};
@@ -32,6 +31,14 @@ obj = objb.Objects{k1}.SpotOptimizationRMSD([],zfinputlist,'Correction');
 %load([obj.SavePath, '/', 'SpotOptListRMSD', '.mat'], 'SpotOptListRMSD')
 %open SpotOptListRMSD
 end
+
+
+obj = obj.SpotOptimizationRMSD(1:5,zfinputlist,'Annotation',[],'SpotOptListSlice');
+
+
+
+
+
 %figure;plot([SpotOptList.MeanF1score])
     
     
