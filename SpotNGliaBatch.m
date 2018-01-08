@@ -225,13 +225,9 @@ function NewPath(objb, mode)
         
         function objb = computeTscores(objb)
             for k1 = 1:10
-                fprintf('%d ', k1);
-                
-                obj = objb.Objects{k1};
-                obj = obj.TtestVal;
-                obj.saveit
-                
-                
+                fprintf('%d ', k1);               
+                objb.Objects{k1} = objb.Objects{k1}.TtestVal;
+                objb.Objects{k1}.saveit                             
             end
         end
         
@@ -247,10 +243,7 @@ function NewPath(objb, mode)
                 objb.SpotsComputed{k1} = [obj.StackInfo.Counts];
                 
                 objb.BatchStats(k1).meanNAnn = mean(objb.SpotsAnnotated{k1}(~isnan(objb.SpotsAnnotated{k1})))
-                objb.BatchStats(k1).meanNCom = mean(objb.SpotsComputed{k1}(~isnan(objb.SpotsComputed{k1})))
-
-                
-                
+                objb.BatchStats(k1).meanNCom = mean(objb.SpotsComputed{k1}(~isnan(objb.SpotsComputed{k1})))                                
             end
         end
         
@@ -284,6 +277,31 @@ function NewPath(objb, mode)
                 ShowMaxFishHist(obj);
             end
         end
+        
+        function ShowCounts(objb)
+            figure;hold on
+            for k1 = 1:10
+                obj = objb.Objects{k1};
+
+            AnnC = [obj.Annotations.Counts]
+            XAnnC = k1*ones(1,numel(AnnC))
+
+            	load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
+                CorC = []
+                for k3 = 1:numel(checkup) %#ok<NODEF>
+                    if checkup(k3).Include == 1
+                       CorC(k3) = numel(checkup(k3).Spots)/2;
+                    else
+                        CorC(k3) = NaN;
+                    end
+                end
+            
+                XCorC = (k1+0.3) * ones(1,numel(CorC))
+                
+                scatter(XAnnC, AnnC)
+                scatter(XCorC, CorC)        
+            end
+        end        
         
         function BrainSegmentation(objb)
             for k1 = 1:10
@@ -358,6 +376,26 @@ function NewPath(objb, mode)
             
             
         end
+        
+        function objb = SpotDetectionSlice(objb)
+            for k1 = 1:10
+                objb.Objects{k1}.ZFParameters(strcmp({objb.Objects{k1}.ZFParameters.name},'MPthreshold')).value = 300;
+                objb.Objects{k1}.ZFParameters(strcmp({objb.Objects{k1}.ZFParameters.name},'MinSpotSize')).value = 5;
+                objb.Objects{k1}.ZFParameters(strcmp({objb.Objects{k1}.ZFParameters.name},'MaxSpotSize')).value = 400;
+                objb.Objects{k1}.ZFParameters(strcmp({objb.Objects{k1}.ZFParameters.name},'MinProbability')).value = 0.14;              
+                objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters,0,'SpotDetection','SpotSelection','SpotDistLimit',10,'?');    
+                objb.Objects{k1}.ZFParameters = sng_zfinput(objb.Objects{k1}.ZFParameters,0,'SpotDetection','SpotSelection','ComputeOnSlice',0,'?');        
+                objb.Objects{k1} = objb.Objects{k1}.SpotDetection2;            
+            end
+        end
+                
+        function objb = newzfinput(objb)
+            for k1 = 1:10
+                load([objb.Objects{k1}.SourcePath, '/', 'zfinput.mat']); %#ok<LOAD>
+                objb.Objects{k1}.ZFParameters = zfinput;           
+            end
+        end
+                        
         
         
     end
