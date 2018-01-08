@@ -79,7 +79,7 @@ if numel(Ialigned) > 1
         Regions1 = RemoveDoubleSpots(Regions1, Regions0{k3+1}, SpotDistLimit);
     end
 else
-    Regions1 = Regions0;
+    Regions1 = Regions0{:};
 end
 
 
@@ -115,6 +115,10 @@ for k1 = 1:numel(Regions1)
     %spotimage = getfield(Regions1, {k1}, 'Image');
     sbb = round(getfield(Regions1, {k1}, 'BoundingBox'));
     slc = round(getfield(Regions1, {k1}, 'Slice'));
+
+    %sbb = round(getfield(Regions1{k1}, 'BoundingBox'));
+    %slc = round(getfield(Regions1{k1}, 'Slice'));    
+    
     
     % get a slightly larger box to be able to compute the meanbackgroun more precise
     sbb = sbb + [-2, -2, 4, 4];
@@ -131,6 +135,7 @@ for k1 = 1:numel(Regions1)
     DBackground = DistanceBackgroundMap{slc}(sbb(2):sbb(2) + sbb(4) - 1, sbb(1):sbb(1) + sbb(3) - 1);
     %computes a weighted mean of the spot color based on the distance map
     SpotCmean(k1, 1:3) = sum(sum((repmat(DSpot, 1, 1, 3) / sum(DSpot(:))).*single(spotcimage)));
+    SpotMeanhsv = rgb2hsv(SpotCMean/255); 
     BackGroundCmean(k1, 1:3) = sum(sum((repmat(DBackground, 1, 1, 3) / sum(DBackground(:))).*single(spotcimage)));
     
     %{
@@ -143,6 +148,7 @@ contrastvector = BackGroundCmean - SpotCmean;
 [azimuth, elevation, r] = cart2sph(contrastvector(:, 1), contrastvector(:, 2), contrastvector(:, 3));
 
 temp = num2cell(SpotCmean, 2); [Regions1.ColorMean] = temp{:};
+temp = num2cell(SpotMeanhsv, 2); [Regions1.ColorMeanhsv] = temp{:};
 temp = num2cell(BackGroundCmean, 2); [Regions1.BackRoundMean] = temp{:};
 temp = num2cell(azimuth, 2); [Regions1.azimuth] = temp{:};
 temp = num2cell(elevation, 2); [Regions1.elevation] = temp{:};
