@@ -1,7 +1,10 @@
 function obj = TemplateSpot(obj)
+%this function computes the template variables of the test batch with annotations.
+
 
 CubeSizeSpotErode = 4; %spot structure element for erode
 CubeSizeSpotDilate = 4; %background structure element for dilate
+
 winsiz = 20; %size of spot box is 2*winsiz + 1 = 51x51
 f = int16(-winsiz:winsiz);    
 
@@ -33,11 +36,8 @@ zfinput = sng_zfinput(zfinput,0,'SpotDetection','MultiProduct','MPthreshold',1,'
 sng_zfinputAssign(obj.ZFParameters,'SpotDetection')
 
 
-        
 spotcolorsTT = [];
 backrcolorsTT = [];
-
-
 
 
 for k1 = 1:numel(obj.StackInfo)
@@ -54,9 +54,9 @@ for k1 = 1:numel(obj.StackInfo)
 
     
     
-    for k2 = 1:4
-     mean(CorrectedSlice{k2}(CorrectedSlice{k2}(:) < bkt(1)))
-    end
+    %for k2 = 1:4
+    % mean(CorrectedSlice{k2}(CorrectedSlice{k2}(:) < bkt(1)))
+    %end
     
         %{
         %histogram equalization
@@ -92,8 +92,8 @@ for k1 = 1:numel(obj.StackInfo)
     spotcolorsT = [];
     
     
-    subplotvar = ceil(sqrt(2*numel(spots)));
     if image_TF
+        subplotvar = ceil(sqrt(2*numel(spots)));
         figure;
     end
     
