@@ -50,10 +50,11 @@ end
 %save source file
 BasePath = '/Users/samuelgeurts/Dropbox';
 SourcePath = [BasePath, '/', 'SpotNGlia Source'];
-NewPath = [SavePath,filesep,'Source',filesep,'Template 3 dpf']
-mkdir(NewPath)
+%NewPath = [SavePath,filesep,'Source',filesep,'Template 3 dpf']
+%mkdir(NewPath)
 %copyfile([SourcePath,filesep,'Template 3 dpf'], NewPath)
-copyfile([SourcePath,filesep,'Template3dpf.mat'], NewPath)
+%copyfile([SourcePath,filesep,'Template3dpf.mat'], NewPath)
+copyfile([SourcePath,filesep,'Template3dpf.mat'], [SavePath,filesep,'Source'])
 
 copyfile([SourcePath,filesep,'zfinput.mat'], [SavePath,filesep,'Source'])
 
