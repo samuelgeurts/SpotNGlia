@@ -66,8 +66,7 @@ classdef SpotNGlia
             obj.ZFParameters = zfinput;
             %obj.CompleteTemplate = LoadTemplateSNG([obj.SourcePath, '/', 'Template 3 dpf']);
             obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
-            
-            
+                        
             %file which contains all batch specific computation info
             matObj = matfile([obj.SavePath, '/', obj.InfoName, '.mat']);
             obj.InfoResult = whos(matObj);
@@ -690,8 +689,6 @@ classdef SpotNGlia
             obj = obj.SpotDetection(fishnumbers);
             
             obj.ShowFish([], true)
-            
-            
         end
         
         function obj = HistPar(obj, fishnumbers)
@@ -739,9 +736,10 @@ classdef SpotNGlia
         ShowFishHeadHist(obj,fishnumber)
         ShowMaxFishHist(obj,fishnumber)
         CheckBrain(obj, ifish)
+        CheckBrain2(obj, ifish)
     end
     
-    methods(Hidden = true)
+    methods%(Hidden = true)
         
         Mask = BrainMask(obj, fishnumbers)
         BrainOptimization(obj, fishnumbers)
@@ -790,8 +788,22 @@ classdef SpotNGlia
         end
         
         function obj = LoadAnnotations(obj)
+                   
+            %annotated midbrain roi
+            if isempty(obj.AnnotatedMidBrainPath) || (obj.AnnotatedMidBrainPath == 0)
+                disp('Select Annotated MidBrain Path')
+                obj.AnnotatedMidBrainPath = uigetdir([], 'Select Annotated MidBrain Path');
+            end
             
-            if ~isempty('obj.AnnotatedMidBrainPath') || ~isempty('obj.AnnotatedSpotPath')
+            %annotated spots
+            if isempty(obj.AnnotatedSpotPath)
+                disp('Select Annotated Spot Path')
+                obj.AnnotatedSpotPath = uigetdir([], 'Select Annotated Spot Path');
+            end
+            
+            %if one of the two paths is not empty and a char (dir) then load RegistrationInfo
+            if (~isempty(obj.AnnotatedMidBrainPath) && ischar(obj.AnnotatedMidBrainPath)) ||...
+                    (~isempty(obj.AnnotatedSpotPath) && ischar(obj.AnnotatedSpotPath))
                 nfishes = numel(obj.StackInfo);
                 tform_1234 = cell(nfishes, 1);
                 %annotated brain and spots
@@ -800,14 +812,9 @@ classdef SpotNGlia
                     tform_1234{k1} = RegistrationInfo{k1}(strcmp({RegistrationInfo{k1}.name}, 'tform_complete')).value; 
                 end
             end
-            
-            %annotated midbrain roi
-            if isempty('obj.AnnotatedMidBrainPath')
-                disp('Select Annotated MidBrain Path')
-                obj.AnnotatedMidBrainPath = uigetdir([], 'Select Annotated MidBrain Path');
-            end
-            
-            if ~isempty('obj.AnnotatedMidBrainPath')
+               
+            %if midbrain path exists in object than load, transform, save midbrain
+            if (~isempty(obj.AnnotatedMidBrainPath) && ischar(obj.AnnotatedMidBrainPath))
                 ambr = cell(nfishes, 1);
                 for k1 = 1:nfishes
                     RoiBrain = ReadImageJROI([obj.AnnotatedMidBrainPath, '/', obj.StackInfo(k1).stackname, '.zip']);
@@ -819,13 +826,8 @@ classdef SpotNGlia
                 [obj.Annotations(1:nfishes).MidBrain] = ambr{:};
             end
             
-            %annotated spots
-            if isempty('obj.AnnotatedSpotPath')
-                disp('Select Annotated Spot Path')
-                obj.AnnotatedSpotPath = uigetdir([], 'Select Annotated Spot Path');
-            end
-            
-            if ~isempty('obj.AnnotatedSpotPath')
+            %if midbrain path exists in object than load, transform, save spot            
+            if (~isempty(obj.AnnotatedSpotPath) && ischar(obj.AnnotatedSpotPath))
                 SpotAnn = cell(nfishes, 1);
                 for k1 = 1:nfishes
                     RoiMicroglia = ReadImageJROI([obj.AnnotatedSpotPath, '/', obj.StackInfo(k1).stackname, '.roi']);
@@ -903,6 +905,13 @@ classdef SpotNGlia
                 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters');
             end
             
+            if isempty(obj.Annotations) || ~isfield(obj.Annotations, 'MidBrain')
+                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');                
+                AMBR = {checkup.Midbrain};
+            else           
+                AMBR = {obj.Annotations.MidBrain};
+            end
+            
             nfishes = numel(SpotParameters);
             
             LinkDistance = cell(nfishes, 1);
@@ -928,9 +937,10 @@ classdef SpotNGlia
             for k1 = 1:nfishes
                 
                 Spotpar = SpotParameters{k1};
-                ambr = obj.Annotations(k1).MidBrain;
+                %ambr = obj.Annotations(k1).MidBrain;
                 ambs = obj.Annotations(k1).Spots;
-                              
+                ambr = AMBR{k1};
+                                                            
                 if ~isempty(Spotpar)
                     
                     %select spot insite annotated brainregion
@@ -1061,7 +1071,7 @@ classdef SpotNGlia
                 SpotN = SpotN(1:numel(SpotAnnN));
             end 
             
-            ind = boolean(~isnan(SpotAnnN) .* ~isnan(SpotN));
+            ind = logical(~isnan(SpotAnnN) .* ~isnan(SpotN));
             
             %removes emptys and nans
             SAN = SpotAnnN(ind);
@@ -1277,10 +1287,16 @@ classdef SpotNGlia
             
             load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
             
-            if ~isempty({obj.Annotations.MidBrain})
-                ambr = {obj.Annotations.MidBrain};
-            end
+            %if ~isempty({obj.Annotations.MidBrain})
+            %    ambr = {obj.Annotations.MidBrain};
+            %end
             
+            if isempty(obj.Annotations) || ~isfield(obj.Annotations, 'MidBrain')
+                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');                
+                AMBR = {checkup.Midbrain};
+            else           
+                AMBR = obj.Annotations(k1).MidBrain;
+            end            
             
             for k1 = 1:numel(fishnumbers)
                 fn = fishnumbers(k1);
@@ -1294,7 +1310,7 @@ classdef SpotNGlia
                 plot(cmbr(:, 2), cmbr(:, 1), 'Color', [255, 75, 75]/255, 'LineWidth', 2);
                 
                 if exist('ambr', 'var')
-                    plot(ambr{fn}(:, 1), ambr{fn}(:, 2), 'Color', [75, 75, 255]/255, 'LineWidth', 2);
+                    plot(AMBR{fn}(:, 1), AMBR{fn}(:, 2), 'Color', [75, 75, 255]/255, 'LineWidth', 2);
                 end
                 
                 if ~exist('ComOrAnn', 'var') || strcmp(ComOrAnn, 'Com')
