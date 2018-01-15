@@ -9,7 +9,20 @@ if ~exist('fishnumbers', 'var') || isempty(fishnumbers)
 elseif max(fishnumbers) > numel(obj.StackInfo)
     error('at least one fish does not exist in StackInfo')
 end
+
+            
+if sum(~cellfun('isempty',{obj.Annotations.Spots})) ~= numel(SpotParameters)
+    warning('not all fishes are annotated by hand')
+end
+fishnumbers = 1:numel(SpotParameters);           
+%removes fishnumbers from the list if not all annotations are known
+fishnumbers = fishnumbers(ismember(fishnumbers,find(~cellfun('isempty',{obj.Annotations.Spots}))));
+
 nfishes = numel(fishnumbers);
+
+
+
+
 
 %[MidBrain, AlignedFish] = loadFishAndBrain(obj, fishnumbers, INFO,TEMPLATE, 'Annotation', 1);
 %[MidBrain, AlignedFish2] = loadFishAndBrain(obj, fishnumbers, INFO,TEMPLATE, 'Annotation', 0);
@@ -36,10 +49,11 @@ sizeI = zeros(1, nfishes);
 
 %split up correct and incorrect found spots
 for k1 = 1:nfishes
-    if ~isempty(MidBrain{k1})
-        Spotpar = SpotParameters{k1};
-        SpotCom = reshape([SpotParameters{k1}.Centroid], 2, numel(SpotParameters{k1}))';
-        atemp = ismember(SpotCom, obj.SpotInfo(k1).CorrectSpots);
+    fn = fishnumbers(k1);
+    if ~isempty(MidBrain{fn})
+        Spotpar = SpotParameters{fn};
+        SpotCom = reshape([SpotParameters{fn}.Centroid], 2, numel(SpotParameters{fn}))';
+        atemp = ismember(SpotCom, obj.SpotInfo(fn).CorrectSpots);
         SpotparC{k1} = Spotpar(atemp(:, 1));
         SpotparI{k1} = Spotpar(~atemp(:, 1));
         sizeC(k1) = sum(atemp(:, 1));
@@ -85,7 +99,7 @@ for k1 = 1:nfishes
         AzimC(indc, 1) = [subC.azimuth];
         ElevC(indc, 1) = [subC.elevation];
         RC(indc, 1) = [subC.r];
-        
+ 
         %...
     end
     
@@ -101,6 +115,13 @@ for k1 = 1:nfishes
     end
     
 end
+
+
+
+
+
+
+
 
 %{
      figure;imagesc(AlignedFish2{1})
@@ -121,40 +142,38 @@ end
  
  end
 %}
+        
+DoubleHist(SpotMeanC(:,1), SpotMeanI(:,1),'SpotMeanI(1)');set(gca,'XLim',[0 255]);
+DoubleHist(SpotMeanC(:,2), SpotMeanI(:,2),'SpotMeanI(2)');set(gca,'XLim',[0 255]);
+DoubleHist(SpotMeanC(:,3), SpotMeanI(:,3),'SpotMeanI(3)');set(gca,'XLim',[0 255]);
+DoubleHist(SpotMeanhsvC(:,1), SpotMeanhsvI(:,1),'SpotMeanhsv(1)');set(gca,'XLim',[0 1]);
+DoubleHist(SpotMeanhsvC(:,2), SpotMeanhsvI(:,2),'SpotMeanhsv(2)');set(gca,'XLim',[0 1]);
+%DoubleHist(SpotMeanhsvC(:,3), SpotMeanhsvI(:,3),'SpotMeanhsv(3)');set(gca,'XLim',[0 1]);
+DoubleHist(AzimC, AzimI,'Azim');set(gca,'XLim',[-pi pi]);
+DoubleHist(ElevC, ElevI,'Elev');set(gca,'XLim',[-pi/2 pi/2]);
+DoubleHist(RC, RI,'R');set(gca,'XLim',[0 150]);
+DoubleHist(ColorC, ColorI,'ColorProb');set(gca,'XLim',[0 2]);
+DoubleHist(AreaC, AreaI,'Area');set(gca,'XLim',[0 500]);
 
-%{
-    function showhist(f1, f2)
-        f1 = SpotMeanhsvC(:, 2)
-        f2 = SpotMeanhsvI(:, 2)
-        
-        f1 = SpotMeanC(:, 3)
-        f2 = SpotMeanI(:, 3)
-        
-        f1 = AzimC
-        f2 = AzimI
-        
-        f1 = ElevC
-        f2 = ElevI
-        
-        f1 = ColorC %<- overfitted
-        f2 = ColorI
-        
-        f1 = RC
-        f2 = RI
-        
-        f1 = AreaC
-        f2 = AreaI
-        
-        
-        x = linspace(min([f1(:, 1); f2(:, 1)]), max([f1(:, 1); f2(:, 1)]), 100); %histogram bins
-        hc = histcounts(f1(:, 1), x); %correct spot area
-        hi = histcounts(f2(:, 1), x); %incorrect spot area
-        sng_DistDifHistPlot((x(1:end-1) + ((x(2) - x(1)) / 2)), hc, hi);
-        
-        %hold on;line([MinSpotSize MinSpotSize],get(gca,'Ylim'),'color',[0 0 0]);
-        %hold on;line([MaxSpotSize MaxSpotSize],get(gca,'Ylim'),'color',[0 0 0]);
-    end
-%}
+
+
+
+weightC = endC(end)/(endC(end) + endI(end));
+weightI = endI(end)/(endC(end) + endI(end));
+
+pdC = fitdist(SpotMeanC(:,2),'Normal')
+pdI = fitdist(SpotMeanI(:,2),'Normal')
+
+x = 0:1:255
+yC = pdf(pdC,x) * weightC
+yI = pdf(pdI,x) * weightI
+
+plot(x,yC,x,yI)
+
+
+
+
+
 
 %using a machine learning technique would be an improvement
 %DS = [[AreaC;AreaI],[ColorC;ColorI]]
