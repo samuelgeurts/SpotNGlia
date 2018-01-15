@@ -108,6 +108,7 @@ end
 %}
 
 SpotCmean = zeros(numel(Regions1), 3);
+SpotMeanhsv = zeros(numel(Regions1), 3);
 BackGroundCmean = zeros(numel(Regions1), 3);
 
 for k1 = 1:numel(Regions1)
@@ -135,7 +136,9 @@ for k1 = 1:numel(Regions1)
     DBackground = DistanceBackgroundMap{slc}(sbb(2):sbb(2) + sbb(4) - 1, sbb(1):sbb(1) + sbb(3) - 1);
     %computes a weighted mean of the spot color based on the distance map
     SpotCmean(k1, 1:3) = sum(sum((repmat(DSpot, 1, 1, 3) / sum(DSpot(:))).*single(spotcimage)));
-    SpotMeanhsv = rgb2hsv(SpotCMean/255); 
+    %correction when value is above 255 due to 'afronding'
+    SpotCmean(k1,SpotCmean(k1, 1:3) > 255) = 255;
+    SpotMeanhsv(k1, 1:3) = rgb2hsv(SpotCmean(k1, 1:3)/255);     
     BackGroundCmean(k1, 1:3) = sum(sum((repmat(DBackground, 1, 1, 3) / sum(DBackground(:))).*single(spotcimage)));
     
     %{
@@ -144,6 +147,12 @@ for k1 = 1:numel(Regions1)
            spotcimage = Ialigned{k3}(c(2)-9:c(2)+9, c(1)-9:c(1)+9, 1:3);
     %}
 end
+
+
+
+
+
+
 contrastvector = BackGroundCmean - SpotCmean;
 [azimuth, elevation, r] = cart2sph(contrastvector(:, 1), contrastvector(:, 2), contrastvector(:, 3));
 
