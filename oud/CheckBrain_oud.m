@@ -8,6 +8,8 @@ if ~exist('ifish', 'var') || (ifish > numel(obj.StackInfo))
     ifish = 1;
 end
 
+obj = LoadTemplate(obj);
+
 SpotParameters = [];
 cxy = fliplr(obj.CompleteTemplate.CenterMidBrain);
 nfishes = numel(obj.StackInfo);

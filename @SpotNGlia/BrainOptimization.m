@@ -6,11 +6,12 @@
             if exist([obj.SavePath, '/', 'BrainOptList', '.mat'], 'file')
                 load([obj.SavePath, '/', 'BrainOptList', '.mat'], 'BrainOptList')
             else
-                BrainOptList = []
+                BrainOptList = [];
                 save([obj.SavePath, '/', 'BrainOptList', '.mat'], 'BrainOptList')
             end
             
-            
+            obj = LoadTemplate(obj);
+                        
             if ~exist('fishnumbers', 'var')
                 fishnumbers = 1:numel(obj.StackInfo);
             elseif max(fishnumbers) > numel(obj.StackInfo)

@@ -13,9 +13,13 @@ image_TF = true;
 Save_TF = true;
 HistEq_TF = true;
 
+obj = LoadTemplate(obj);
+
 obj.StackInfo
 obj.CompleteTemplate.ref_temp
 obj.ZFParameters
+
+
 
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo')
 
