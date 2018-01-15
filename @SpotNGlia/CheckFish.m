@@ -12,12 +12,13 @@ slice_start = [1, slice_end(1:end-1) + 1];
 islice = slice_start(ifish);
 subslice = 1;
 
-SpotParameters = [];
+obj = LoadTemplate(obj);
+
+%SpotParameters = [];
 cxy = fliplr(obj.CompleteTemplate.CenterMidBrain);
 nfishes = numel(obj.StackInfo);
 nslices = sum([obj.StackInfo.stacksize]);
 checkupOrg(nfishes) = struct('Midbrain', [], 'Spots', []);
-
 
 waitbar(0.0684, h, 'BrainSegmentationInfo')
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
@@ -28,7 +29,6 @@ load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters');
 waitbar(0.7227, h, 'RegistrationInfo')
 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo');
 waitbar(0.7877, h, 'checkup')
-
 
 %fill adaptive variable containing initial brains ans spots
 %checkupOrg stays unchanged, checkup is adaptive
@@ -42,22 +42,32 @@ load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup')
 if ~exist('checkup', 'var')
     checkup = checkupOrg;
     checkup(1).Corrections = [];
+    checkup(1).SpotAdditions = [];
+    checkup(1).SpotRemovals = [];
     [checkup.Include] = deal(true);
 end
+%if an older checkup file is used SpotNGlia1.4.0 and before, the field 'SpotAdditions' and 'SpotRemovals' are added
+if ~isfield(checkup, 'SpotAdditions')
+    checkup(1).SpotRemovals = [];
+end
+if ~isfield(checkup, 'SpotRemovals')
+    checkup(1).SpotAdditions = [];
+end
+
 waitbar(1, h, 'Image')
 
 
-if isfield(obj.Annotations,'Spots')
+if isfield(obj.Annotations, 'Spots')
     SpotAnn = true;
 else
-    SpotAnn = false;    
+    SpotAnn = false;
 end
-if isfield(obj.Annotations,'MidBrain')
+if isfield(obj.Annotations, 'MidBrain')
     MidBrainAnn = true;
 else
-    MidBrainAnn = false;    
+    MidBrainAnn = false;
 end
-
+%%
 %initialize figure with axes and plots
 fh = figure;
 sh = imshow(ones(obj.CompleteTemplate.Size), ...
@@ -70,16 +80,16 @@ ln = plot(0, 0, ...
     'LineWidth', 2);
 ln2 = plot(0, 0, ...
     'Color', [75, 75, 255]/255, ...
-    'LineWidth', 2,...
-    'Visible','off');
+    'LineWidth', 2, ...
+    'Visible', 'off');
 sc = scatter(0, 0, 400, ...
     'LineWidth', 2, ...
     'MarkerEdgeColor', 1/255*[255, 75, 75]);
 sc2 = scatter(0, 0, 400, ...
     'LineWidth', 2, ...
-    'MarkerEdgeColor', 1/255*[75, 75, 255],...
-    'SizeData',300,...
-    'Visible','off');
+    'MarkerEdgeColor', 1/255*[75, 75, 255], ...
+    'SizeData', 300, ...
+    'Visible', 'off');
 str = sprintf(['Fish: %.0f of %.0f', '\n', ...
     'Computed Spots: %.0f'], 0, 0, 0);
 
@@ -88,8 +98,13 @@ ah = annotation('textbox', [.05, .63, .7, .3], ...
     'FitBoxToText', 'on', 'FontSize', 15);
 ph = plot(0, 0, ...
     'bo');
-rec = rectangle('Position', [cxy(2) - 500, cxy(1) - 500, 1000, 1000],...
-    'Visible','off');
+ph2 = plot(0, 0, ...
+    'bx');
+ph3 = plot(0, 0, ...
+    'rx');
+
+rec = rectangle('Position', [cxy(2) - 500, cxy(1) - 500, 1000, 1000], ...
+    'Visible', 'off');
 
 
 %buttonfigure parameters
@@ -114,19 +129,31 @@ btn = uicontrol('Style', 'pushbutton', 'String', 'Correct Brain', ...
     'Position', [30, 10, 100, 22], ...
     'Callback', {@CorrectBrainButton});%#ok<NASGU>
 
-btn2 = uicontrol('Style', 'pushbutton', 'String', 'Reset', ...
+btn2 = uicontrol('Style', 'pushbutton', 'String', 'Brain Reset', ...
     'Position', [130, 10, 100, 22], ...
     'Callback', {@ResetButton});%#ok<NASGU>
 
+btn3 = uicontrol('Style', 'pushbutton', 'String', 'Correct Spot', ...
+    'Position', [340, 10, 100, 22], ...
+    'Callback', {@CorrectSpotButton});%#ok<NASGU>
+
+btn4 = uicontrol('Style', 'pushbutton', 'String', 'Spot Reset', ...
+    'Position', [440, 10, 100, 22], ...
+    'Callback', {@ResetButton2});%#ok<NASGU>
+
 rad = uicontrol('Style', 'radiobutton', 'String', 'Show Slices', ...
-    'Position', [240, 10, 100, 22], ...
+    'Position', [340, 41, 100, 22], ...
     'Value', 0, ...
-    'Callback', {@SliceButton});%#ok<NASGU>
+    'Callback', {@SliceButton});
 
 rad2 = uicontrol('Style', 'radiobutton', 'String', 'Compare', ...
-    'Position', [340, 10, 100, 22], ...
+    'Position', [440, 41, 100, 22], ...
     'Value', 0, ...
     'Callback', {@SliceButton2});%#ok<NASGU>
+
+rad3 = uicontrol('Style', 'radiobutton', 'String', 'Polar', ...
+    'Position', [240, 10, 100, 22], ...
+    'Value', 1);
 
 sliderstep = 1 / (nfishes - 1);
 sld = uicontrol('Style', 'slider', ...
@@ -149,15 +176,15 @@ cbh = uicontrol('Style', 'checkbox', 'String', 'Include Fish', ...
     'Value', checkup(ifish).Include, 'Position', [240, 41, 100, 22], ...
     'Callback', @checkBoxCallback);
 
-btn3 = uicontrol('Style', 'pushbutton', 'String', 'Save', ...
-    'Position', [530, 10, 100, 22], ...
+btn6 = uicontrol('Style', 'pushbutton', 'String', 'Save', ...
+    'Position', [580, 10, 100, 22], ...
     'Callback', {@SaveButton});%#ok<NASGU>
 uicontrol(sld);
 
 IniFish
 
 delete(h)
-
+%%
     function CorrectBrainButton(~, ~)
         %correct button
         
@@ -177,7 +204,7 @@ delete(h)
         n = size(checkup(ifish).Corrections, 1);
         
         % pick input and display
-        while but == 1
+        while but == 1 || (but == 3)
             [x, y, but] = ginput(1); %pick a new input
             
             if but == 1
@@ -186,9 +213,21 @@ delete(h)
                 ph.XData = xy(:, 1);
                 ph.YData = xy(:, 2);
             end
+            if but == 3
+                
+                [mn, ind] = min(sqrt((ph.XData - x).^2+(ph.YData - y).^2));
+
+                if mn <= 20
+                xy(ind, :) = [];
+                ph.XData(ind) = [];
+                ph.YData(ind) = [];
+                n = n - 1;
+                end
+            end
         end
         
         if ~isempty(xy)
+            if rad3.Value
             % transform coordinates to polar
             coord = fliplr(xy); %(y,x)
             coord2 = coord - repmat(cxy, size(coord, 1), 1); %set center to cxy
@@ -212,26 +251,41 @@ delete(h)
             Y3 = Y2 + cxy(1) - si(1) / 2;
             
             %{
-                    AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);
-                    figure;imagesc(AlignedFish)
-                    hold on
-                    scatter(coord(2),coord(1))
+                       AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);
+                       figure;imagesc(AlignedFish)
+                       hold on
+                       scatter(coord(2),coord(1))
  
-                    X = coord2(2)
-                    Y = coord2(1)
-                    [Isquare] = sng_boxaroundcenter(AlignedFish,fliplr(cxy));
-                    Isquare(Y-5:Y+5,X-5:X+5,1) = 20;
-                    figure;imshow(uint8(Isquare))
+                       X = coord2(2)
+                       Y = coord2(1)
+                       [Isquare] = sng_boxaroundcenter(AlignedFish,fliplr(cxy));
+                       Isquare(Y-5:Y+5,X-5:X+5,1) = 20;
+                       figure;imshow(uint8(Isquare))
  
-                    Ipolar = sng_Im2Polar3(Isquare);
-                    figure;imshow(uint8(Ipolar))
-                    sp = size(Ipolar)
-                    si = size(Isquare)
+                       Ipolar = sng_Im2Polar3(Isquare);
+                       figure;imshow(uint8(Ipolar))
+                       sp = size(Ipolar)
+                       si = size(Isquare)
  
-                      figure;imshow(uint8(Isquare))
-                      hold on
-                      plot(X2,Y2)
+                         figure;imshow(uint8(Isquare))
+                         hold on
+                         plot(X2,Y2)
             %}
+            else
+                %sorting method for coordinates to polinome
+                %[xy2,~] = sng_OrderContourCoordinates(xy);
+                
+                %other sorting method with known center
+                xy2 = xy - mean(xy,1);
+                [~,ind] = sort(cart2pol(xy2(:,1),xy2(:,2)));
+                
+                X3 = xy(ind,1);
+                Y3 = xy(ind,2);
+                %fix endpoints
+                X3 = [X3;X3(1)];
+                Y3 = [Y3;Y3(1)];            
+            end
+            
             
             ln.XData = X3;
             ln.YData = Y3;
@@ -251,15 +305,71 @@ delete(h)
             % set the new spots
             sc.XData = rc(:, 1);
             sc.YData = rc(:, 2);
-            ah.String = sprintf(['Fish: %.0f of %.0f', '\n', ...
-                'Computed Spots: %.0f'], ifish, nfishes, numel(sc.XData));
+            
+            updatespots
+            updateannotation
+            updatecheckup
         end
         rec.Visible = 'off';
+        
+    end
 
+    function CorrectSpotButton(~, ~)
+        %left click adds a spot, right clic removes a spot
+        %other button quits function
+        
+        rec.Visible = 'on';
+        figure(fh)
+        but = 1;
+        
+        %pick input and display
+        while (but == 1) || (but == 3)
+            [x, y, but] = ginput(1); %pick a new input
+            
+            %left clic to add
+            if but == 1
+                [mn, ~] = min(sqrt((sc.XData - x).^2+(sc.YData - y).^2));
+                if mn >= 10
+                    sc.XData = [sc.XData, x];
+                    sc.YData = [sc.YData, y];
+                    ph2.XData = [ph2.XData, x];
+                    ph2.YData = [ph2.YData, y];
+                    
+                else
+                    warning('new spot is very close to a previous annotated spot')
+                    beep
+                end
+            end
+            
+            %right clic to remove button
+            if but == 3
+                [mn, mi] = min(sqrt((sc.XData - x).^2+(sc.YData - y).^2));
+                if mn <= 20
+                    
+                    %checks if removed spot is from a previous added spot
+                    %if so, spot is removed from added spot list
+                    %if not, spot is added to removed spot list
+                    [TF, ind] = ismember([sc.XData(mi), sc.YData(mi)], [ph2.XData', ph2.YData'], 'rows');
+                    if TF
+                        ph2.XData(ind) = [];
+                        ph2.YData(ind) = [];
+                    else
+                        ph3.XData = [ph3.XData, sc.XData(mi)];
+                        ph3.YData = [ph3.YData, sc.YData(mi)];
+                        
+                    end
+                    %remove spot from scatterplot
+                    sc.XData(mi) = [];
+                    sc.YData(mi) = [];
+                end
+            end     
+        end
+        updateannotation
         updatecheckup
     end
+
     function ResetButton(~, ~)
-        %reset button
+        %reset button which resets brain but keeps added and removed spots
         ph.XData = [];
         ph.YData = [];
         ln.XData = checkupOrg(ifish).Midbrain(:, 1);
@@ -267,11 +377,45 @@ delete(h)
         sc.XData = checkupOrg(ifish).Spots(:, 1);
         sc.YData = checkupOrg(ifish).Spots(:, 2);
         cbh.Value = true;
-        ah.String = sprintf(['Fish: %.0f of %.0f', '\n', ...
-            'Computed Spots: %.0f'], ifish, nfishes, numel(sc.XData));
+        updatespots
+           
+        updateannotation
         updatecheckup
         
     end
+    function updatespots
+       %this function updates the spots according to previous added or removed spots
+       
+       %remove previous removed spots
+        [TF, ~] = ismember([sc.XData', sc.YData'], [ph3.XData', ph3.YData'], 'rows');
+        sc.XData(TF) = [];
+        sc.YData(TF) = [];
+        %add previous added spots
+        sc.XData = [sc.XData ph2.XData];
+        sc.YData = [sc.YData ph2.YData];               
+    end
+    function ResetButton2(~, ~)
+        %reset button which only removes added spots and adds removed spots
+
+        %remove previous added spots
+        [TF, ~] = ismember([sc.XData', sc.YData'], [ph2.XData', ph2.YData'], 'rows');
+        sc.XData(TF) = [];
+        sc.YData(TF) = [];
+        %add previous removed spots
+        sc.XData = [sc.XData ph3.XData];
+        sc.YData = [sc.YData ph3.YData];
+        
+        %set added and removed spots to zero
+        ph2.XData = [];
+        ph2.YData = [];
+        ph3.XData = [];
+        ph3.YData = [];
+               
+        updateannotation
+        updatecheckup
+    end
+
+
     function SliceButton(source, ~)
         %show slice button
         if source.Value
@@ -334,9 +478,16 @@ delete(h)
     end
     function SaveButton(~, ~)
         %save button
+        h = waitbar(0, 'update checkup', 'Name', 'Saving');
         updatecheckup
+        figure(h)
+        waitbar(1/50, h, 'save checkup')
         save([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup', '-append');
+        waitbar(4/6, h, 'save excel sheet')
         obj.buildsheet
+        waitbar(1, h, 'complete')
+        delete(h)
+        
     end
     function updatecheckup
         %update checkup variable
@@ -344,14 +495,26 @@ delete(h)
         checkup(ifish).Spots = [sc.XData', sc.YData'];
         checkup(ifish).Corrections = [ph.XData', ph.YData'];
         checkup(ifish).Include = cbh.Value;
+        checkup(ifish).SpotAdditions = [ph2.XData', ph2.YData'];
+        checkup(ifish).SpotRemovals = [ph3.XData', ph3.YData'];
         
         if rad.Value
             uicontrol(sld2);
         else
             uicontrol(sld);
         end
-        
     end
+    function updateannotation
+        if rad.Value
+            ah.String = sprintf(['Fish: %.0f of %.0f   Slice: %.f of %.f', '\n', ...
+                'Computed Spots: %.0f'], ifish, nfishes, subslice, obj.StackInfo(ifish).stacksize, numel(sc.XData));
+        else
+            ah.String = sprintf(['Fish: %.0f of %.0f', '\n', ...
+                'Computed Spots: %.0f'], ifish, nfishes, numel(sc.XData));
+        end
+    end
+
+
     function IniFish
         
         if rad.Value
@@ -362,31 +525,39 @@ delete(h)
             CorrectedFish = im2uint8(CorrectedFish);
             AlignedSlice = imwarp(CorrectedFish, tform_complete, 'FillValues', 255, 'OutputView', obj.CompleteTemplate.ref_temp);
             sh.CData = uint8(AlignedSlice);
-            ah.String = sprintf(['Fish: %.0f of %.0f   Slice: %.f of %.f' , '\n', ...
-                'Computed Spots: %.0f'], ifish, nfishes,subslice,obj.StackInfo(ifish).stacksize,numel(sc.XData));
         else
             AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(ifish).stackname, '.tif']);
             sh.CData = uint8(AlignedFish);
-            ah.String = sprintf(['Fish: %.0f of %.0f', '\n', ...
-                'Computed Spots: %.0f'], ifish, nfishes, numel(sc.XData));
+            %ah.String = sprintf(['Fish: %.0f of %.0f', '\n', ...
+            %    'Computed Spots: %.0f'], ifish, nfishes, numel(sc.XData));
         end
+        
         
         %show by hand annotated midbrain and spots if exist
         if SpotAnn
-            sc2.XData = obj.Annotations(ifish).Spots(:,1);
-            sc2.YData = obj.Annotations(ifish).Spots(:,2);
+            sc2.XData = obj.Annotations(ifish).Spots(:, 1);
+            sc2.YData = obj.Annotations(ifish).Spots(:, 2);
         end
         if MidBrainAnn
-            ln2.XData = obj.Annotations(ifish).MidBrain(:,1);
-            ln2.YData = obj.Annotations(ifish).MidBrain(:,2);
+            ln2.XData = obj.Annotations(ifish).MidBrain(:, 1);
+            ln2.YData = obj.Annotations(ifish).MidBrain(:, 2);
         end
         
         %update figures
         ln.XData = checkup(ifish).Midbrain(:, 1);
         ln.YData = checkup(ifish).Midbrain(:, 2);
-        sc.XData = checkup(ifish).Spots(:, 1);
-        sc.YData = checkup(ifish).Spots(:, 2);
         
+        updateannotation
+        
+        
+        %update scatter data: spots,braincorrections,addition,removals
+        if ~isempty(checkup(ifish).Spots)
+            sc.XData = checkup(ifish).Spots(:, 1);
+            sc.YData = checkup(ifish).Spots(:, 2);
+        else
+            sc.XData = [];
+            sc.YData = [];
+        end
         if ~isempty(checkup(ifish).Corrections)
             ph.XData = checkup(ifish).Corrections(:, 1);
             ph.YData = checkup(ifish).Corrections(:, 2);
@@ -394,8 +565,23 @@ delete(h)
             ph.XData = [];
             ph.YData = [];
         end
+        if ~isempty(checkup(ifish).SpotAdditions)
+            ph2.XData = checkup(ifish).SpotAdditions(:, 1);
+            ph2.YData = checkup(ifish).SpotAdditions(:, 2);
+        else
+            ph2.XData = [];
+            ph2.YData = [];
+        end
+        if ~isempty(checkup(ifish).SpotRemovals)
+            ph3.XData = checkup(ifish).SpotRemovals(:, 1);
+            ph3.YData = checkup(ifish).SpotRemovals(:, 2);
+        else
+            ph3.XData = [];
+            ph3.YData = [];
+        end
         
-        cbh.Value = checkup(ifish).Include;       
+        
+        cbh.Value = checkup(ifish).Include;
         checkBoxCallback
     end
 end
