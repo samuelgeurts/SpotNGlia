@@ -14,7 +14,10 @@ openvar('obj.StackInfo')
 obj = obj.CompleteProgram
 
 %Show fish and apply braincorrections and spotcorrections
-obj.CheckFish
+obj = obj.CheckFish
+
+%Save object location specified in obj.SavePath
+obj.saveit
 
 %% individual algorithm functions which has to be processed in order
 
