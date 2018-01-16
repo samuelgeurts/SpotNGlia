@@ -28,9 +28,13 @@ function objTemp = SpotOptimization2(obj, ...
            fishnumbers = 1:5
            name = 'SpotOptList2'
 %}
+obj = FillComputations(obj); %for pre SNG1.4.0
+obj = FillCheckup(obj);
+                         
+
 
 %load necessary information about template and fish computations
-INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo', 'BrainSegmentationInfo', 'checkup');
+INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo', 'BrainSegmentationInfo');
 TEMPLATE = load([obj.SourcePath, '/', 'Template3dpf.mat'], 'ref_temp', 'SVAP_index', 'SpotVectorArrayProbability');
 
 %create new optimization list and save if not exist already
@@ -245,12 +249,12 @@ end
 %                     MidBrain{fn} = fliplr(INFO.BrainSegmentationInfo(fn).BrainEdge);
 %                 end
 %             case 'Correction'
-%                 include = boolean([INFO.checkup.Include]);
+%                 include = boolean([obj.checkup.Include]);
 %                 fishnumbers = fishnumbers(include(fishnumbers)); %removes excluded number according checkup.include, slim he :)
 %                 nfishes = numel(fishnumbers);
 %                 for k1 = 1:nfishes
 %                     fn = fishnumbers(k1);
-%                     MidBrain{fn} = fliplr(INFO.checkup(fn).Midbrain);
+%                     MidBrain{fn} = fliplr(obj.checkup(fn).Midbrain);
 %                 end
 %             otherwise
 %                 error('choose between "Annotation", "Computation", "Correction"')

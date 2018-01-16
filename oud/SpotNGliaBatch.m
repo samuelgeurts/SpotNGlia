@@ -240,7 +240,7 @@ function NewPath(objb, mode)
                 objb.BatchStats(k1).StdAbsDif = obj.SpotBrainStats.StdAbsDifference;
                 objb.BatchStats(k1).RMSD = obj.SpotBrainStats.RMSD;
                 objb.SpotsAnnotated{k1} = [obj.Annotations.Counts];
-                objb.SpotsComputed{k1} = [obj.StackInfo.Counts];
+                objb.SpotsComputed{k1} = [obj.Computations.Counts];
                 
                 objb.BatchStats(k1).meanNAnn = mean(objb.SpotsAnnotated{k1}(~isnan(objb.SpotsAnnotated{k1})))
                 objb.BatchStats(k1).meanNCom = mean(objb.SpotsComputed{k1}(~isnan(objb.SpotsComputed{k1})))                                
@@ -282,15 +282,17 @@ function NewPath(objb, mode)
             figure;hold on
             for k1 = 1:10
                 obj = objb.Objects{k1};
-
+                
+                obj = FillComputations(obj); %for pre SNG1.4.0
+                obj = FillCheckup(obj);
+            
             AnnC = [obj.Annotations.Counts]
             XAnnC = k1*ones(1,numel(AnnC))
 
-            	load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
                 CorC = []
-                for k3 = 1:numel(checkup) %#ok<NODEF>
-                    if checkup(k3).Include == 1
-                       CorC(k3) = numel(checkup(k3).Spots)/2;
+                for k3 = 1:numel(obj.checkup) %#ok<NODEF>
+                    if obj.checkup(k3).Include == 1
+                       CorC(k3) = numel(obj.checkup(k3).Spots)/2;
                     else
                         CorC(k3) = NaN;
                     end

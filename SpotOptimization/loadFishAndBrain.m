@@ -1,7 +1,7 @@
 function [MidBrain, AlignedFish] = loadFishAndBrain(obj, fishnumbers, INFO, TEMPLATE, brain_sw, ComputeOnSlice)
 %load midbrains and alignedfishes
 %obj:   SpotNGlia object
-%INFO:  INFO.(BrainSegmentation,checkup,RegistrationInfo)
+%INFO:  INFO.(BrainSegmentation,RegistrationInfo)
 %TEMPLATE:  TEMPLATE.ref_temp
 %brain_sw:  'Annotation','Computation','Correction'
 %ComputeonSlice: [1,0]
@@ -14,6 +14,8 @@ elseif max(fishnumbers) > numel(obj.StackInfo)
 end
 nfishes = numel(fishnumbers);
 
+obj = FillComputations(obj); %for pre SNG1.4.0
+obj = FillCheckup(obj);
 
 %% Choose which brain is used
 MidBrain = cell(1, obj.nfishes);
@@ -32,15 +34,12 @@ switch brain_sw
             MidBrain{fn} = fliplr(INFO.BrainSegmentationInfo(fn).BrainEdge);
         end
     case 'Correction'
-        if ~isfield(INFO, 'checkup')
-            INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
-        end
-        include = logical([INFO.checkup.Include]);
+        include = logical([obj.checkup.Include]);
         fishnumbers = fishnumbers(include(fishnumbers)); %removes excluded number according checkup.include, slim he :)
         nfishes = numel(fishnumbers);
         for k1 = 1:nfishes
             fn = fishnumbers(k1);
-            MidBrain{fn} = fliplr(INFO.checkup(fn).Midbrain);
+            MidBrain{fn} = fliplr(obj.checkup(fn).Midbrain);
         end
     otherwise
         error('choose between "Annotation", "Computation", "Correction"')
@@ -48,7 +47,7 @@ end
 
 %% Choose if optimization is on Slice or on Combination and preload images
 if ComputeOnSlice
-    if ~isfield(INFO, 'checkup')
+    if ~isfield(INFO, 'RegistrationInfo')
         INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo');
     end
     for k1 = 1:nfishes

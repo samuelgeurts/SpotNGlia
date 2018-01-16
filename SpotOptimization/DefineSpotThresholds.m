@@ -1,7 +1,7 @@
 function [wp, a] = DefineSpotThresholds(obj, fishnumbers)
 %compute spot thresholds based on fals en positives
 
-INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo', 'BrainSegmentationInfo', 'checkup', 'SpotParameters');
+INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo', 'BrainSegmentationInfo', 'SpotParameters');
 TEMPLATE = load([obj.SourcePath, '/', 'Template3dpf.mat'], 'ref_temp', 'SVAP_index', 'SpotVectorArrayProbability');
 
 if ~exist('fishnumbers', 'var') || isempty(fishnumbers)

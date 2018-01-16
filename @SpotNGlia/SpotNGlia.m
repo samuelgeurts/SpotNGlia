@@ -26,9 +26,11 @@ classdef SpotNGlia
         StackInfo = []
         ImageInfo = []
         BatchInfo = []
+        checkup = []
         
         InfoResult = []
         
+        Computations = []
         Annotations = []
         
         BrainInfo = []
@@ -46,8 +48,6 @@ classdef SpotNGlia
         CompleteTemplate = []
     end
     
-    
-    
     methods
         %constructor function
         function obj = SpotNGlia(mode1)
@@ -62,25 +62,24 @@ classdef SpotNGlia
                 mode1 = 0;
             end
             
-            if ~isempty(mode1)       
-            
+            if ~isempty(mode1)
+                
                 obj = NewPath(obj, mode1);
-
+                
                 [~, folder] = fileparts(obj.FishPath);
                 obj.SaveName = strcat('SNG_', folder);
                 obj.InfoName = strcat('INFO_', folder);
-
+                
                 load([obj.SourcePath, '/', 'zfinput.mat']); %#ok<LOAD>
                 obj.ZFParameters = zfinput;
                 obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
-
+                
                 %file which contains all batch specific computation info
                 matObj = matfile([obj.SavePath, '/', obj.InfoName, '.mat']);
                 obj.InfoResult = whos(matObj);
-            
+                
             end
         end
-        
         function obj = NewPath(obj, mode1)
             %obj.NewPath(0) default mode, UI for FishPath and SavePath, source is assumed to be in SpotNGlia folder
             %obj.NewPath(1) UI for FishPath, SavePath and SourcePath
@@ -229,7 +228,6 @@ classdef SpotNGlia
             obj.OS = getenv('OS');
             
         end
-        
         function obj = SliceCombination(obj, slicenumbers)
             %computes imageinfo and stackinfo
             %       sorting = ['date'/'name']
@@ -283,7 +281,7 @@ classdef SpotNGlia
                     [imageinfotemp.folder] = deal(obj.FishPath);
                 end
                 
-                % make en selection of fishslices if fisnumbers is given as input
+                % make a selection of fishslices if fishslices is given as input
                 if ~exist('slicenumbers', 'var')
                     obj.ImageInfo = imageinfotemp;
                     slicenumbers = 1:numel(imageinfotemp);
@@ -320,7 +318,6 @@ classdef SpotNGlia
             obj.nfishes = numel(obj.StackInfo);
             
         end
-        
         function obj = PreProcession(obj, fishnumbers)
             
             h = waitbar(0, 'Preprocession', 'Name', 'SpotNGlia');
@@ -406,8 +403,8 @@ classdef SpotNGlia
             obj.saveit
             delete(h)
             save([obj.SavePath, '/', obj.InfoName, '.mat'], 'PreprocessionInfo', '-append')
+            
         end
-        
         function obj = ExtendedDeptOfField(obj, fishnumbers)
             
             h = waitbar(0, 'Extended Dept of Field', 'Name', 'SpotNGlia');
@@ -420,25 +417,24 @@ classdef SpotNGlia
             nfishes = numel(fishnumbers);
             
             obj.fishnumbers.extendeddeptoffield = fishnumbers;
-            %obj.fishnumbers.extendeddeptoffield = obj.fishnumbers.preprocession(fishnumbers);
-            %fix later fishnumber
+            
             
             %{
-                            %Stack has to be added but than input parameters are needed,
-                            so the function PreprocessionSNG has to be separated in that
-                            case. For now we choose to store every image the object. If it
-                            leads to memory issue on other obtion has to be made. For
-                            example save the images in a folder outsite the object.
+                              %Stack has to be added but than input parameters are needed,
+                              so the function PreprocessionSNG has to be separated in that
+                              case. For now we choose to store every image the object. If it
+                              leads to memory issue on other obtion has to be made. For
+                              example save the images in a folder outsite the object.
  
-                            for k1 = 1:nfishes
-                                fn = fishnumbers(k1);
-                                ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
-                                for k2 = 1:numel(ImageSlice)
-                                ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
-                                [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
-                                %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
-                                end
-                            end
+                              for k1 = 1:nfishes
+                                  fn = fishnumbers(k1);
+                                  ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
+                                  for k2 = 1:numel(ImageSlice)
+                                  ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
+                                  [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
+                                  %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
+                                  end
+                              end
             %}
             if nfishes > 1
                 ExtendedDeptOfFieldInfo(nfishes) = struct('IndexMatrix', [], ...
@@ -466,7 +462,6 @@ classdef SpotNGlia
             save([obj.SavePath, '/', obj.InfoName, '.mat'], 'ExtendedDeptOfFieldInfo', '-append')
             delete(h)
         end
-        
         function obj = Registration(obj, fishnumbers)
             
             h = waitbar(0, 'Registration', 'Name', 'SpotNGlia');
@@ -482,7 +477,7 @@ classdef SpotNGlia
             %load complete template
             obj = obj.LoadTemplate;
             
-                        
+            
             %folder to save AlignedFish
             TempFolderName = ([obj.SavePath, '/', 'AlignedFish']);
             if ~exist(TempFolderName, 'dir')
@@ -517,7 +512,6 @@ classdef SpotNGlia
             save([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo', '-append')
             delete(h)
         end
-        
         function obj = BrainSegmentation(obj, fishnumbers)
             h = waitbar(0, 'Brain Segmentation', 'Name', 'SpotNGlia');
             
@@ -525,7 +519,7 @@ classdef SpotNGlia
                 fishnumbers = 1:numel(obj.StackInfo);
             elseif max(fishnumbers) > numel(obj.StackInfo)
                 error('at least one fish does not exist in RegistrationInfo')
-            end            
+            end
             nfishes = numel(fishnumbers);
             obj.fishnumbers.brainsegmentation = fishnumbers;
             
@@ -553,11 +547,13 @@ classdef SpotNGlia
             
             delete(h)
         end
-        
         function obj = SpotDetection(obj, fishnumbers)
-
-            obj = obj.LoadTemplate;            
+            
+            obj = obj.LoadTemplate;
             load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
+            
+            %load checkup if exist from pre SpotNGlia1.4.0
+            obj = FillCheckup(obj);
             
             h = waitbar(0, 'SpotDetection', 'Name', 'SpotNGlia');
             
@@ -565,7 +561,7 @@ classdef SpotNGlia
                 fishnumbers = 1:numel(obj.StackInfo);
             elseif max(fishnumbers) > numel(obj.StackInfo)
                 error('at least one fish does not exist in BrainInfo')
-            end           
+            end
             nfishes = numel(fishnumbers);
             obj.fishnumbers.spotdetection = fishnumbers;
             
@@ -591,29 +587,17 @@ classdef SpotNGlia
                 waitbar(k1/nfishes, h, ['SpotDetection ', num2str(k1), ' / ', num2str(nfishes)])
                 AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
                 [SpotsDetected{k1}, SpotParameters{k1}, SpotDetectionInfo(k1)] = SpotDetectionSNG(AlignedFish, obj.CompleteTemplate, BrainSegmentationInfo(k1).BrainEdge, obj.ZFParameters);
-                obj.StackInfo(k1).Counts = numel(SpotsDetected{k1});
-            end
-            
-            %update checkup if checkup exists, only when new spot-parameters are tested (ZFParameters)
-            VariableList = who('-file', [obj.SavePath, '/', obj.InfoName, '.mat']);
-            if ismember('checkup', VariableList)
-                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
-                for k3 = 1:numel(checkup) %#ok<NODEF>
-                    if checkup(k3).Include == 1
-                        Xrow = checkup(k3).Midbrain(:, 1);
-                        Yrow = checkup(k3).Midbrain(:, 2);
-                        %% compute new spots insite area
-                        [rc] = reshape([SpotParameters{k3}.Centroid], 2, numel(SpotParameters{k3}))';
-                        [in, ~] = inpolygon(rc(:, 1), rc(:, 2), Xrow, Yrow);
-                        SpotsDetec = SpotParameters{k3}(in' == 1 & ...
-                            [SpotParameters{k3}.LargerThan] == 1 & ...
-                            [SpotParameters{k3}.SmallerThan] == 1 & ...
-                            [SpotParameters{k3}.MinProbability] == 1);
-                        [rc] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
-                        checkup(k3).Spots = [rc(:, 1), rc(:, 2)]; %#ok<AGROW>
-                    end
+                
+                %update Computations
+                obj.Computations(k1).Spots = reshape([SpotsDetected{k1}.Centroid], 2, numel(SpotsDetected{k1}))';
+                obj.Computations(k1).Midbrain = fliplr(BrainSegmentationInfo(k1).BrainEdge);
+                obj.Computations(k1).Counts = numel(SpotsDetected{k1});
+                
+                %update checkup after new spot computations
+                if ~isempty(obj.checkup)
+                    obj.checkup(k1).Spots = obj.SpotsInsiteArea(SpotParameters{k1}, obj.checkup(k1).Midbrain);
+                    obj.checkup(k1).Counts = size(obj.checkup(k1).Spots, 1);
                 end
-                save([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup', '-append');
             end
             
             obj.saveit
@@ -625,11 +609,13 @@ classdef SpotNGlia
             
             delete(h)
         end
-        
         function obj = SpotDetection2(obj, fishnumbers)
             
             INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo', 'BrainSegmentationInfo');
             TEMPLATE = load([obj.SourcePath, '/', 'Template3dpf.mat'], 'ref_temp', 'SVAP_index', 'SpotVectorArrayProbability');
+            
+            %load checkup if exist from pre SpotNGlia1.4.0
+            obj = FillCheckup(obj);
             
             h = waitbar(0, 'SpotDetection', 'Name', 'SpotNGlia');
             
@@ -651,7 +637,6 @@ classdef SpotNGlia
             for k1 = 1:nfishes
                 fn = fishnumbers(k1);
                 waitbar(k1/nfishes, h, ['SpotDetection on slice ', num2str(k1), ' / ', num2str(nfishes)])
-                k1
                 tform_complete = INFO.RegistrationInfo{fn}(strcmp({INFO.RegistrationInfo{fn}.name}, 'tform_complete')).value;
                 CorrectedFish = sng_openimstack2([obj.SavePath, '/', 'CorrectedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
                 AlignedSlice = cell(1, numel(CorrectedFish));
@@ -660,29 +645,16 @@ classdef SpotNGlia
                 end
                 [SpotsDetected{fn}, SpotParameters{fn}, SpotDetectionInfo(fn)] = SpotDetectionSliceSNG(AlignedSlice, TEMPLATE, INFO.BrainSegmentationInfo(fn).BrainEdge, obj.ZFParameters);
                 
-                obj.StackInfo(fn).Counts = numel(SpotsDetected{fn});
-            end
-            
-            %update checkup if checkup exists, only when new spot-parameters are tested (ZFParameters)
-            VariableList = who('-file', [obj.SavePath, '/', obj.InfoName, '.mat']);
-            if ismember('checkup', VariableList)
-                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
-                for k3 = 1:numel(checkup) %#ok<NODEF>
-                    if checkup(k3).Include == 1
-                        Xrow = checkup(k3).Midbrain(:, 1);
-                        Yrow = checkup(k3).Midbrain(:, 2);
-                        %% compute new spots insite area
-                        [rc] = reshape([SpotParameters{k3}.Centroid], 2, numel(SpotParameters{k3}))';
-                        [in, ~] = inpolygon(rc(:, 1), rc(:, 2), Xrow, Yrow);
-                        SpotsDetec = SpotParameters{k3}(in' == 1 & ...
-                            [SpotParameters{k3}.LargerThan] == 1 & ...
-                            [SpotParameters{k3}.SmallerThan] == 1 & ...
-                            [SpotParameters{k3}.MinProbability] == 1);
-                        [rc] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
-                        checkup(k3).Spots = [rc(:, 1), rc(:, 2)]; %#ok<AGROW>
-                    end
+                %update Computations
+                obj.Computations(fn).Spots = reshape([SpotsDetected{fn}.Centroid], 2, numel(SpotsDetected{fn}))';
+                obj.Computations(fn).Midbrain = fliplr(BrainSegmentationInfo(fn).BrainEdge);
+                obj.Computations(fn).Counts = numel(SpotsDetected{fn});
+                
+                %update checkup after new spot computations
+                if ~isempty(obj.checkup)
+                    obj.checkup(fn).Spots = obj.SpotsInsiteArea(SpotParameters{fn}, obj.checkup(fn).Midbrain);
+                    obj.checkup(fn).Counts = size(obj.checkup(fn).Spots, 1);
                 end
-                save([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup', '-append');
             end
             
             obj.saveit
@@ -694,6 +666,53 @@ classdef SpotNGlia
             
             delete(h)
         end
+
+        function obj = FillComputations(obj, BrainSegmentationInfo, SpotsDetected)
+            %temporary function if an obj is opened that is created with SpotNGlia 1.4.0 or before
+            if isempty(obj.Computations)
+                if ~exist('BrainSegmentationInfo', 'var')
+                    load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
+                end
+                if ~exist('SpotsDetected', 'var')
+                    load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected')
+                end
+                for k = 1:obj.nfishes
+                    obj.Computations(k).Spots = reshape([SpotsDetected{k}.Centroid], 2, numel(SpotsDetected{k}))'; %#ok<IDISVAR,USENS>
+                    obj.Computations(k).Midbrain = fliplr(BrainSegmentationInfo(k).BrainEdge);
+                    obj.Computations(k).Counts = size(obj.Computations(k).Spots, 1);
+                end
+            end
+        end
+        function obj = FillCheckup(obj)
+            %temporary function if an obj is opened that is created with SpotNGlia 1.4.0 or before
+            if isempty(obj.checkup)
+                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup')
+                if exist('checkup', 'var')
+                    obj.checkup = checkup;
+                end
+            end
+        end
+        function obj = CorrectCheckBrain(obj)
+        %this function updates the spots according to previous added or removed spots
+        
+%         obj.checkup(k1).Spots
+%         obj.checkup(k1).SpotAdditions
+%         obj.checkup(k1).SpotRemovals
+%         
+%         
+%         [obj.checkup(k1).Spots]
+%         
+%         
+%         [TF, ~] = ismember([obj.checkup(k1).Spots], [obj.checkup(k1).SpotAdditions], 'rows');
+%         sc.XData(TF) = [];
+%         sc.YData(TF) = [];
+%         %add previous added spots
+%         sc.XData = [sc.XData, ph2.XData];
+%         sc.YData = [sc.YData, ph2.YData];
+       end
+                
+        
+        
         
         function obj = CompleteProgram(obj, fishnumbers)
             
@@ -713,7 +732,6 @@ classdef SpotNGlia
             
             % obj.ShowFish([], true)
         end
-        
         function obj = HistPar(obj, fishnumbers)
             %function to add a mean fish color parameter to the RegisterationInfo variable saved in INFO_...
             %its function can be removed later on as it is also added to Registration
@@ -764,49 +782,62 @@ classdef SpotNGlia
     methods(Hidden = true)
         
         Mask = BrainMask(obj, fishnumbers)
-        BrainOptimization(obj, fishnumbers)
-        %obj2 = SpotOptimization(obj, fishnumbers, zfinputlist)
+        %BrainOptimization(obj, fishnumbers)
+        %obj2 = SpotOptimization2(obj, fishnumbers, zfinputlist)
         
         function buildsheet(obj)
-            if ~exist('SpotsDetected', 'var')
-                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected')
-            end
-            if ~exist('checkup', 'var')
-                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup')
-            end
             
-            if exist('SpotsDetected', 'var')
-                nspots1 = zeros(numel(SpotsDetected), 1); %#ok<*USENS>
-                for k1 = 1:numel(SpotsDetected)
-                    nspots1(k1, 1) = numel(SpotsDetected{k1});
-                end
-            else
-                error('no spot information found')
-            end
+            obj = FillComputations(obj); %for pre SNG1.4.0
+            obj = FillCheckup(obj);
             
-            if exist('checkup', 'var')
-                nspots2 = zeros(numel(checkup), 1);
-                for k1 = 1:numel(checkup)
-                    if checkup(k1).Include == 1
-                        nspots2(k1, 1) = size(checkup(k1).Spots, 1);
-                    else
-                        nspots2(k1, 1) = NaN;
-                    end
-                end
-                Sheet = [{obj.StackInfo.stackname}', ...
-                    {obj.StackInfo.stacksize}', ...
-                    num2cell(nspots1), ...
-                    num2cell(nspots2)];
-                title = {obj.InfoName, 'images', 'nspots', 'corrected'};
+            if ~isempty(obj.checkup)
+                nspots2 = [obj.checkup.Counts];
+                nspots2([obj.checkup.Include] ~= 1) = NaN;
                 
+                Sheet = [{obj.StackInfo.stackname}', ...
+                    {obj.StackInfo.stacksize}', ...
+                    num2cell([obj.Computations.Counts])', ...
+                    num2cell(nspots2)'];
+                title = {obj.InfoName, 'Images', 'Computed', 'Corrected'};
             else
                 Sheet = [{obj.StackInfo.stackname}', ...
                     {obj.StackInfo.stacksize}', ...
-                    num2cell(nspots1)];
-                title = {obj.InfoName, 'images', 'nspots'};
+                    num2cell([obj.Computations.Counts])'];
+                title = {obj.InfoName, 'Images', 'Computed'};
             end
             ds = cell2dataset([title; Sheet]);
             export(ds, 'file', [obj.SavePath, '/', obj.InfoName, '.csv'], 'delimiter', obj.Delimiter)
+        end
+        function saveit(obj)
+            %obj.savedate = datetime;
+            %dt = strcat(string(year(date)),string(month(date)),string(day(date)));
+            %firstim = obj.ImageInfo(1).name;
+            %firstn = char(regexp(firstim,'\d+.tif','match'));
+            %firstn = strrep(firstn,'.tif','');
+            %name = strrep(firstim, [firstn,'.tif'],'');
+            
+            save(strcat(obj.SavePath, '/', obj.SaveName, '.mat'), 'obj');
+            
+            
+            %{
+                        load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
+                        if exist('SpotsDetected')
+                            for k1 = 1:numel(SpotsDetected)
+                                nspots(k1,1) = numel(SpotsDetected{k1});
+                            end
+ 
+                            Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
+                            title = {obj.InfoName,'images','nspots'}
+ 
+                            ds = cell2dataset([title;Sheet]);
+                            export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
+                        end
+            %}
+        end
+        function obj = LoadTemplate(obj)
+            if isempty(obj.CompleteTemplate)
+                obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
+            end
         end
         
         function obj = LoadAnnotations(obj)
@@ -854,7 +885,7 @@ classdef SpotNGlia
                 SpotAnn = cell(nfishes, 1);
                 for k1 = 1:nfishes
                     
-                    if exist([obj.AnnotatedSpotPath, '/', obj.StackInfo(k1).stackname, '.roi'],'file')
+                    if exist([obj.AnnotatedSpotPath, '/', obj.StackInfo(k1).stackname, '.roi'], 'file')
                         RoiMicroglia = ReadImageJROI([obj.AnnotatedSpotPath, '/', obj.StackInfo(k1).stackname, '.roi']);
                         SpotAnn{k1} = zeros(size(RoiMicroglia.mfCoordinates, 1), 2);
                         [SpotAnn{k1}(:, 1), SpotAnn{k1}(:, 2)] = transformPointsForward(tform_1234{k1}, ...
@@ -873,7 +904,6 @@ classdef SpotNGlia
             %    obj.SpotParameters{k1} = SpotDetectionInfo{k1}(strcmp({SpotDetectionInfo{k1}.name},'SpotParameters')).value;
             %end
         end
-        
         function obj = BrainVal(obj, BrainSegmentationInfo, fishnumbers)
             %fishnumbers has to correspondent with BrainSegmentationInfo if given
             if ~exist('BrainSegmentationInfo', 'var')
@@ -923,7 +953,6 @@ classdef SpotNGlia
             obj.BrainStats.MeanDice = mean(Dice);
             
         end
-        
         function obj = SpotVal(obj, SpotParameters)
             
             if ~exist('SpotParameters', 'var')
@@ -931,19 +960,18 @@ classdef SpotNGlia
             end
             
             if isempty(obj.Annotations) || ~isfield(obj.Annotations, 'MidBrain')
-                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
-                AMBR = {checkup.Midbrain};
+                AMBR = {obj.checkup.Midbrain};
             else
                 AMBR = {obj.Annotations.MidBrain};
             end
             
             
-            if sum(~cellfun('isempty',{obj.Annotations.Spots})) ~= numel(SpotParameters)
+            if sum(~cellfun('isempty', {obj.Annotations.Spots})) ~= numel(SpotParameters)
                 warning('not all fishes are annotated by hand')
             end
-            fishnumbers = 1:numel(SpotParameters);           
+            fishnumbers = 1:numel(SpotParameters);
             %removes fishnumbers from the list if not all annotations are known
-            fishnumbers = fishnumbers(~cellfun('isempty',{obj.Annotations.Spots})); 
+            fishnumbers = fishnumbers(~cellfun('isempty', {obj.Annotations.Spots}));
             nfishes = numel(fishnumbers);
             
             LinkDistance = cell(nfishes, 1);
@@ -1066,24 +1094,21 @@ classdef SpotNGlia
             %[obj.SpotSelection(1:nfishes).ComputedSpots] = SpotCom{:};
             
         end
-        
         function obj = TtestVal(obj, SpotN)
             %computes t-test if the number of spots are known and saved ouder
             %if checkup is generated, TtestVal will compute on those and store in
             %obj.SpotBrainStats. This is not very pretty and should be changed later
             
+            obj = FillCheckup(obj); %pre1.4.0
+            obj = FillComputations(obj);
+            
             if ~exist('SpotN', 'var')
-                SpotN = [obj.StackInfo.Counts];
-                
-                VariableList = who('-file', [obj.SavePath, '/', obj.InfoName, '.mat']);
-                if ismember('checkup', VariableList)
-                    load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
-                end
+                SpotN = [obj.Computations.Counts];
                 
                 %would be easier if SpotN containes a counts column
-                for k1 = 1:numel(checkup)
-                    SpotN(k1) = size(checkup(k1).Spots, 1);
-                    if checkup(k1).Include == 0
+                for k1 = 1:numel(obj.checkup)
+                    SpotN(k1) = size(obj.checkup(k1).Spots, 1);
+                    if obj.checkup(k1).Include == 0
                         SpotN(k1) = NaN;
                     end
                 end
@@ -1121,7 +1146,6 @@ classdef SpotNGlia
             obj.SpotBrainStats.RMSD = RMSD;
             
         end
-        
         function obj = SpotBrainVal(obj)
             
             %load([obj.SavePath,'/',obj.InfoName,'.mat'],'SpotParameters')
@@ -1304,7 +1328,6 @@ classdef SpotNGlia
             
             
         end
-        
         function ShowFishVal(obj, fishnumbers, ComOrAnn)
             %if ComOrAnn is not given, the computed brain is used
             
@@ -1324,10 +1347,9 @@ classdef SpotNGlia
             %end
             
             if isempty(obj.Annotations) || ~isfield(obj.Annotations, 'MidBrain')
-                load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
-                AMBR = {checkup.Midbrain};
+                AMBR = {obj.checkup.Midbrain};
             else
-                AMBR = obj.Annotations(k1).MidBrain;
+                AMBR = {obj.Annotations.MidBrain};
             end
             
             for k1 = 1:numel(fishnumbers)
@@ -1402,7 +1424,6 @@ classdef SpotNGlia
                 
             end
         end
-        
         function ShowFish(obj, fishnumbers, saveimage)
             
             if ~exist('fishnumbers', 'var') || isempty(fishnumbers)
@@ -1450,40 +1471,32 @@ classdef SpotNGlia
                 end
             end
         end
-        
-        function obj = LoadTemplate(obj)
-            if isempty(obj.CompleteTemplate)
-                obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
-            end 
+    end
+    
+    methods(Static)
+        function SpotCoordsFiltered = SpotsInsiteArea(SpotParametersSingle, SpotCoords)
+            Xrow = SpotCoords(:, 1);
+            Yrow = SpotCoords(:, 2);
+            
+            %% compute new spots insite area
+            rc = reshape([SpotParametersSingle.Centroid], 2, numel(SpotParametersSingle))';
+            [in, ~] = inpolygon(rc(:, 1), rc(:, 2), Xrow, Yrow);
+            
+            SpotsDetec = SpotParametersSingle(in' == 1 & ...
+                [SpotParametersSingle.LargerThan] == 1 & ...
+                [SpotParametersSingle.SmallerThan] == 1 & ...
+                [SpotParametersSingle.MinProbability] == 1);
+            
+            [SpotCoordsFiltered] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
         end
         
-        function saveit(obj)
-            %obj.savedate = datetime;
-            %dt = strcat(string(year(date)),string(month(date)),string(day(date)));
-            %firstim = obj.ImageInfo(1).name;
-            %firstn = char(regexp(firstim,'\d+.tif','match'));
-            %firstn = strrep(firstn,'.tif','');
-            %name = strrep(firstim, [firstn,'.tif'],'');
-            
-            save(strcat(obj.SavePath, '/', obj.SaveName, '.mat'), 'obj');
-            
-            
-            %{
-                      load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
-                      if exist('SpotsDetected')
-                          for k1 = 1:numel(SpotsDetected)
-                              nspots(k1,1) = numel(SpotsDetected{k1});
-                          end
- 
-                          Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
-                          title = {obj.InfoName,'images','nspots'}
- 
-                          ds = cell2dataset([title;Sheet]);
-                          export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
-                      end
-            %}
-        end
+        
+
+        
+        
         
     end
+    
+    
 end
 

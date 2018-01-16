@@ -109,13 +109,15 @@ if ~exist('SpotsDetected', 'var')
                 MidBrain{fn} = fliplr(BrainSegmentationInfo(fn).BrainEdge);
             end
         case 'Correction'
-            load([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup');
-            include = boolean([checkup.Include]);
+            obj = FillComputations(obj); %for pre SNG1.4.0
+            obj = FillCheckup(obj);
+            
+            include = boolean([obj.checkup.Include]);
             fishnumbers = fishnumbers(include(fishnumbers)); %removes excluded number according checkup.include, slim he :)
             nfishes = numel(fishnumbers);
             for k1 = 1:nfishes
                 fn = fishnumbers(k1);
-                MidBrain{fn} = fliplr(checkup(fn).Midbrain);
+                MidBrain{fn} = fliplr(obj.checkup(fn).Midbrain);
             end
         otherwise
             error('choose between "Annotation", "Computation", "Correction"')
