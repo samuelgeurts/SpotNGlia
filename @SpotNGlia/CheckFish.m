@@ -1,9 +1,11 @@
-function obj = CheckFish(obj, ifish)
+function objout = CheckFish(obj, ifish, INFO)
 %application to adjust brain region and spots
 
+%used for assignin to the righ workspace variable
+%objectname = inputname(1);
 
 global fh sh ln ln2 sc sc2 str ah ph ph2 ph3 rec %figure and axis handles
-global btn btn2 btn3 btn4 btn5 rad rad2 rad3 sld sld2 cbh %uicontrol handles
+global uih btn btn2 btn3 btn4 btn5 rad rad2 rad3 sld sld2 cbh %uicontrol handles
 
 
 if ~exist('ifish', 'var') || (ifish > numel(obj.StackInfo))
@@ -14,12 +16,25 @@ h = waitbar(0, 'Load Template', 'Name', 'Loading Data');
 
 obj = LoadTemplate(obj);
 
-waitbar(0.03, h, 'BrainSegmentationInfo')
-load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
-waitbar(0.17, h, 'SpotParameters')
-load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters');
-waitbar(0.87, h, 'RegistrationInfo')
-load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo');
+waitbar(0.03, h, 'Brain, Spot, Registration')
+
+if ~exist('INFO','var') ||...
+        ~isfield(INFO,'BrainSegmentationInfo') ||...
+        ~isfield(INFO,'SpotParameters') ||...
+        ~isfield(INFO,'RegistrationInfo')
+    INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo','SpotParameters','RegistrationInfo');
+end
+
+% waitbar(0.03, h, 'BrainSegmentationInfo')
+% load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
+% waitbar(0.17, h, 'SpotParameters')
+% load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters');
+% waitbar(0.87, h, 'RegistrationInfo')
+% load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo');
+% 
+
+
+
 waitbar(0.93, h, 'Initialize')
 
 slice_end = cumsum([obj.StackInfo.stacksize]);
@@ -43,9 +58,10 @@ waitbar(1, h, 'Initialize')
 IniFish
 uicontrol(sld);
 delete(h)
+uiwait(uih)        
 
     function InitializeCheckup    
-        obj = FillComputations(obj,BrainSegmentationInfo);
+        obj = FillComputations(obj,INFO.BrainSegmentationInfo);
         obj = FillCheckup(obj);
 
         if isempty(obj.checkup)
@@ -117,7 +133,7 @@ delete(h)
         posb = [posf(1), posf(2) - sizb - barcor, posf(3), sizb];
         
         uifignumber = fh.Number + 1;
-        figure(uifignumber)
+        uih = figure(uifignumber);
         set(gcf, 'position', posb);
         set(gcf, 'Toolbar', 'none');
         set(gcf, 'Menubar', 'none');
@@ -175,17 +191,21 @@ delete(h)
             'Callback', @CheckBox);
         
         btn5 = uicontrol('Style', 'pushbutton', 'String', 'Save', ...
-            'Position', [580, 10, 100, 22], ...
+            'Position', [580, 41, 100, 22], ...
             'Callback', {@SaveButton});%#ok<NASGU>
+        btn6 = uicontrol('Style', 'pushbutton', 'String', 'Save and Close', ...
+            'Position', [580, 10, 100, 22], ...
+            'Callback', {@CloseButton});%#ok<NASGU>
+        
+        
     end
-
     function CorrectBrainButton(~, ~)
         %correct button
         
         rec.Visible = 'on';
         figure(fh)
         
-        PolarN = BrainSegmentationInfo(ifish).PolarTransform;
+        PolarN = INFO.BrainSegmentationInfo(ifish).PolarTransform;
         sp = fliplr(size(PolarN));
         si = size(PolarN);
         
@@ -285,16 +305,16 @@ delete(h)
             ln.YData = Y3;
             ln.Marker = 'none';
             
-            rc = obj.SpotsInsiteArea(SpotParameters{ifish},[X3,Y3]);
+            rc = obj.SpotsInsiteArea(INFO.SpotParameters{ifish},[X3',Y3']);
             %{
             % compute new spots insite area
-            [rc] = reshape([SpotParameters{ifish}.Centroid], 2, numel(SpotParameters{ifish}))';
+            [rc] = reshape([INFO.SpotParameters{ifish}.Centroid], 2, numel(INFO.SpotParameters{ifish}))';
             [in, ~] = inpolygon(rc(:, 1), rc(:, 2), X3, Y3);
             
-            SpotsDetec = SpotParameters{ifish}(in' == 1 & ...
-                [SpotParameters{ifish}.LargerThan] == 1 & ...
-                [SpotParameters{ifish}.SmallerThan] == 1 & ...
-                [SpotParameters{ifish}.MinProbability] == 1);
+            SpotsDetec = INFO.SpotParameters{ifish}(in' == 1 & ...
+                [INFO.SpotParameters{ifish}.LargerThan] == 1 & ...
+                [INFO.SpotParameters{ifish}.SmallerThan] == 1 & ...
+                [INFO.SpotParameters{ifish}.MinProbability] == 1);
             
             [rc] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
             %}
@@ -380,14 +400,19 @@ delete(h)
     function ResetButton2(~, ~)
         %reset button which only removes added spots and adds removed spots
         
-        %remove previous added spots
-        [TF, ~] = ismember([sc.XData', sc.YData'], [ph2.XData', ph2.YData'], 'rows');
-        sc.XData(TF) = [];
-        sc.YData(TF) = [];
-        %add previous removed spots
-        sc.XData = [sc.XData, ph3.XData];
-        sc.YData = [sc.YData, ph3.YData];
+%         %remove previous added spots
+%         [TF, ~] = ismember([sc.XData', sc.YData'], [ph2.XData', ph2.YData'], 'rows');
+%         sc.XData(TF) = [];
+%         sc.YData(TF) = [];
+%         %add previous removed spots
+%         sc.XData = [sc.XData, ph3.XData];
+%         sc.YData = [sc.YData, ph3.YData];
         
+        
+        %recompute spots from corrected brain
+        rc = obj.SpotsInsiteArea(INFO.SpotParameters{ifish},obj.checkup(ifish).Midbrain);
+        sc.XData = rc(:, 1);
+        sc.YData = rc(:, 2);              
         %set added and removed spots to zero
         ph2.XData = [];
         ph2.YData = [];
@@ -450,10 +475,37 @@ delete(h)
         obj.saveit
                
         waitbar(4/6, h, 'save excel sheet')
-        obj.buildsheet
+        obj = obj.buildsheet;
         waitbar(1, h, 'complete')
-        delete(h)
+        delete(h)        
         
+        %update the object in workspace, close and reopen CheckFish
+        objout = obj;
+        close(uih);
+        close(fh);       
+        objout = CheckFish(obj, ifish, INFO);
+      
+        % a bit ugly way to update the object into the workspace
+        %assignin('base',objectname,obj) % Assign the data to the base workspace.
+    end
+    function CloseButton(~, ~)
+        h = waitbar(0, 'update checkup', 'Name', 'Saving');
+        updatecheckup
+        figure(h)
+        waitbar(1/50, h, 'save checkup')
+        
+        %save([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup', '-append');
+        obj.saveit
+               
+        waitbar(4/6, h, 'save excel sheet')
+        obj = obj.buildsheet;
+        waitbar(1, h, 'complete')
+        delete(h)        
+        
+        %update the object in workspace, close and reopen CheckFish
+        objout = obj;
+        close(uih);
+        close(fh);       
     end
     function CheckBox(~, ~)
         %checkbox include
@@ -473,7 +525,6 @@ delete(h)
             uicontrol(sld);
         end
     end
-
     function updatespots
         %this function updates the spots according to previous added or removed spots
         
@@ -493,12 +544,14 @@ delete(h)
         obj.checkup(ifish).Include = cbh.Value;
         obj.checkup(ifish).SpotAdditions = [ph2.XData', ph2.YData'];
         obj.checkup(ifish).SpotRemovals = [ph3.XData', ph3.YData'];
+        obj.checkup(ifish).Counts = numel(sc.XData);
         
         if rad.Value
             uicontrol(sld2);
         else
             uicontrol(sld);
         end
+
     end
     function updateannotation
         if rad.Value
@@ -509,11 +562,10 @@ delete(h)
                 'Computed Spots: %.0f'], ifish, nfishes, numel(sc.XData));
         end
     end
-
     function IniFish
         
         if rad.Value
-            tform_complete = RegistrationInfo{ifish}(strcmp({RegistrationInfo{ifish}.name}, 'tform_complete')).value;
+            tform_complete = INFO.RegistrationInfo{ifish}(strcmp({INFO.RegistrationInfo{ifish}.name}, 'tform_complete')).value;
             t = Tiff([obj.SavePath, '/', 'CorrectedFish', '/', obj.StackInfo(ifish).stackname, '.tif'], 'r');
             setDirectory(t, subslice)
             CorrectedFish = t.readRGBAImage();
@@ -577,4 +629,6 @@ delete(h)
         cbh.Value = obj.checkup(ifish).Include;
         CheckBox
     end
+
+
 end
