@@ -666,7 +666,6 @@ classdef SpotNGlia
             
             delete(h)
         end
-
         function obj = FillComputations(obj, BrainSegmentationInfo, SpotsDetected)
             %temporary function if an obj is opened that is created with SpotNGlia 1.4.0 or before
             if isempty(obj.Computations)
@@ -709,11 +708,7 @@ classdef SpotNGlia
 %         %add previous added spots
 %         sc.XData = [sc.XData, ph2.XData];
 %         sc.YData = [sc.YData, ph2.YData];
-       end
-                
-        
-        
-        
+        end
         function obj = CompleteProgram(obj, fishnumbers)
             
             [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
@@ -776,16 +771,15 @@ classdef SpotNGlia
         
         ShowFishHeadHist(obj, fishnumber)
         ShowMaxFishHist(obj, fishnumber)
-        CheckFish(obj, ifish)
+        obj = CheckFish(obj, ifish, INFO)
     end
     
-    methods(Hidden = true)
-        
+    methods(Hidden = true)       
         Mask = BrainMask(obj, fishnumbers)
         %BrainOptimization(obj, fishnumbers)
         %obj2 = SpotOptimization2(obj, fishnumbers, zfinputlist)
         
-        function buildsheet(obj)
+        function obj = buildsheet(obj)
             
             obj = FillComputations(obj); %for pre SNG1.4.0
             obj = FillCheckup(obj);
@@ -1475,6 +1469,13 @@ classdef SpotNGlia
     
     methods(Static)
         function SpotCoordsFiltered = SpotsInsiteArea(SpotParametersSingle, SpotCoords)
+            %selects only Spots instite area 'SpotParametersSingle'
+            
+            %{
+            SpotParametersSingle = SpotParameters{ifish};
+            SpotCoords = [X3',Y3']
+            %}
+            
             Xrow = SpotCoords(:, 1);
             Yrow = SpotCoords(:, 2);
             
@@ -1489,12 +1490,6 @@ classdef SpotNGlia
             
             [SpotCoordsFiltered] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
         end
-        
-        
-
-        
-        
-        
     end
     
     
