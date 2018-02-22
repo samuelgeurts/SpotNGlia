@@ -10,8 +10,8 @@ classdef SpotNGliaB
         SavePath = []
         SaveName = []
     end
-       
-    properties (Transient = true)
+    
+    properties(Transient = true)
         obj = SpotNGlia([])
     end
     
@@ -50,18 +50,70 @@ classdef SpotNGliaB
                 objb.ObjName{k1} = dirlist.name;
             end
         end
-
-        function objb = all(objb,SNGFunctionName,batchnumbers)
+        
+        function objb = all(objb, SNGFunctionName, batchnumbers, input1)
             %executes SponNGlia function on all objects contained by SpotNGliaB object
             %objb = objb.all(@SpotVal)
-            if ~exist('batchnumbers','var')
-               batchnumbers = 1:objb.Objectn;
+                        
+            if ~exist('batchnumbers', 'var') || isempty(batchnumbers)
+                batchnumbers = 1:objb.Objectn;
             end
             
-            if nargout == 0
-                arrayfun(SNGFunctionName,objb.obj(batchnumbers));
-            else    
-                objb.obj(batchnumbers) = arrayfun(SNGFunctionName,objb.obj(batchnumbers));
+            for k1 = batchnumbers
+                disp(num2str(k1))
+                if (nargout == 0) && ~exist('input1', 'var')
+                    SNGFunctionName(objb.obj(k1));
+                elseif (nargout ~= 0) && ~exist('input1', 'var')
+                    objb.obj(k1) = SNGFunctionName(objb.obj(k1));
+                elseif (nargout == 0) && exist('input1', 'var')
+                    SNGFunctionName(objb.obj(k1), input1);
+                elseif (nargout ~= 0) && exist('input1', 'var')
+                    objb.obj(k1) = SNGFunctionName(objb.obj(k1), input1);
+                end
+            end
+            
+            
+        end
+        
+        function objb = allpar(objb, SNGFunctionName, batchnumbers, input1)
+            %executes SponNGlia function on all objects contained by SpotNGliaB object
+            %objb = objb.all(@SpotVal)
+            %uses paralel computing
+            
+            if ~exist('batchnumbers', 'var') || isempty(batchnumbers)
+                batchnumbers = 1:objb.Objectn;
+            end
+            
+            %PARFOR OPTION           
+            batchn = numel(batchnumbers);
+            for k1 = 1:batchn
+                tempobj(k1) = objb.obj(batchnumbers(k1));
+            end
+            
+            if (nargout == 0) && ~exist('input1', 'var')
+                parfor k1 = 1:batchn
+                    disp(num2str(k1))
+                    SNGFunctionName(tempobj(k1));
+                end
+            elseif (nargout ~= 0) && ~exist('input1', 'var')
+                parfor k1 = 1:batchn
+                    disp(num2str(k1))
+                    tempobj(k1) = SNGFunctionName(tempobj(k1));
+                end
+            elseif (nargout == 0) && exist('input1', 'var')
+                parfor k1 = 1:batchn
+                    disp(num2str(k1))
+                    SNGFunctionName(tempobj(k1), input1);
+                end
+            elseif (nargout ~= 0) && exist('input1', 'var')
+                parfor k1 = 1:batchn
+                    disp(num2str(k1))
+                    tempobj(k1) = SNGFunctionName(tempobj(k1), input1);
+                end
+            end
+                        
+            for k1 = 1:batchn
+                objb.obj(batchnumbers(k1)) = tempobj(k1);
             end
         end
         
@@ -84,24 +136,24 @@ classdef SpotNGliaB
             %save and auto overwrite file
             save([objb.SavePath, objb.SaveName, '.mat'], 'objb')
         end
-%{        
-        function custom1(obj)
-            for k1 = 1:numel(objb.FishPath)
-                obj = objb.Object{k1}.obj;
-            end
-            for k1 = 1:numel(objb.FishPath)
-                
-                obj = obj.NewPath(12);
-                obj = obj.SpotDetection2;
-                obj = obj.LoadAnnotations;
-                obj = obj.SpotVal;
-                
-                objb.Object{k1}.obj = obj
-            end
-            
-        end
-%}        
-
+        %{
+function custom1(obj)
+             for k1 = 1:numel(objb.FishPath)
+                 obj = objb.Object{k1}.obj;
+             end
+             for k1 = 1:numel(objb.FishPath)
+ 
+                 obj = obj.NewPath(12);
+                 obj = obj.SpotDetection2;
+                 obj = obj.LoadAnnotations;
+                 obj = obj.SpotVal;
+ 
+                 objb.Object{k1}.obj = obj
+             end
+ 
+         end
+        %}
+        
         
     end
     

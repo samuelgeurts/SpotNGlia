@@ -5,7 +5,7 @@ function objout = CheckFish(obj, ifish, INFO)
 %objectname = inputname(1);
 
 global fh sh ln ln2 sc sc2 str ah ph ph2 ph3 rec %figure and axis handles
-global uih btn btn2 btn3 btn4 btn5 rad rad2 rad3 sld sld2 cbh %uicontrol handles
+global uih btn btn2 btn3 btn4 btn5 rad rad2 sld sld2 cbh cbh2 %uicontrol handles
 
 
 if ~exist('ifish', 'var') || (ifish > numel(obj.StackInfo))
@@ -18,11 +18,11 @@ obj = LoadTemplate(obj);
 
 waitbar(0.03, h, 'Brain, Spot, Registration')
 
-if ~exist('INFO','var') ||...
-        ~isfield(INFO,'BrainSegmentationInfo') ||...
-        ~isfield(INFO,'SpotParameters') ||...
-        ~isfield(INFO,'RegistrationInfo')
-    INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo','SpotParameters','RegistrationInfo');
+if ~exist('INFO', 'var') || ...
+        ~isfield(INFO, 'BrainSegmentationInfo') || ...
+        ~isfield(INFO, 'SpotParameters') || ...
+        ~isfield(INFO, 'RegistrationInfo')
+    INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo', 'SpotParameters', 'RegistrationInfo');
 end
 
 % waitbar(0.03, h, 'BrainSegmentationInfo')
@@ -31,8 +31,7 @@ end
 % load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters');
 % waitbar(0.87, h, 'RegistrationInfo')
 % load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo');
-% 
-
+%
 
 
 waitbar(0.93, h, 'Initialize')
@@ -46,8 +45,9 @@ cxy = fliplr(obj.CompleteTemplate.CenterMidBrain);
 nfishes = numel(obj.StackInfo);
 nslices = sum([obj.StackInfo.stacksize]);
 
-SpotAnn = isfield(obj.Annotations, 'Spots');
-MidBrainAnn = isfield(obj.Annotations, 'MidBrain');
+%check if the field exist and if at least one field is not empty
+SpotAnn = isfield(obj.Annotations, 'Spots') && any(~cellfun(@isempty, {obj.Annotations.Spots}));
+MidBrainAnn = isfield(obj.Annotations, 'MidBrain') && any(~cellfun(@isempty, {obj.Annotations.MidBrain}));
 
 InitializeCheckup
 InitializeImageFigure
@@ -58,33 +58,36 @@ waitbar(1, h, 'Initialize')
 IniFish
 uicontrol(sld);
 delete(h)
-uiwait(uih)        
+uiwait(uih)
 
-    function InitializeCheckup    
-        obj = FillComputations(obj,INFO.BrainSegmentationInfo);
+    function InitializeCheckup
+        obj = FillComputations(obj, INFO.BrainSegmentationInfo);
         obj = FillCheckup(obj);
-
+        
         if isempty(obj.checkup)
             obj.checkup = obj.Computations;
             obj.checkup(1).Corrections = [];
             obj.checkup(1).SpotAdditions = [];
             obj.checkup(1).SpotRemovals = [];
             [obj.checkup.Include] = deal(true);
+            [obj.checkup.Polar] = deal(true);
         end
-
-        %if an older checkup file is used SpotNGlia1.4.0 and before, the field 'SpotAdditions' and 'SpotRemovals' are added    
-        if ~isfield(obj.checkup,'Counts')
+        
+        %if an older checkup file is used SpotNGlia1.4.0 and before, the field 'SpotAdditions' and 'SpotRemovals' are added
+        if ~isfield(obj.checkup, 'Counts')
             for k1 = 1:numel(obj.checkup)
-                obj.checkup(k1).Counts = size(obj.checkup(k1).Spots,1);
+                obj.checkup(k1).Counts = size(obj.checkup(k1).Spots, 1);
             end
         end
         if ~isfield(obj.checkup, 'SpotAdditions')
-            obj.checkup(1).SpotRemovals = [];
-        end
-        if ~isfield(obj.checkup, 'SpotRemovals')
             obj.checkup(1).SpotAdditions = [];
         end
-
+        if ~isfield(obj.checkup, 'SpotRemovals')
+            obj.checkup(1).SpotRemovals = [];
+        end
+        if ~isfield(obj.checkup, 'Polar')
+            [obj.checkup.Polar] = deal(true);
+        end
     end
     function InitializeImageFigure
         fh = figure;
@@ -125,10 +128,10 @@ uiwait(uih)
     function InitializeButtonFigure
         %createsa figure below the place first figure is placed with buttons
         %this way, the top figure can easyly changed size without change button location
-
+        
         sizb = 70; %vertical size of sub figure below
         barcor = 22; %distance from top figure, 22 is zero distance including clos bar
-                
+        
         posf = fh.Position;
         posb = [posf(1), posf(2) - sizb - barcor, posf(3), sizb];
         
@@ -141,33 +144,29 @@ uiwait(uih)
         
         btn = uicontrol('Style', 'pushbutton', 'String', 'Correct Brain', ...
             'Position', [30, 10, 100, 22], ...
-            'Callback', {@CorrectBrainButton});%#ok<NASGU>
+            'Callback', {@CorrectBrainButton});
         
         btn2 = uicontrol('Style', 'pushbutton', 'String', 'Brain Reset', ...
             'Position', [130, 10, 100, 22], ...
-            'Callback', {@ResetButton});%#ok<NASGU>
+            'Callback', {@ResetButton});
         
         btn3 = uicontrol('Style', 'pushbutton', 'String', 'Correct Spot', ...
             'Position', [340, 10, 100, 22], ...
-            'Callback', {@CorrectSpotButton});%#ok<NASGU>
+            'Callback', {@CorrectSpotButton});
         
         btn4 = uicontrol('Style', 'pushbutton', 'String', 'Spot Reset', ...
             'Position', [440, 10, 100, 22], ...
-            'Callback', {@ResetButton2});%#ok<NASGU>
+            'Callback', {@ResetButton2});
         
         rad = uicontrol('Style', 'radiobutton', 'String', 'Show Slices', ...
             'Position', [340, 41, 100, 22], ...
             'Value', 0, ...
-            'Callback', {@SliceButton});
+            'Callback', {@RadioSliceButton});
         
         rad2 = uicontrol('Style', 'radiobutton', 'String', 'Compare', ...
             'Position', [440, 41, 100, 22], ...
             'Value', 0, ...
-            'Callback', {@SliceButton2});%#ok<NASGU>
-        
-        rad3 = uicontrol('Style', 'radiobutton', 'String', 'Polar', ...
-            'Position', [240, 10, 100, 22], ...
-            'Value', 1);
+            'Callback', {@RadioAnnotationButton});
         
         sliderstep = 1 / (nfishes - 1);
         sld = uicontrol('Style', 'slider', ...
@@ -188,11 +187,15 @@ uiwait(uih)
         
         cbh = uicontrol('Style', 'checkbox', 'String', 'Include Fish', ...
             'Value', obj.checkup(ifish).Include, 'Position', [240, 41, 100, 22], ...
-            'Callback', @CheckBox);
+            'Callback', @IncludeCheckBox);
+        
+        cbh2 = uicontrol('Style', 'radiobutton', 'String', 'Polar', ...
+            'Value', obj.checkup(ifish).Polar, 'Position', [240, 10, 100, 22], ...
+            'Callback', @PolarCheckBox);
         
         btn5 = uicontrol('Style', 'pushbutton', 'String', 'Save', ...
             'Position', [580, 41, 100, 22], ...
-            'Callback', {@SaveButton});%#ok<NASGU>
+            'Callback', {@SaveButton});
         btn6 = uicontrol('Style', 'pushbutton', 'String', 'Save and Close', ...
             'Position', [580, 10, 100, 22], ...
             'Callback', {@CloseButton});%#ok<NASGU>
@@ -205,9 +208,6 @@ uiwait(uih)
         rec.Visible = 'on';
         figure(fh)
         
-        PolarN = INFO.BrainSegmentationInfo(ifish).PolarTransform;
-        sp = fliplr(size(PolarN));
-        si = size(PolarN);
         
         %figure(fh)
         %hold on
@@ -238,94 +238,36 @@ uiwait(uih)
                     n = n - 1;
                 end
             end
+            if (cbh2.Value == 0) && (size(xy,1) >= 3)
+                
+                [X3,Y3] = ComputeBrain(xy);
+                rc = obj.SpotsInsiteArea(INFO.SpotParameters{ifish}, [X3, Y3]);
+                
+                ln.XData = X3;
+                ln.YData = Y3;
+                ln.Marker = 'none';                          
+                sc.XData = rc(:, 1);
+                sc.YData = rc(:, 2);
+                
+                updatespots
+                updateannotation
+            end
         end
         
-        if ~isempty(xy)
-            if rad3.Value
-                % transform coordinates to polar
-                coord = fliplr(xy); %(y,x)
-                coord2 = coord - repmat(cxy, size(coord, 1), 1); %set center to cxy
+        [X3,Y3] = ComputeBrain(xy);
+        rc = obj.SpotsInsiteArea(INFO.SpotParameters{ifish}, [X3, Y3]);
+
                 
-                %transform to polar coordinates
-                [T, R] = cart2pol(coord2(:, 2), coord2(:, 1));
-                %transform polar coordinates to pixel coordinates
-                T2 = (T + pi) / (2 * pi) * (sp(1) - 1) + 1;
-                R2 = R + 1;
+                ln.XData = X3;
+                ln.YData = Y3;
+                ln.Marker = 'none';                          
+                sc.XData = rc(:, 1);
+                sc.YData = rc(:, 2);
                 
-                % shortest path
-                [~, I2, J2] = sng_ShortestPath(PolarN, round([R2, T2]));
-                
-                % transform path to aligned fish
-                Rpol = I2 - 1;
-                Tpol = 2 * pi * J2 / sp(1) - pi;
-                [X, Y] = pol2cart(Tpol, Rpol);
-                X2 = X + si(2) / 2;
-                Y2 = Y + si(1) / 2;
-                X3 = X2 + cxy(2) - si(2) / 2; %set center to cxy
-                Y3 = Y2 + cxy(1) - si(1) / 2;
-                
-                %{
-                        AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);
-                        figure;imagesc(AlignedFish)
-                        hold on
-                        scatter(coord(2),coord(1))
- 
-                        X = coord2(2)
-                        Y = coord2(1)
-                        [Isquare] = sng_boxaroundcenter(AlignedFish,fliplr(cxy));
-                        Isquare(Y-5:Y+5,X-5:X+5,1) = 20;
-                        figure;imshow(uint8(Isquare))
- 
-                        Ipolar = sng_Im2Polar3(Isquare);
-                        figure;imshow(uint8(Ipolar))
-                        sp = size(Ipolar)
-                        si = size(Isquare)
- 
-                          figure;imshow(uint8(Isquare))
-                          hold on
-                          plot(X2,Y2)
-                %}
-            else
-                %sorting method for coordinates to polinome
-                %[xy2,~] = sng_OrderContourCoordinates(xy);
-                
-                %other sorting method with known center
-                xy2 = xy - mean(xy, 1);
-                [~, ind] = sort(cart2pol(xy2(:, 1), xy2(:, 2)));
-                
-                X3 = xy(ind, 1);
-                Y3 = xy(ind, 2);
-                %fix endpoints
-                X3 = [X3; X3(1)];
-                Y3 = [Y3; Y3(1)];
-            end
-            
-            
-            ln.XData = X3;
-            ln.YData = Y3;
-            ln.Marker = 'none';
-            
-            rc = obj.SpotsInsiteArea(INFO.SpotParameters{ifish},[X3',Y3']);
-            %{
-            % compute new spots insite area
-            [rc] = reshape([INFO.SpotParameters{ifish}.Centroid], 2, numel(INFO.SpotParameters{ifish}))';
-            [in, ~] = inpolygon(rc(:, 1), rc(:, 2), X3, Y3);
-            
-            SpotsDetec = INFO.SpotParameters{ifish}(in' == 1 & ...
-                [INFO.SpotParameters{ifish}.LargerThan] == 1 & ...
-                [INFO.SpotParameters{ifish}.SmallerThan] == 1 & ...
-                [INFO.SpotParameters{ifish}.MinProbability] == 1);
-            
-            [rc] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
-            %}
-            % set the new spots
-            sc.XData = rc(:, 1);
-            sc.YData = rc(:, 2);
-            
-            updatespots
-            updateannotation
-            updatecheckup
-        end
+                updatespots
+                updateannotation
+                updatecheckup
+        
         rec.Visible = 'off';
         
     end
@@ -391,8 +333,9 @@ uiwait(uih)
         sc.XData = obj.Computations(ifish).Spots(:, 1);
         sc.YData = obj.Computations(ifish).Spots(:, 2);
         cbh.Value = true;
-        updatespots
-        
+        cbh2.Value = true;
+
+        updatespots        
         updateannotation
         updatecheckup
         
@@ -400,19 +343,19 @@ uiwait(uih)
     function ResetButton2(~, ~)
         %reset button which only removes added spots and adds removed spots
         
-%         %remove previous added spots
-%         [TF, ~] = ismember([sc.XData', sc.YData'], [ph2.XData', ph2.YData'], 'rows');
-%         sc.XData(TF) = [];
-%         sc.YData(TF) = [];
-%         %add previous removed spots
-%         sc.XData = [sc.XData, ph3.XData];
-%         sc.YData = [sc.YData, ph3.YData];
+        %         %remove previous added spots
+        %         [TF, ~] = ismember([sc.XData', sc.YData'], [ph2.XData', ph2.YData'], 'rows');
+        %         sc.XData(TF) = [];
+        %         sc.YData(TF) = [];
+        %         %add previous removed spots
+        %         sc.XData = [sc.XData, ph3.XData];
+        %         sc.YData = [sc.YData, ph3.YData];
         
         
         %recompute spots from corrected brain
-        rc = obj.SpotsInsiteArea(INFO.SpotParameters{ifish},obj.checkup(ifish).Midbrain);
+        rc = obj.SpotsInsiteArea(INFO.SpotParameters{ifish}, obj.checkup(ifish).Midbrain);
         sc.XData = rc(:, 1);
-        sc.YData = rc(:, 2);              
+        sc.YData = rc(:, 2);
         %set added and removed spots to zero
         ph2.XData = [];
         ph2.YData = [];
@@ -422,9 +365,9 @@ uiwait(uih)
         updateannotation
         updatecheckup
     end
-    function SliceButton(source, ~)
+    function RadioSliceButton(~, ~)
         %show slice button
-        if source.Value
+        if rad.Value
             sld.Visible = 'off';
             sld2.Visible = 'on';
             uicontrol(sld2);
@@ -436,29 +379,29 @@ uiwait(uih)
         IniFish
         
     end
-    function SliceButton2(source, ~)
+    function RadioAnnotationButton(~, ~)
         %show slice button
-        if source.Value
+        if rad2.Value
             ln2.Visible = 'on';
             sc2.Visible = 'on';
         else
             ln2.Visible = 'off';
             sc2.Visible = 'off';
         end
-        IniFish
+        %IniFish
         
     end
-    function FishSlider(source, ~)
+    function FishSlider(~, ~)
         %fish slider
-        ifish = round(source.Value);
+        ifish = round(sld.Value);
         islice = slice_start(ifish);
         subslice = islice - slice_start(ifish) + 1;
         sld2.Value = islice;
         IniFish;
         
     end
-    function SliceSlider(source, ~)
-        islice = round(source.Value);
+    function SliceSlider(~, ~)
+        islice = round(sld2.Value);
         ifish = find(islice >= slice_start, 1, 'last');
         subslice = islice - slice_start(ifish) + 1;
         sld.Value = ifish;
@@ -473,18 +416,18 @@ uiwait(uih)
         
         %save([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup', '-append');
         obj.saveit
-               
+        
         waitbar(4/6, h, 'save excel sheet')
         obj = obj.buildsheet;
         waitbar(1, h, 'complete')
-        delete(h)        
+        delete(h)
         
         %update the object in workspace, close and reopen CheckFish
         objout = obj;
         close(uih);
-        close(fh);       
+        close(fh);
         objout = CheckFish(obj, ifish, INFO);
-      
+        
         % a bit ugly way to update the object into the workspace
         %assignin('base',objectname,obj) % Assign the data to the base workspace.
     end
@@ -496,18 +439,18 @@ uiwait(uih)
         
         %save([obj.SavePath, '/', obj.InfoName, '.mat'], 'checkup', '-append');
         obj.saveit
-               
+        
         waitbar(4/6, h, 'save excel sheet')
         obj = obj.buildsheet;
         waitbar(1, h, 'complete')
-        delete(h)        
+        delete(h)
         
         %update the object in workspace, close and reopen CheckFish
         objout = obj;
         close(uih);
-        close(fh);       
+        close(fh);
     end
-    function CheckBox(~, ~)
+    function IncludeCheckBox(~, ~)
         %checkbox include
         if cbh.Value
             ln.Visible = 'on';
@@ -519,6 +462,36 @@ uiwait(uih)
             ph.Visible = 'off';
         end
         obj.checkup(ifish).Include = cbh.Value;
+        if rad.Value
+            uicontrol(sld2);
+        else
+            uicontrol(sld);
+        end
+    end
+    function PolarCheckBox(~, ~)
+        %checkbox Polar
+        obj.checkup(ifish).Polar = cbh2.Value;
+        
+        if size(obj.checkup(ifish).Corrections,1) <= 2
+            warning('at least 3 brain corrections has to me made to select area')
+            beep
+            %cbh2.Value = 1;
+        else            
+            [X3,Y3] = ComputeBrain([ph.XData',ph.YData']);
+            %[X3,Y3] = ComputeBrain(obj.checkup(ifish).Corrections);
+            rc = obj.SpotsInsiteArea(INFO.SpotParameters{ifish}, [X3, Y3]);
+
+                ln.XData = X3;
+                ln.YData = Y3;
+                ln.Marker = 'none';                          
+                sc.XData = rc(:, 1);
+                sc.YData = rc(:, 2);
+                
+                updatespots
+                updateannotation
+                updatecheckup
+        end
+        
         if rad.Value
             uicontrol(sld2);
         else
@@ -542,6 +515,7 @@ uiwait(uih)
         obj.checkup(ifish).Spots = [sc.XData', sc.YData'];
         obj.checkup(ifish).Corrections = [ph.XData', ph.YData'];
         obj.checkup(ifish).Include = cbh.Value;
+        obj.checkup(ifish).Polar = cbh2.Value;
         obj.checkup(ifish).SpotAdditions = [ph2.XData', ph2.YData'];
         obj.checkup(ifish).SpotRemovals = [ph3.XData', ph3.YData'];
         obj.checkup(ifish).Counts = numel(sc.XData);
@@ -551,7 +525,7 @@ uiwait(uih)
         else
             uicontrol(sld);
         end
-
+        
     end
     function updateannotation
         if rad.Value
@@ -627,8 +601,79 @@ uiwait(uih)
         
         updateannotation
         cbh.Value = obj.checkup(ifish).Include;
-        CheckBox
+        IncludeCheckBox
     end
+    function [X3,Y3] = ComputeBrain(xy)
+            
+            PolarN = INFO.BrainSegmentationInfo(ifish).PolarTransform;
+            sp = fliplr(size(PolarN));
+            si = size(PolarN);
+            
+            if ~isempty(xy)
+                if cbh2.Value
+                    % transform coordinates to polar
+                    coord = fliplr(xy); %(y,x)
+                    coord2 = coord - repmat(cxy, size(coord, 1), 1); %set center to cxy
+                    
+                    %transform to polar coordinates
+                    [T, R] = cart2pol(coord2(:, 2), coord2(:, 1));
+                    %transform polar coordinates to pixel coordinates
+                    T2 = (T + pi) / (2 * pi) * (sp(1) - 1) + 1;
+                    R2 = R + 1;
+                    
+                    % shortest path
+                    [~, I2, J2] = sng_ShortestPath(PolarN, round([R2, T2]));
+                    
+                    % transform path to aligned fish
+                    Rpol = I2 - 1;
+                    Tpol = 2 * pi * J2 / sp(1) - pi;
+                    [X, Y] = pol2cart(Tpol, Rpol);
+                    X2 = X + si(2) / 2;
+                    Y2 = Y + si(1) / 2;
+                    X3 = X2 + cxy(2) - si(2) / 2; %set center to cxy
+                    Y3 = Y2 + cxy(1) - si(1) / 2;
+                    
+                    %{
+                         AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);
+                         figure;imagesc(AlignedFish)
+                         hold on
+                         scatter(coord(2),coord(1))
+ 
+                         X = coord2(2)
+                         Y = coord2(1)
+                         [Isquare] = sng_boxaroundcenter(AlignedFish,fliplr(cxy));
+                         Isquare(Y-5:Y+5,X-5:X+5,1) = 20;
+                         figure;imshow(uint8(Isquare))
+ 
+                         Ipolar = sng_Im2Polar3(Isquare);
+                         figure;imshow(uint8(Ipolar))
+                         sp = size(Ipolar)
+                         si = size(Isquare)
+ 
+                           figure;imshow(uint8(Isquare))
+                           hold on
+                           plot(X2,Y2)
+                    %}
+                    X3 = X3';
+                    Y3 = Y3';
+                   
+                else
+                    %sorting method for coordinates to polinome
+                    %[xy2,~] = sng_OrderContourCoordinates(xy);
+                    
+                    %other sorting method with known center
+                    xy2 = xy - mean(xy, 1);
+                    [~, ind] = sort(cart2pol(xy2(:, 1), xy2(:, 2)));
+                    
+                    X3 = xy(ind, 1);
+                    Y3 = xy(ind, 2);
+                    %fix endpoints
+                    X3 = [X3; X3(1)];
+                    Y3 = [Y3; Y3(1)];
+                    
+                end
+            end
+        end
 
 
 end

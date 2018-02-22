@@ -11,7 +11,7 @@ classdef SpotNGlia
         SaveName = []
         InfoName = []
         
-        Version = 'SpotNGlia 1.5.0'
+        Version = 'SpotNGlia 1.5.3'
         User = []
         OS = []
         Delimiter = ';'
@@ -647,7 +647,7 @@ classdef SpotNGlia
                 
                 %update Computations
                 obj.Computations(fn).Spots = reshape([SpotsDetected{fn}.Centroid], 2, numel(SpotsDetected{fn}))';
-                obj.Computations(fn).Midbrain = fliplr(BrainSegmentationInfo(fn).BrainEdge);
+                obj.Computations(fn).Midbrain = fliplr(INFO.BrainSegmentationInfo(fn).BrainEdge);
                 obj.Computations(fn).Counts = numel(SpotsDetected{fn});
                 
                 %update checkup after new spot computations
@@ -832,19 +832,18 @@ classdef SpotNGlia
             if isempty(obj.CompleteTemplate)
                 obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
             end
-        end
-        
+        end       
         function obj = LoadAnnotations(obj)
             
             %annotated midbrain roi
-            if isempty(obj.AnnotatedMidBrainPath) || (obj.AnnotatedMidBrainPath == 0)
-                disp('Select Annotated MidBrain Path')
+            if isempty(obj.AnnotatedMidBrainPath) || (obj.AnnotatedMidBrainPath(1) == 0)
+                disp(['Select Annotated MidBrain Path for ',obj.SaveName])
                 obj.AnnotatedMidBrainPath = uigetdir([], 'Select Annotated MidBrain Path');
             end
             
             %annotated spots
-            if isempty(obj.AnnotatedSpotPath)
-                disp('Select Annotated Spot Path')
+            if isempty(obj.AnnotatedSpotPath) || (obj.AnnotatedSpotPath(1) == 0)
+                disp(['Select Annotated Spot Path for ',obj.SaveName])
                 obj.AnnotatedSpotPath = uigetdir([], 'Select Annotated Spot Path');
             end
             
@@ -952,8 +951,8 @@ classdef SpotNGlia
             if ~exist('SpotParameters', 'var')
                 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters');
             end
-            
-            if isempty(obj.Annotations) || ~isfield(obj.Annotations, 'MidBrain')
+            %checks first if Annoations exist, than of Midbrain exist, than of all fiels are empty
+            if isempty(obj.Annotations) || ~isfield(obj.Annotations, 'MidBrain') || all(cellfun(@isempty, {obj.Annotations.MidBrain}))
                 AMBR = {obj.checkup.Midbrain};
             else
                 AMBR = {obj.Annotations.MidBrain};
@@ -989,7 +988,6 @@ classdef SpotNGlia
             
             
             for k1 = 1:nfishes
-                
                 Spotpar = SpotParameters{k1};
                 %ambr = obj.Annotations(k1).MidBrain;
                 ambs = obj.Annotations(k1).Spots;
@@ -1464,6 +1462,14 @@ classdef SpotNGlia
                     close(gcf)
                 end
             end
+        end
+        
+        function obj = Dummy(obj,input)
+           disp('Dummy function') 
+           if exist('input','var')
+               disp(num2str(input))
+           end
+           disp([obj.SaveName])
         end
     end
     
