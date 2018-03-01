@@ -5,7 +5,7 @@ function objout = CheckFish(obj, ifish, INFO)
 %objectname = inputname(1);
 
 global fh sh ln ln2 sc sc2 str ah ph ph2 ph3 rec %figure and axis handles
-global uih btn btn2 btn3 btn4 btn5 rad rad2 sld sld2 cbh cbh2 %uicontrol handles
+global uih btn btn2 btn3 btn4 btn5 rad rad2 rad3 sld sld2 cbh cbh2 %uicontrol handles
 
 
 if ~exist('ifish', 'var') || (ifish > numel(obj.StackInfo))
@@ -159,14 +159,19 @@ uiwait(uih)
             'Callback', {@ResetButton2});
         
         rad = uicontrol('Style', 'radiobutton', 'String', 'Show Slices', ...
-            'Position', [340, 41, 100, 22], ...
+            'Position', [340, 41, 85, 22], ...
             'Value', 0, ...
             'Callback', {@RadioSliceButton});
         
         rad2 = uicontrol('Style', 'radiobutton', 'String', 'Compare', ...
-            'Position', [440, 41, 100, 22], ...
+            'Position', [425, 41, 75, 22], ...
             'Value', 0, ...
             'Callback', {@RadioAnnotationButton});
+        
+        rad3 = uicontrol('Style', 'radiobutton', 'String', 'Info', ...
+            'Position', [500, 41, 50, 22], ...
+            'Value', 1, ...
+            'Callback', {@RadioInfoButton});
         
         sliderstep = 1 / (nfishes - 1);
         sld = uicontrol('Style', 'slider', ...
@@ -390,6 +395,13 @@ uiwait(uih)
         end
         %IniFish
         
+    end
+    function RadioInfoButton(~,~)
+        if rad3.Value
+            ah.Visible = 'on';
+        else
+            ah.Visible = 'off';
+        end   
     end
     function FishSlider(~, ~)
         %fish slider
