@@ -20,8 +20,7 @@ classdef SpotNGliaB
         function objb = SpotNGliaB
             %constructor
             objb = NewObj(objb);
-        end
-        
+        end     
         function objb = NewObj(objb)
             %add paths to the objb
             pathname = [];
@@ -40,8 +39,7 @@ classdef SpotNGliaB
                     Objectn = Objectn + 1;
                 end
             end
-        end
-        
+        end        
         function objb = getSNG(objb)
             %looks for SNG objects at the given path
             for k1 = 1:numel(objb.FishPath)
@@ -49,8 +47,7 @@ classdef SpotNGliaB
                 objb.ObjPath{k1} = dirlist.folder;
                 objb.ObjName{k1} = dirlist.name;
             end
-        end
-        
+        end      
         function objb = all(objb, SNGFunctionName, batchnumbers, input1)
             %executes SponNGlia function on all objects contained by SpotNGliaB object
             %objb = objb.all(@SpotVal)
@@ -64,17 +61,16 @@ classdef SpotNGliaB
                 if (nargout == 0) && ~exist('input1', 'var')
                     SNGFunctionName(objb.obj(k1));
                 elseif (nargout ~= 0) && ~exist('input1', 'var')
-                    objb.obj(k1) = SNGFunctionName(objb.obj(k1));
+                    objb.obj(1,k1) = SNGFunctionName(objb.obj(1,k1));
                 elseif (nargout == 0) && exist('input1', 'var')
                     SNGFunctionName(objb.obj(k1), input1);
                 elseif (nargout ~= 0) && exist('input1', 'var')
-                    objb.obj(k1) = SNGFunctionName(objb.obj(k1), input1);
+                    objb.obj(1,k1) = SNGFunctionName(objb.obj(1,k1), input1);
                 end
             end
             
             
-        end
-        
+        end        
         function objb = allpar(objb, SNGFunctionName, batchnumbers, input1)
             %executes SponNGlia function on all objects contained by SpotNGliaB object
             %objb = objb.all(@SpotVal)
@@ -115,23 +111,23 @@ classdef SpotNGliaB
             for k1 = 1:batchn
                 objb.obj(batchnumbers(k1)) = tempobj(k1);
             end
-        end
-        
-        function objb = LoadObjects(objb)
-            %stores SpotNGlia objects under the struct Object with increasing numbers
-            %if Original = true, the files from the harddisk are taken (objb.MainFolderOriginal)
-            for k1 = 1:numel(objb.FishPath)
+        end     
+        function objb = LoadObjects(objb,batchnumbers)
+            %stores SpotNGlia objects als a multidimensional SpotNGlia class           
+            if ~exist('batchnumbers', 'var') || isempty(batchnumbers)
+                batchnumbers = 1:objb.Objectn;
+            end
+            
+            for k1 = batchnumbers%1:numel(objb.FishPath)
                 temp = load([objb.ObjPath{k1}, filesep, objb.ObjName{k1}]);
                 objb.obj(k1) = temp.obj;
             end
-        end
-        
+        end       
         function objb = saveit(objb)
             %opens file location and warn if overwrite
             [SaveName, objb.SavePath] = uiputfile([objb.SavePath, objb.SaveName, '.mat'], 'Save file name');
             [~, objb.SaveName] = fileparts(SaveName);
-        end
-        
+        end      
         function quicksave(objb)
             %save and auto overwrite file
             save([objb.SavePath, objb.SaveName, '.mat'], 'objb')
