@@ -16,6 +16,8 @@ for k1 = 1:nfishes
     threshold = RegistrationInfo{k1}(find(strcmp({RegistrationInfo{k1}.name}, 'BackgroundThreshold'))).value;
     
     figure
+    bn=1;
+    
     for k3 = 1:3
         Img = AlignedFish(:, 700:end, k3);
         h = hist(Img(:), 0:bn:255);    

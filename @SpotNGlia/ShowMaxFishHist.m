@@ -8,9 +8,11 @@ for k2=1:numel(RegistrationInfo)
 end
 bm = mean(b(:));
 
-figure; bar(mean(b, 2));
-        set(gca,'YLim',[0,265]);
-        hold on
-        line(get(gca, 'Xlim'),[bm, bm], 'color', [0, 0, 0]);  
+figure; 
+bar(mean(b, 2));
+%bar(b(:,3));
+set(gca,'YLim',[0,265]);
+hold on
+line(get(gca, 'Xlim'),[bm, bm], 'color', [0, 0, 0]);  
 
 end
