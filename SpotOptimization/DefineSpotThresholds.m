@@ -1,4 +1,4 @@
-function [wp, a] = DefineSpotThresholds(obj, fishnumbers)
+function [DS, lab, wp, a] = DefineSpotThresholds(obj, fishnumbers)
 %compute spot thresholds based on fals en positives
 
 INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo', 'BrainSegmentationInfo', 'SpotParameters');
@@ -11,10 +11,10 @@ elseif max(fishnumbers) > numel(obj.StackInfo)
 end
 
             
-if sum(~cellfun('isempty',{obj.Annotations.Spots})) ~= numel(SpotParameters)
+if sum(~cellfun('isempty',{obj.Annotations.Spots})) ~= numel(INFO.SpotParameters)
     warning('not all fishes are annotated by hand')
 end
-fishnumbers = 1:numel(SpotParameters);           
+fishnumbers = 1:numel(INFO.SpotParameters);           
 %removes fishnumbers from the list if not all annotations are known
 fishnumbers = fishnumbers(ismember(fishnumbers,find(~cellfun('isempty',{obj.Annotations.Spots}))));
 
@@ -76,6 +76,8 @@ SpotMeanhsvC = zeros(sum(sizeC), 3);
 AzimC = zeros(sum(sizeC), 1);
 ElevC = zeros(sum(sizeC), 1);
 RC = zeros(sum(sizeC), 1);
+mmcC = zeros(sum(sizeC), 1);
+
 AreaI = zeros(sum(sizeI), 1);
 ColorI = zeros(sum(sizeI), 1);
 SpotMeanI = zeros(sum(sizeI), 3);
@@ -83,14 +85,16 @@ SpotMeanhsvI = zeros(sum(sizeI), 3);
 AzimI = zeros(sum(sizeI), 1);
 ElevI = zeros(sum(sizeI), 1);
 RI = zeros(sum(sizeI), 1);
+mmcI = zeros(sum(sizeI), 1);
 
 for k1 = 1:nfishes
     subC = SpotparC{k1};
     subI = SpotparI{k1};
     
     indc = startC(k1):endC(k1);
-    indi = startI(k1):endI(k1);
+    indi = startI(k1):endI(k1);    
     
+    %feature values of correct spots 
     if ~isempty(indc)
         AreaC(indc, 1) = [subC.Area];
         ColorC(indc, 1) = [subC.ColorProbability];
@@ -103,6 +107,7 @@ for k1 = 1:nfishes
         %...
     end
     
+    %feature values of incorrect spots
     if ~isempty(indi)
         AreaI(indi, 1) = [subI.Area];
         ColorI(indi, 1) = [subI.ColorProbability];
@@ -114,6 +119,9 @@ for k1 = 1:nfishes
         %...
     end
     
+        %rgbmean of the maxcolor of a fish image (background excluded)
+        mmcC(indc, 1) = mean(INFO.RegistrationInfo{k1}(strcmp({INFO.RegistrationInfo{k1}.name},'MaxFishColor')).value);
+        mmcI(indi, 1) = mean(INFO.RegistrationInfo{k1}(strcmp({INFO.RegistrationInfo{k1}.name},'MaxFishColor')).value);  
 end
 
 
@@ -143,6 +151,11 @@ end
  end
 %}
         
+
+%% display all histograms
+
+%{
+
 DoubleHist(SpotMeanC(:,1), SpotMeanI(:,1),'SpotMeanI(1)');set(gca,'XLim',[0 255]);
 DoubleHist(SpotMeanC(:,2), SpotMeanI(:,2),'SpotMeanI(2)');set(gca,'XLim',[0 255]);
 DoubleHist(SpotMeanC(:,3), SpotMeanI(:,3),'SpotMeanI(3)');set(gca,'XLim',[0 255]);
@@ -155,8 +168,11 @@ DoubleHist(RC, RI,'R');set(gca,'XLim',[0 150]);
 DoubleHist(ColorC, ColorI,'ColorProb');set(gca,'XLim',[0 2]);
 DoubleHist(AreaC, AreaI,'Area');set(gca,'XLim',[0 500]);
 
+%}
 
+%% testje om een gaussian te fitten met de gegevens
 
+%{
 
 weightC = endC(end)/(endC(end) + endI(end));
 weightI = endI(end)/(endC(end) + endI(end));
@@ -170,7 +186,7 @@ yI = pdf(pdI,x) * weightI
 
 plot(x,yC,x,yI)
 
-
+%}
 
 
 
@@ -179,17 +195,28 @@ plot(x,yC,x,yI)
 %DS = [[AreaC;AreaI],[ColorC;ColorI]]
 DS = [[SpotMeanhsvC(:, 1); SpotMeanhsvI(:, 1)], ...
     [SpotMeanhsvC(:, 2); SpotMeanhsvI(:, 2)], ...
+    [SpotMeanC(:,2); SpotMeanI(:,2)], ...
     [AreaC; AreaI], ...
     [AzimC; AzimI], ...
     [ElevC; ElevI], ...
-    [RC; RI]];
+    [RC; RI],...
+    [mmcC;mmcI]];
+
+%hue, saturation, green, area, contrast(azimut,elevation,R),meanmaxcolor of fish
+
 
 
 lab = [ones(numel(AreaC), 1); 2 * ones(numel(AreaI), 1)];
-a = prdataset(DS(:, 1:6), lab);
+
+
+%{
+
+a = prdataset(DS(:, 1:8), lab);
 a = a * scalem(a, 'variance'); %scaling
-wp = knnc(a);
+wp = parzenc(a);
 err = a * wp * testc %error of testset c on trained classifier wb
+
+%}
 
 end
 
