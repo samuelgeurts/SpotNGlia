@@ -243,14 +243,14 @@ uiwait(uih)
                     n = n - 1;
                 end
             end
-            if (cbh2.Value == 0) && (size(xy,1) >= 3)
+            if (cbh2.Value == 0) && (size(xy, 1) >= 3)
                 
-                [X3,Y3] = ComputeBrain(xy);
+                [X3, Y3] = ComputeBrain(xy);
                 rc = obj.SpotsInsiteArea(INFO.SpotParameters{ifish}, [X3, Y3]);
                 
                 ln.XData = X3;
                 ln.YData = Y3;
-                ln.Marker = 'none';                          
+                ln.Marker = 'none';
                 sc.XData = rc(:, 1);
                 sc.YData = rc(:, 2);
                 
@@ -259,19 +259,19 @@ uiwait(uih)
             end
         end
         
-        [X3,Y3] = ComputeBrain(xy);
+        [X3, Y3] = ComputeBrain(xy);
         rc = obj.SpotsInsiteArea(INFO.SpotParameters{ifish}, [X3, Y3]);
-
-                
-                ln.XData = X3;
-                ln.YData = Y3;
-                ln.Marker = 'none';                          
-                sc.XData = rc(:, 1);
-                sc.YData = rc(:, 2);
-                
-                updatespots
-                updateannotation
-                updatecheckup
+        
+        
+        ln.XData = X3;
+        ln.YData = Y3;
+        ln.Marker = 'none';
+        sc.XData = rc(:, 1);
+        sc.YData = rc(:, 2);
+        
+        updatespots
+        updateannotation
+        updatecheckup
         
         rec.Visible = 'off';
         
@@ -339,8 +339,8 @@ uiwait(uih)
         sc.YData = obj.Computations(ifish).Spots(:, 2);
         cbh.Value = true;
         cbh2.Value = true;
-
-        updatespots        
+        
+        updatespots
         updateannotation
         updatecheckup
         
@@ -396,12 +396,12 @@ uiwait(uih)
         %IniFish
         
     end
-    function RadioInfoButton(~,~)
+    function RadioInfoButton(~, ~)
         if rad3.Value
             ah.Visible = 'on';
         else
             ah.Visible = 'off';
-        end   
+        end
     end
     function FishSlider(~, ~)
         %fish slider
@@ -484,24 +484,24 @@ uiwait(uih)
         %checkbox Polar
         obj.checkup(ifish).Polar = cbh2.Value;
         
-        if size(obj.checkup(ifish).Corrections,1) <= 2
+        if size(obj.checkup(ifish).Corrections, 1) <= 2
             warning('at least 3 brain corrections has to me made to select area')
             beep
             %cbh2.Value = 1;
-        else            
-            [X3,Y3] = ComputeBrain([ph.XData',ph.YData']);
+        else
+            [X3, Y3] = ComputeBrain([ph.XData', ph.YData']);
             %[X3,Y3] = ComputeBrain(obj.checkup(ifish).Corrections);
             rc = obj.SpotsInsiteArea(INFO.SpotParameters{ifish}, [X3, Y3]);
-
-                ln.XData = X3;
-                ln.YData = Y3;
-                ln.Marker = 'none';                          
-                sc.XData = rc(:, 1);
-                sc.YData = rc(:, 2);
-                
-                updatespots
-                updateannotation
-                updatecheckup
+            
+            ln.XData = X3;
+            ln.YData = Y3;
+            ln.Marker = 'none';
+            sc.XData = rc(:, 1);
+            sc.YData = rc(:, 2);
+            
+            updatespots
+            updateannotation
+            updatecheckup
         end
         
         if rad.Value
@@ -568,12 +568,22 @@ uiwait(uih)
         
         %show by hand annotated midbrain and spots if exist
         if SpotAnn
-            sc2.XData = obj.Annotations(ifish).Spots(:, 1);
-            sc2.YData = obj.Annotations(ifish).Spots(:, 2);
+            if ~isnan(obj.Annotations(ifish).Spots(1))
+                sc2.XData = obj.Annotations(ifish).Spots(:, 1);
+                sc2.YData = obj.Annotations(ifish).Spots(:, 2);
+            else
+                sc2.XData = [];
+                sc2.YData = [];
+            end
         end
         if MidBrainAnn
-            ln2.XData = obj.Annotations(ifish).MidBrain(:, 1);
-            ln2.YData = obj.Annotations(ifish).MidBrain(:, 2);
+            if ~isnan(obj.Annotations(ifish).MidBrain(1))
+                ln2.XData = obj.Annotations(ifish).MidBrain(:, 1);
+                ln2.YData = obj.Annotations(ifish).MidBrain(:, 2);
+            else
+                ln2.XData = [];
+                ln2.YData = [];
+            end
         end
         
         %update figures
@@ -615,77 +625,77 @@ uiwait(uih)
         cbh.Value = obj.checkup(ifish).Include;
         IncludeCheckBox
     end
-    function [X3,Y3] = ComputeBrain(xy)
-            
-            PolarN = INFO.BrainSegmentationInfo(ifish).PolarTransform;
-            sp = fliplr(size(PolarN));
-            si = size(PolarN);
-            
-            if ~isempty(xy)
-                if cbh2.Value
-                    % transform coordinates to polar
-                    coord = fliplr(xy); %(y,x)
-                    coord2 = coord - repmat(cxy, size(coord, 1), 1); %set center to cxy
-                    
-                    %transform to polar coordinates
-                    [T, R] = cart2pol(coord2(:, 2), coord2(:, 1));
-                    %transform polar coordinates to pixel coordinates
-                    T2 = (T + pi) / (2 * pi) * (sp(1) - 1) + 1;
-                    R2 = R + 1;
-                    
-                    % shortest path
-                    [~, I2, J2] = sng_ShortestPath(PolarN, round([R2, T2]));
-                    
-                    % transform path to aligned fish
-                    Rpol = I2 - 1;
-                    Tpol = 2 * pi * J2 / sp(1) - pi;
-                    [X, Y] = pol2cart(Tpol, Rpol);
-                    X2 = X + si(2) / 2;
-                    Y2 = Y + si(1) / 2;
-                    X3 = X2 + cxy(2) - si(2) / 2; %set center to cxy
-                    Y3 = Y2 + cxy(1) - si(1) / 2;
-                    
-                    %{
-                         AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);
-                         figure;imagesc(AlignedFish)
-                         hold on
-                         scatter(coord(2),coord(1))
- 
-                         X = coord2(2)
-                         Y = coord2(1)
-                         [Isquare] = sng_boxaroundcenter(AlignedFish,fliplr(cxy));
-                         Isquare(Y-5:Y+5,X-5:X+5,1) = 20;
-                         figure;imshow(uint8(Isquare))
- 
-                         Ipolar = sng_Im2Polar3(Isquare);
-                         figure;imshow(uint8(Ipolar))
-                         sp = size(Ipolar)
-                         si = size(Isquare)
- 
-                           figure;imshow(uint8(Isquare))
+    function [X3, Y3] = ComputeBrain(xy)
+        
+        PolarN = INFO.BrainSegmentationInfo(ifish).PolarTransform;
+        sp = fliplr(size(PolarN));
+        si = size(PolarN);
+        
+        if ~isempty(xy)
+            if cbh2.Value
+                % transform coordinates to polar
+                coord = fliplr(xy); %(y,x)
+                coord2 = coord - repmat(cxy, size(coord, 1), 1); %set center to cxy
+                
+                %transform to polar coordinates
+                [T, R] = cart2pol(coord2(:, 2), coord2(:, 1));
+                %transform polar coordinates to pixel coordinates
+                T2 = (T + pi) / (2 * pi) * (sp(1) - 1) + 1;
+                R2 = R + 1;
+                
+                % shortest path
+                [~, I2, J2] = sng_ShortestPath(PolarN, round([R2, T2]));
+                
+                % transform path to aligned fish
+                Rpol = I2 - 1;
+                Tpol = 2 * pi * J2 / sp(1) - pi;
+                [X, Y] = pol2cart(Tpol, Rpol);
+                X2 = X + si(2) / 2;
+                Y2 = Y + si(1) / 2;
+                X3 = X2 + cxy(2) - si(2) / 2; %set center to cxy
+                Y3 = Y2 + cxy(1) - si(1) / 2;
+                
+                %{
+                           AlignedFish = imread([obj.SavePath,'/','AlignedFish','/',obj.StackInfo(fn).stackname,'.tif']);
+                           figure;imagesc(AlignedFish)
                            hold on
-                           plot(X2,Y2)
-                    %}
-                    X3 = X3';
-                    Y3 = Y3';
-                   
-                else
-                    %sorting method for coordinates to polinome
-                    %[xy2,~] = sng_OrderContourCoordinates(xy);
-                    
-                    %other sorting method with known center
-                    xy2 = xy - mean(xy, 1);
-                    [~, ind] = sort(cart2pol(xy2(:, 1), xy2(:, 2)));
-                    
-                    X3 = xy(ind, 1);
-                    Y3 = xy(ind, 2);
-                    %fix endpoints
-                    X3 = [X3; X3(1)];
-                    Y3 = [Y3; Y3(1)];
-                    
-                end
+                           scatter(coord(2),coord(1))
+ 
+                           X = coord2(2)
+                           Y = coord2(1)
+                           [Isquare] = sng_boxaroundcenter(AlignedFish,fliplr(cxy));
+                           Isquare(Y-5:Y+5,X-5:X+5,1) = 20;
+                           figure;imshow(uint8(Isquare))
+ 
+                           Ipolar = sng_Im2Polar3(Isquare);
+                           figure;imshow(uint8(Ipolar))
+                           sp = size(Ipolar)
+                           si = size(Isquare)
+ 
+                             figure;imshow(uint8(Isquare))
+                             hold on
+                             plot(X2,Y2)
+                %}
+                X3 = X3';
+                Y3 = Y3';
+                
+            else
+                %sorting method for coordinates to polinome
+                %[xy2,~] = sng_OrderContourCoordinates(xy);
+                
+                %other sorting method with known center
+                xy2 = xy - mean(xy, 1);
+                [~, ind] = sort(cart2pol(xy2(:, 1), xy2(:, 2)));
+                
+                X3 = xy(ind, 1);
+                Y3 = xy(ind, 2);
+                %fix endpoints
+                X3 = [X3; X3(1)];
+                Y3 = [Y3; Y3(1)];
+                
             end
         end
+    end
 
 
 end

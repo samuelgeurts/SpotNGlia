@@ -868,6 +868,8 @@ classdef SpotNGlia
                         amb = sng_roicell2poly(RoiBrain, 1);
                         [ambr{k1}(:, 1), ambr{k1}(:, 2)] = transformPointsForward(tform_1234{k1}, amb(:, 1), amb(:, 2));
                         ambr{k1} = double(ambr{k1});
+                    else
+                        ambr{k1} = NaN;                        
                     end
                 end
                 [obj.Annotations(1:nfishes).MidBrain] = ambr{:};
@@ -883,6 +885,8 @@ classdef SpotNGlia
                         SpotAnn{k1} = zeros(size(RoiMicroglia.mfCoordinates, 1), 2);
                         [SpotAnn{k1}(:, 1), SpotAnn{k1}(:, 2)] = transformPointsForward(tform_1234{k1}, ...
                             RoiMicroglia.mfCoordinates(:, 1), RoiMicroglia.mfCoordinates(:, 2));
+                    else
+                        SpotAnn{k1} = NaN;
                     end
                 end
                 [obj.Annotations(1:nfishes).Spots] = SpotAnn{:};
@@ -952,7 +956,12 @@ classdef SpotNGlia
                 load([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters');
             end
             %checks first if Annoations exist, than of Midbrain exist, than of all fiels are empty
-            if isempty(obj.Annotations) || ~isfield(obj.Annotations, 'MidBrain') || all(cellfun(@isempty, {obj.Annotations.MidBrain}))
+            if isempty(obj.Annotations) || ...
+                    ~isfield(obj.Annotations, 'MidBrain') || ...
+                    all(cellfun(@isempty, {obj.Annotations.MidBrain})) || ...
+                    all(cellfun(@numel,{obj.Annotations.MidBrain}) <=1) %alternative for isnan as if not empty at two values are stored for a coordinate needs two
+                    %all(cellfun(@isnan, {obj.Annotations.MidBrain}))...  %does not work because isnan looks at the cell inhoud
+
                 AMBR = {obj.checkup.Midbrain};
             else
                 AMBR = {obj.Annotations.MidBrain};
@@ -993,7 +1002,7 @@ classdef SpotNGlia
                 ambs = obj.Annotations(k1).Spots;
                 ambr = AMBR{k1};
                 
-                if ~isempty(Spotpar)
+                if ~isempty(Spotpar) 
                     
                     %select spot insite annotated brainregion
                     [spotcentroids] = reshape([Spotpar.Centroid], 2, numel(Spotpar))';
@@ -1010,47 +1019,58 @@ classdef SpotNGlia
                     SpotCom{k1} = [];
                 end
                 
-                %because the annotated midbrain does not corresponds
-                %exactly with the annotated spots, de annotated spots are
-                %also filtered to compute the performance of the
-                %spotdetection only
-                [ins2, ~] = inpolygon(ambs(:, 1), ambs(:, 2), ambr(:, 1), ambr(:, 2));
-                ambsx = ambs(:, 1); ambsx = ambsx(ins2);
-                ambsy = ambs(:, 2); ambsy = ambsy(ins2);
-                ambsS{k1} = [ambsx, ambsy];
                 
-                [Correct, FalsePos, FalseNeg, link] = sng_CoordinateMatching ...
-                    (SpotCom{k1}, ambsS{k1}, 10);
+                if ~isnan(ambs(1)) && ~isnan(ambr(1))
                 
-                LinkDistance{k1} = link;
-                
-                if exist('Correct', 'var')
-                    CorrectSpots{k1} = Correct;
-                    nCorrect(k1) = size(Correct, 1);
-                else
-                    CorrectSpots{k1} = [];
-                    nCorrect(k1) = 0;
+                    %because the annotated midbrain does not corresponds
+                    %exactly with the annotated spots, de annotated spots are
+                    %also filtered to compute the performance of the
+                    %spotdetection only
+                    [ins2, ~] = inpolygon(ambs(:, 1), ambs(:, 2), ambr(:, 1), ambr(:, 2));
+                    ambsx = ambs(:, 1); ambsx = ambsx(ins2);
+                    ambsy = ambs(:, 2); ambsy = ambsy(ins2);
+                    ambsS{k1} = [ambsx, ambsy];
+
+                    [Correct, FalsePos, FalseNeg, link] = sng_CoordinateMatching ...
+                        (SpotCom{k1}, ambsS{k1}, 10);
+
+                    LinkDistance{k1} = link;
+
+                    if exist('Correct', 'var')
+                        CorrectSpots{k1} = Correct;
+                        nCorrect(k1) = size(Correct, 1);
+                    else
+                        CorrectSpots{k1} = [];
+                        nCorrect(k1) = 0;
+                    end
+                    if exist('FalsePos', 'var')
+                        FalsePosSpots{k1} = FalsePos;
+                        nFalsePos(k1) = size(FalsePos, 1);
+                    else
+                        FalsePosSpots{k1} = [];
+                        nFalsePos(k1) = 0;
+                    end
+                    if exist('FalseNeg', 'var')
+                        FalseNegSpots{k1} = FalseNeg;
+                        nFalseNeg(k1) = size(FalseNeg, 1);
+                    else
+                        FalseNegSpots{k1} = [];
+                        nFalseNeg(k1) = 0;
+                    end
+
+                    Precision(k1) = nCorrect(k1) / (nCorrect(k1) + nFalsePos(k1) + a);
+                    Recall(k1) = nCorrect(k1) / (nCorrect(k1) + nFalseNeg(k1) + a);
+                    F1score(k1) = 2 * (Precision(k1) * Recall(k1)) / (Precision(k1) + Recall(k1) + a);
+                    AbsDifference(k1) = nFalsePos(k1) - nFalseNeg(k1);
+                    RelDifference(k1) = (nFalsePos(k1) - nFalseNeg(k1)) / nCorrect(k1);
+                else              
+                    Precision(k1) = NaN;
+                    Recall(k1) = NaN;
+                    F1score(k1) = NaN;
+                    AbsDifference(k1) = NaN;
+                    RelDifference(k1) = NaN;                
                 end
-                if exist('FalsePos', 'var')
-                    FalsePosSpots{k1} = FalsePos;
-                    nFalsePos(k1) = size(FalsePos, 1);
-                else
-                    FalsePosSpots{k1} = [];
-                    nFalsePos(k1) = 0;
-                end
-                if exist('FalseNeg', 'var')
-                    FalseNegSpots{k1} = FalseNeg;
-                    nFalseNeg(k1) = size(FalseNeg, 1);
-                else
-                    FalseNegSpots{k1} = [];
-                    nFalseNeg(k1) = 0;
-                end
                 
-                Precision(k1) = nCorrect(k1) / (nCorrect(k1) + nFalsePos(k1) + a);
-                Recall(k1) = nCorrect(k1) / (nCorrect(k1) + nFalseNeg(k1) + a);
-                F1score(k1) = 2 * (Precision(k1) * Recall(k1)) / (Precision(k1) + Recall(k1) + a);
-                AbsDifference(k1) = nFalsePos(k1) - nFalseNeg(k1);
-                RelDifference(k1) = (nFalsePos(k1) - nFalseNeg(k1)) / nCorrect(k1);
                 
             end
             obj.SpotStats.FiveNumberSummaryPrecision = sng_FiveNumberSum(Precision);
