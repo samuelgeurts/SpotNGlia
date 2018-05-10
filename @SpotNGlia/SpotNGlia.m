@@ -42,21 +42,34 @@ classdef SpotNGlia
         
         ImageInfoChecked_TF = false
         Sorting = []
+        
+        %variable for showing images
+        fsxy = [6, 5];
+        exportit = false;
     end
     
     properties(Transient = true)
-        CompleteTemplate = []
+        CompleteTemplate
+        PreprocessionInfo
+        ExtendedDeptOfFieldInfo
+        RegistrationInfo
+        BrainSegmentationInfo
+        SpotDetectionInfo
+        SpotsDetected
+        SpotParameters
     end
     
     methods
         %constructor function
         function obj = SpotNGlia(mode1)
+            
             %obj.NewPath(0) default mode, UI for FishPath and SavePath, source is assumed to be in SpotNGlia folder
             %obj.NewPath(1) UI for FishPath, SavePath and SourcePath
             %mode 10,11,12 only works for S Geurts own pc's
             %obj.NewPath(10) this mode assumes the trainingset and set known paths
             %obj.NewPath(11) this mode assumes that Fishpath and SavePath are equal and user UI to select new path
             %obj.NewPath(12) switch between own pc's for MultiBatch on Seagate harddisk
+            
             
             if ~exist('mode1', 'var')
                 mode1 = 0;
@@ -83,7 +96,7 @@ classdef SpotNGlia
         function obj = NewPath(obj, mode1)
             %obj.NewPath(0) default mode, UI for FishPath and SavePath, source is assumed to be in SpotNGlia folder
             %obj.NewPath(1) UI for FishPath, SavePath and SourcePath
-            %mode 10,11,12 only works for S Geurts own pc's
+            %mode 10,11,12 only works for S Geurts own pc's (macbook, windowspc, Erasmus pc)
             %obj.NewPath(10) this mode assumes the trainingset and set known paths
             %obj.NewPath(11) this mode assumes that Fishpath and SavePath are equal and user UI to select new path
             %obj.NewPath(12) switch between own pc's for MultiBatch on Seagate harddisk
@@ -320,6 +333,10 @@ classdef SpotNGlia
         end
         function obj = PreProcession(obj, fishnumbers)
             
+            %TODO set black to white for removing the referencebar, 
+            %after imagemerging it gets blured an is no longer black which
+            %gave an issue for background removal, the triangle method (Zack threshold method)
+            
             h = waitbar(0, 'Preprocession', 'Name', 'SpotNGlia');
             [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
             obj.nfishes = numel(obj.StackInfo);
@@ -420,21 +437,21 @@ classdef SpotNGlia
             
             
             %{
-                              %Stack has to be added but than input parameters are needed,
-                              so the function PreprocessionSNG has to be separated in that
-                              case. For now we choose to store every image the object. If it
-                              leads to memory issue on other obtion has to be made. For
-                              example save the images in a folder outsite the object.
+                                 %Stack has to be added but than input parameters are needed,
+                                 so the function PreprocessionSNG has to be separated in that
+                                 case. For now we choose to store every image the object. If it
+                                 leads to memory issue on other obtion has to be made. For
+                                 example save the images in a folder outsite the object.
  
-                              for k1 = 1:nfishes
-                                  fn = fishnumbers(k1);
-                                  ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
-                                  for k2 = 1:numel(ImageSlice)
-                                  ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
-                                  [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
-                                  %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
-                                  end
-                              end
+                                 for k1 = 1:nfishes
+                                     fn = fishnumbers(k1);
+                                     ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
+                                     for k2 = 1:numel(ImageSlice)
+                                     ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
+                                     [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
+                                     %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
+                                     end
+                                 end
             %}
             if nfishes > 1
                 ExtendedDeptOfFieldInfo(nfishes) = struct('IndexMatrix', [], ...
@@ -666,6 +683,97 @@ classdef SpotNGlia
             
             delete(h)
         end
+        function obj = SpotDetection3(obj, fishnumbers, save_TF)
+            
+            INFO = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo', 'BrainSegmentationInfo');
+            TEMPLATE = load([obj.SourcePath, '/', 'Template3dpf.mat'], 'ref_temp', 'Classifier');
+            
+            %load checkup if exist from pre SpotNGlia1.4.0
+            obj = FillCheckup(obj);
+            
+            h = waitbar(0, 'SpotDetection', 'Name', 'SpotNGlia');
+            
+            if ~exist('save_TF', 'var')
+                save_TF = true;
+            end
+            
+            
+            if ~exist('fishnumbers', 'var') || isempty(fishnumbers)
+                fishnumbers = 1:numel(obj.StackInfo);
+            elseif max(fishnumbers) > numel(obj.StackInfo)
+                error('at least one fish does not exist in BrainInfo')
+            end
+            
+            nfishes = numel(fishnumbers);
+            
+            SpotsDetected = cell(nfishes, 1);
+            SpotParameters = cell(nfishes, 1);
+            if nfishes > 1
+                SpotDetectionInfo(nfishes) = struct('Multiproduct', [], ...
+                    'MultiproductThreshold', []);
+            end
+            
+            for k1 = 1:nfishes
+                fn = fishnumbers(k1);
+                waitbar(k1/nfishes, h, ['SpotDetection on slice ', num2str(k1), ' / ', num2str(nfishes)])
+                tform_complete = INFO.RegistrationInfo{fn}(strcmp({INFO.RegistrationInfo{fn}.name}, 'tform_complete')).value;
+                CorrectedFish = sng_openimstack2([obj.SavePath, '/', 'CorrectedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
+                AlignedSlice = cell(1, numel(CorrectedFish));
+                for k2 = 1:numel(CorrectedFish)
+                    AlignedSlice{k2} = imwarp(CorrectedFish{k2}, tform_complete, 'FillValues', 255, 'OutputView', TEMPLATE.ref_temp);
+                end
+                %[SpotsDetected{fn}, SpotParameters{fn}, SpotDetectionInfo(fn)] = SpotDetectionSliceSNG(AlignedSlice, TEMPLATE, INFO.BrainSegmentationInfo(fn).BrainEdge, obj.ZFParameters);
+                [SpotParameters{fn}, SpotDetectionInfo(fn)] = SpotDetectionSliceMLSNG(AlignedSlice, obj.ZFParameters);
+                
+                %maybe an error occurs for some brain optimization
+                
+                [SpotsDetected{fn}, SpotParameters{fn}, SpotN] = SpotDiscriminationSNG( ...
+                    SpotParameters{fn}, ...
+                    INFO.BrainSegmentationInfo(fn).BrainEdge, ...
+                    INFO.RegistrationInfo{fn}, ...
+                    TEMPLATE.Classifier, ...
+                    obj.ZFParameters);
+                
+                %update Computations
+                obj.Computations(fn).Spots = reshape([SpotsDetected{fn}.Centroid], 2, SpotN)';
+                obj.Computations(fn).Midbrain = fliplr(INFO.BrainSegmentationInfo(fn).BrainEdge);
+                obj.Computations(fn).Counts = SpotN;
+                
+                %update checkup after new spot computations
+                if ~isempty(obj.checkup)
+                    %old, function does not work well as discrimination with machine learning is applied
+                    %obj.checkup(fn).Spots = obj.SpotsInsiteArea(SpotParameters{fn}, obj.checkup(fn).Midbrain);
+                    %obj.checkup(fn).Counts = size(obj.checkup(fn).Spots, 1);
+                    
+                    [SpotsDetected_cu, tmp, SpotN_cu] = SpotDiscriminationSNG( ...
+                        SpotParameters{fn}, ...
+                        fliplr(obj.checkup(fn).Midbrain), ...
+                        INFO.RegistrationInfo{fn}, ...
+                        TEMPLATE.Classifier, ...
+                        obj.ZFParameters);
+                    
+                    obj.checkup(fn).Spots = reshape([SpotsDetected_cu.Centroid], 2, SpotN_cu)';
+                    obj.checkup(fn).Counts = SpotN_cu;
+                end
+            end
+            
+            %store as transient property
+            obj.SpotsDetected = SpotsDetected;
+            obj.SpotParameters = SpotParameters;
+            obj.SpotDetectionInfo = SpotDetectionInfo;
+            
+            
+            if save_TF
+                obj.saveit
+                save([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotDetectionInfo', '-append')
+                save([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotsDetected', '-append')
+                save([obj.SavePath, '/', obj.InfoName, '.mat'], 'SpotParameters', '-append')
+                ...
+                    obj.buildsheet
+            end
+            
+            delete(h)
+        end
         function obj = FillComputations(obj, BrainSegmentationInfo, SpotsDetected)
             %temporary function if an obj is opened that is created with SpotNGlia 1.4.0 or before
             if isempty(obj.Computations)
@@ -692,22 +800,22 @@ classdef SpotNGlia
             end
         end
         function obj = CorrectCheckBrain(obj)
-        %this function updates the spots according to previous added or removed spots
-        
-%         obj.checkup(k1).Spots
-%         obj.checkup(k1).SpotAdditions
-%         obj.checkup(k1).SpotRemovals
-%         
-%         
-%         [obj.checkup(k1).Spots]
-%         
-%         
-%         [TF, ~] = ismember([obj.checkup(k1).Spots], [obj.checkup(k1).SpotAdditions], 'rows');
-%         sc.XData(TF) = [];
-%         sc.YData(TF) = [];
-%         %add previous added spots
-%         sc.XData = [sc.XData, ph2.XData];
-%         sc.YData = [sc.YData, ph2.YData];
+            %this function updates the spots according to previous added or removed spots
+            
+            %         obj.checkup(k1).Spots
+            %         obj.checkup(k1).SpotAdditions
+            %         obj.checkup(k1).SpotRemovals
+            %
+            %
+            %         [obj.checkup(k1).Spots]
+            %
+            %
+            %         [TF, ~] = ismember([obj.checkup(k1).Spots], [obj.checkup(k1).SpotAdditions], 'rows');
+            %         sc.XData(TF) = [];
+            %         sc.YData(TF) = [];
+            %         %add previous added spots
+            %         sc.XData = [sc.XData, ph2.XData];
+            %         sc.YData = [sc.YData, ph2.YData];
         end
         function obj = CompleteProgram(obj, fishnumbers)
             
@@ -771,10 +879,12 @@ classdef SpotNGlia
         
         ShowFishHeadHist(obj, fishnumber)
         ShowMaxFishHist(obj, fishnumber)
+        ShowFishDiscrimination(obj, exportit)
         obj = CheckFish(obj, ifish, INFO)
+        %Showt(obj, subject)
     end
     
-    methods(Hidden = true)       
+    methods(Hidden = true)
         Mask = BrainMask(obj, fishnumbers)
         %BrainOptimization(obj, fishnumbers)
         %obj2 = SpotOptimization2(obj, fishnumbers, zfinputlist)
@@ -814,36 +924,36 @@ classdef SpotNGlia
             
             
             %{
-                        load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
-                        if exist('SpotsDetected')
-                            for k1 = 1:numel(SpotsDetected)
-                                nspots(k1,1) = numel(SpotsDetected{k1});
-                            end
+                           load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
+                           if exist('SpotsDetected')
+                               for k1 = 1:numel(SpotsDetected)
+                                   nspots(k1,1) = numel(SpotsDetected{k1});
+                               end
  
-                            Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
-                            title = {obj.InfoName,'images','nspots'}
+                               Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
+                               title = {obj.InfoName,'images','nspots'}
  
-                            ds = cell2dataset([title;Sheet]);
-                            export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
-                        end
+                               ds = cell2dataset([title;Sheet]);
+                               export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
+                           end
             %}
         end
         function obj = LoadTemplate(obj)
             if isempty(obj.CompleteTemplate)
                 obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
             end
-        end       
+        end
         function obj = LoadAnnotations(obj)
             
             %annotated midbrain roi
             if isempty(obj.AnnotatedMidBrainPath) || (obj.AnnotatedMidBrainPath(1) == 0)
-                disp(['Select Annotated MidBrain Path for ',obj.SaveName])
+                disp(['Select Annotated MidBrain Path for ', obj.SaveName])
                 obj.AnnotatedMidBrainPath = uigetdir([], 'Select Annotated MidBrain Path');
             end
             
             %annotated spots
             if isempty(obj.AnnotatedSpotPath) || (obj.AnnotatedSpotPath(1) == 0)
-                disp(['Select Annotated Spot Path for ',obj.SaveName])
+                disp(['Select Annotated Spot Path for ', obj.SaveName])
                 obj.AnnotatedSpotPath = uigetdir([], 'Select Annotated Spot Path');
             end
             
@@ -869,7 +979,7 @@ classdef SpotNGlia
                         [ambr{k1}(:, 1), ambr{k1}(:, 2)] = transformPointsForward(tform_1234{k1}, amb(:, 1), amb(:, 2));
                         ambr{k1} = double(ambr{k1});
                     else
-                        ambr{k1} = NaN;                        
+                        ambr{k1} = NaN;
                     end
                 end
                 [obj.Annotations(1:nfishes).MidBrain] = ambr{:};
@@ -959,9 +1069,9 @@ classdef SpotNGlia
             if isempty(obj.Annotations) || ...
                     ~isfield(obj.Annotations, 'MidBrain') || ...
                     all(cellfun(@isempty, {obj.Annotations.MidBrain})) || ...
-                    all(cellfun(@numel,{obj.Annotations.MidBrain}) <=1) %alternative for isnan as if not empty at two values are stored for a coordinate needs two
-                    %all(cellfun(@isnan, {obj.Annotations.MidBrain}))...  %does not work because isnan looks at the cell inhoud
-
+                    all(cellfun(@numel, {obj.Annotations.MidBrain}) <= 1)%alternative for isnan as if not empty at two values are stored for a coordinate needs two
+                %all(cellfun(@isnan, {obj.Annotations.MidBrain}))...  %does not work because isnan looks at the cell inhoud
+                
                 AMBR = {obj.checkup.Midbrain};
             else
                 AMBR = {obj.Annotations.MidBrain};
@@ -1002,7 +1112,7 @@ classdef SpotNGlia
                 ambs = obj.Annotations(k1).Spots;
                 ambr = AMBR{k1};
                 
-                if ~isempty(Spotpar) 
+                if ~isempty(Spotpar)
                     
                     %select spot insite annotated brainregion
                     [spotcentroids] = reshape([Spotpar.Centroid], 2, numel(Spotpar))';
@@ -1021,7 +1131,7 @@ classdef SpotNGlia
                 
                 
                 if ~isnan(ambs(1)) && ~isnan(ambr(1))
-                
+                    
                     %because the annotated midbrain does not corresponds
                     %exactly with the annotated spots, de annotated spots are
                     %also filtered to compute the performance of the
@@ -1030,12 +1140,12 @@ classdef SpotNGlia
                     ambsx = ambs(:, 1); ambsx = ambsx(ins2);
                     ambsy = ambs(:, 2); ambsy = ambsy(ins2);
                     ambsS{k1} = [ambsx, ambsy];
-
+                    
                     [Correct, FalsePos, FalseNeg, link] = sng_CoordinateMatching ...
                         (SpotCom{k1}, ambsS{k1}, 10);
-
+                    
                     LinkDistance{k1} = link;
-
+                    
                     if exist('Correct', 'var')
                         CorrectSpots{k1} = Correct;
                         nCorrect(k1) = size(Correct, 1);
@@ -1057,18 +1167,18 @@ classdef SpotNGlia
                         FalseNegSpots{k1} = [];
                         nFalseNeg(k1) = 0;
                     end
-
+                    
                     Precision(k1) = nCorrect(k1) / (nCorrect(k1) + nFalsePos(k1) + a);
                     Recall(k1) = nCorrect(k1) / (nCorrect(k1) + nFalseNeg(k1) + a);
                     F1score(k1) = 2 * (Precision(k1) * Recall(k1)) / (Precision(k1) + Recall(k1) + a);
                     AbsDifference(k1) = nFalsePos(k1) - nFalseNeg(k1);
                     RelDifference(k1) = (nFalsePos(k1) - nFalseNeg(k1)) / nCorrect(k1);
-                else              
+                else
                     Precision(k1) = NaN;
                     Recall(k1) = NaN;
                     F1score(k1) = NaN;
                     AbsDifference(k1) = NaN;
-                    RelDifference(k1) = NaN;                
+                    RelDifference(k1) = NaN;
                 end
                 
                 
@@ -1250,7 +1360,6 @@ classdef SpotNGlia
             temp = num2cell(AbsDifference); [obj.SpotBrainInfo(1:nfishes).AbsDifference] = temp{:};
             temp = num2cell(RelDifference); [obj.SpotBrainInfo(1:nfishes).RelDifference] = temp{:};
         end
-        
         function ShowBoxPlot(obj, exportit)
             %Example show and save
             %   ShowBoxPlot(obj,1)
@@ -1483,23 +1592,339 @@ classdef SpotNGlia
                 end
             end
         end
-        
-        function obj = Dummy(obj,input)
-           disp('Dummy function') 
-           if exist('input','var')
-               disp(num2str(input))
-           end
-           disp([obj.SaveName])
+        function obj = Dummy(obj, input)
+            disp('Dummy function')
+            if exist('input', 'var')
+                disp(num2str(input))
+            end
+            disp([obj.SaveName])
         end
+        
+        %supporting functions used for the Show functions
+        function [figurehandle, axishandle] = setfigax1(obj)
+            %fsx = 5;fsy = 10;
+            figurehandle = figure('PaperUnits', 'centimeters', 'Color', [1, 1, 1]);
+            axishandle = gca;
+            sng_figcm(obj.fsxy(1), obj.fsxy(2));
+        end
+        function setfigax2(obj, axishandle)
+            set(axishandle, 'FontName', 'arial', 'FontSize', 8, 'XGrid', 'on', 'YGrid', 'on');
+            set(axishandle, 'Units', 'centimeters', 'Position', [1.2, 1.2, obj.fsxy(1) - 1.7, obj.fsxy(2) - 1.7]);
+            %set(axishandle, 'YLim', [-0.02, 1.02]);
+        end
+        function realsizeandsave(obj, figurehandle)
+            if obj.exportit
+                export_fig(figurehandle, [obj.SavePath, num2str(figurehandle.Number)], '-png', '-r600', '-nocrop');
+            end
+            
+            %sets the right scaling
+            User1 = getenv('USER');
+            User2 = getenv('username');
+            OS = getenv('OS');
+            if strcmp(User1, 'samuelgeurts') && isempty(User2) && isempty(OS)
+                ScaledFigure.calibrateDisplay(113.6); %113.6 for macbook pro screen, 96 inch for erasmus screen
+            elseif strcmp(OS, 'Windows_NT') && strcmp(User2, '260018')
+                ScaledFigure.calibrateDisplay(96); %113.6 for macbook pro screen, 96 inch for erasmus screen
+            else
+            end
+            
+            
+            ScaledFigure(figurehandle, 'reuse');
+            set(figurehandle, 'Units', 'Centimeters');
+            set(figurehandle, 'Position', (get(figurehandle, 'Position') + [obj.fsxy(1), 0, 0, 0]));
+        end
+        
+        
     end
+    
+    methods %all Show methods
+        
+        
+        function Show(obj, subject, exportit, fsxy)
+            
+            if ~exist('subject', 'var')
+                subject = [];
+            end
+            if exist('exportit', 'var')
+                obj.exportit = exportit;
+            end
+            if exist('fsxy', 'var')
+                obj.fsxy = fsxy;
+            end
+            
+            %ShowFishDiscrimination1 - histogram shows correlation coefficient adjacent images
+            %ShowFishDiscrimination2 - scatterplot of translation
+            
+            if ismember(1, subject); obj.ShowFishDiscrimination1; end
+            if ismember(2, subject); obj.ShowFishDiscrimination2; end
+            if ismember(3, subject); obj.ShowFishDiscrimination3; end
+            if ismember(4, subject); obj.ShowFishDiscrimination4; end
+            
+        end
+        function ShowFishDiscrimination1(obj)
+            
+            a = [obj.ImageInfo.corcoef];
+            d = [obj.ImageInfo.CorNextStack];
+            
+            %histogram shows correlation coefficientadjacent images of the same fish
+            [h2, g2] = setfigax1(obj);
+            histogram(a(d == 0), 0.90:0.005:1);
+            hold on
+            histogram(a(d == 1), 0.90:0.005:1);
+            setfigax2(obj, g2);
+            set(g2, 'XLim', [0.90, 1]);
+            set(g2, 'YLim', [0.5, 300])
+            set(g2, 'YScale', 'log');
+            set(g2, 'YTick', [1, 2, 5, 10, 100, 200]);
+            set(g2, 'YTickLabels', [1, 2, 5, 10, {'10^2'}, {''}]);
+            set(g2, 'YMinorGrid', 'off');
+            
+            set(g2, 'XTick', [0.9:0.02:1]);
+            %set(g2, 'XTickLabels', [0.90,{''},0.92,{''},0.94,{''},0.96,{''},0.98,{''},1]);
+            
+            
+            g2.XLabel.String = 'correlation coefficient';
+            g2.YLabel.String = 'counts';
+            realsizeandsave(obj, h2);
+        end
+        function ShowFishDiscrimination2(obj)
+            a = [obj.ImageInfo.corcoef];
+            d = [obj.ImageInfo.CorNextStack];
+            
+            %histogram shows correlation coefficient adjacent images containing different fish
+            [h1, g1] = setfigax1(obj);
+            histogram(a(d == 0), 0:0.05:1);
+            hold on
+            hh = histogram(a(d == 1), 0:0.05:1);
+            set(hh, 'FaceColor', [0.8500, 0.3250, 0.0980]);
+            set(g1, 'YScale', 'log')
+            set(g1, 'YLim', [0.5, 300])
+            set(g1, 'XLim', [0, 1])
+            set(g1, 'YTick', [1, 2, 5, 10, 100, 200])
+            set(g1, 'YTickLabels', [1, 2, 5, 10, {'10^2'}, {''}])
+            set(g1, 'YMinorGrid', 'off')
+            
+            set(g1, 'XTick', 0:0.2:1)
+            
+            
+            setfigax2(obj, g1)
+            g1.XLabel.String = 'correlation coefficient';
+            g1.YLabel.String = 'counts';
+            realsizeandsave(obj, h1)
+            
+            %{
+                   %histogram of modulus shift around the mean of similar images
+                   [h3, g3] = setfigax1;
+                       histogram(c(d == 0),0:0.16:1.6);
+                       hold on
+                       hh=histogram(c(d == 1),0:0.16:2.5);
+                       set(hh,'FaceColor',[0.8500    0.3250    0.0980]);
+                       set(gca,'YLim',[0.6,301]);
+                       set(gca,'YScale','log');
+                       set(gca,'YTick',[1,10,100]);
+                       set(gca,'YTickLabels',[1,10,{'10^2'}])
+                   setfigax2(g3)
+                   g3.XLabel.String = 'translation modulus [pix]';
+                   g3.YLabel.String = 'counts';
+                   realsizeandsave(h3)
+ 
+            %histogram of angular shift zoomed out
+ 
+ 
+                   [h3, g3] = setfigax1;
+                       h=histogram(c(d == 1),[-pi:pi/20:pi])
+                       set(h,'FaceColor',[0.8500    0.3250    0.0980])
+                       hold on
+                       h=histogram(c(d == 0),[-pi:pi/20:pi])
+            %}
+        end
+        function ShowFishDiscrimination3(obj)
+            %scatterplot of translation zoomed out
+            
+            d = [obj.ImageInfo.CorNextStack];
+            e = reshape([obj.ImageInfo.warp], 2, size(obj.ImageInfo, 1))';
+            
+            [h4, g4] = setfigax1(obj);
+            scatter(e((d == 0), 1), e((d == 0), 2))
+            hold on
+            scatter(e((d == 1), 1), e((d == 1), 2))
+            xlim([-20, 20])
+            ylim([-20, 20])
+            set(g4, 'XTick', -20:10:20)
+            set(g4, 'YTick', -20:10:20)
+            
+            setfigax2(obj, g4)
+            %make axis equal but leftdown axis intersection at same position
+            pos = get(gca, 'Position');
+            set(gca, 'Position', [pos(1:2), min(pos(3:4)), min(pos(3:4))])
+            
+            g4.XLabel.String = 'translation x-axis [pix]';
+            g4.YLabel.String = 'translation y-axis [pix]';
+            realsizeandsave(obj, h4)
+        end
+        function ShowFishDiscrimination4(obj)
+            %scatterplot of translation zoomed in
+            
+            b = [obj.ImageInfo.moduluswarp];
+            c = [obj.ImageInfo.anglewarp];
+            d = [obj.ImageInfo.CorNextStack];
+            e = reshape([obj.ImageInfo.warp], 2, size(obj.ImageInfo, 1))';
+            
+            %compute the location of the outer angles
+            c1 = c(d == 0);
+            c2 = c1(c1 < 0);
+            [c3min, n1] = min(c2);
+            [c3max, n2] = max(c2);
+            e1 = e((d == 0), :);
+            e2 = e1((c1 < 0), :);
+            %maximum modulus for circle
+            b1 = b(d == 0);
+            b2 = max(b1);
+            
+            
+            %maxdeg = round(360*-0.15/(2*pi),1
+            %mindeg = round(360*-0.60/(2*pi),1)
+            
+            
+            [h4, g4] = setfigax1(obj);
+            scatter(e((d == 0), 1), e((d == 0), 2))
+            hold on
+            scatter(e((d == 1), 1), e((d == 1), 2))
+            
+            xlim([-1.6, 1.6])
+            ylim([-1.6, 1.6])
+            setfigax2(obj, g4)
+            
+            %make axis equal but leftdown axis intersection at same position
+            pos = get(gca, 'Position');
+            set(gca, 'Position', [pos(1:2), min(pos(3:4)), min(pos(3:4))])
+            
+            
+            %gets position of plot in figure, set position
+            %set(gca,'units','centimeters')
+            %ppos = plotboxpos;
+            %set(gca,'Position',[get(gca,'Position') - [ppos(1:2),0,0] + [1.2 1.2,0,0]]);
+            
+            
+            g4.XLabel.String = 'translation x-axis [pix]';
+            g4.YLabel.String = 'translation y-axis [pix]';
+            
+            %add angle lines
+            line(10*[-e2(n1, 1), e2(n1, 1)], 10*[-e2(n1, 2), e2(n1, 2)], 'Color', [0, 0, 0], 'LineStyle', '--');
+            line(10*[-e2(n2, 1), e2(n2, 1)], 10*[-e2(n2, 2), e2(n2, 2)], 'Color', [0, 0, 0], 'LineStyle', '--');
+            r = b2; %radius
+            %add circle
+            pos = [-r, -r, 2 * r, 2 * r];
+            rectangle('Position', pos, 'Curvature', [1, 1], 'LineStyle', '--');
+            %add annotations
+            maxdeg = round(360*c3max/(2 * pi), 1);
+            mindeg = round(360*c3min/(2 * pi), 1);
+            text(0, 1.3, ['r = ', num2str(round(r, 1))], 'FontName', 'arial', 'FontSize', 8, 'HorizontalAlignment', 'Center');
+            text(1.65, -0.32, [num2str(maxdeg), '\circ'], 'FontName', 'arial', 'FontSize', 8);
+            text(1.65, -0.95, [num2str(mindeg), '\circ'], 'FontName', 'arial', 'FontSize', 8);
+            
+            realsizeandsave(obj, h4);
+            
+        end
+        function ShowBackgroundRemoval(obj, fn)
+            
+            if isempty(obj.CompleteTemplate)
+                obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
+            end
+            sng_zfinputAssign(obj.ZFParameters, 'Registration')
+                       
+            if fn <= 0
+                %open chosen images from separate folder
+                PathName = '/Volumes/Macintosh HD/OneDrive/BIGR Zebrafish/presentation nov-2016/remove background test/'
+                Dropboxmap = (fileparts(obj.SourcePath));
+                PathName = [Dropboxmap, filesep, 'Images for Report', filesep];
+                FileName1 = 'image0015.tif';
+                FileName2 = 'image0049.tif';
+                FileName3 = 'Image56.tif';
+                
+                if fn == -1
+                    Img = imread([PathName, FileName1]);
+                elseif fn == -2
+                    Img = imread([PathName, FileName2]);
+                elseif fn == -3
+                    Img = imread([PathName, FileName3]);
+                end
+                Img = Img(:, :, 1:3);
+                Img = im2uint8(Img);
+            else
+                CombinedFish = imread([obj.SavePath, '/', 'CombinedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
+                %[AlignedFishTemp, RegistrationInfo] = AlignmentSNG(CombinedFish, obj.CompleteTemplate, obj.ZFParameters);
+                Img = CombinedFish;
+            end
+            
+            
+            %[I20, BackgroundMask, BackgroundThreshold] = sng_RemoveBackgroundColor3(Img, Method, Smooth, ChannelMethod);
+            
+            for j = 1:3
+                [Img2(:, :, j), thr(j), histo{j}, smoothhisto{j}] = sng_RemoveBackground(Img(:, :, j), Method, Smooth);
+            end
+                
+                %histogram of original image
+                Hr1 = histcounts(double(Img(:,:,1)), [0:1:255]);              
+                figure; bar(Hr1, 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
+                set(gca, 'XLim', [0, 256], 'YLim', [0, 100000], 'FontSize', 20);
+                set(gcf, 'Color', [1, 1, 1])
+                  
+                %histogram of image with removed background
+                Hr1 = histcounts(double(Img2(:,:,1)), [0:1:255]);              
+                figure; bar(Hr1, 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
+                set(gca, 'XLim', [0, 256], 'YLim', [0, 100000], 'FontSize', 20);
+                set(gcf, 'Color', [1, 1, 1])
+                
+                
+                %histogram of the 50pixel boundary
+                figure; bar(fliplr(histo{1}), 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
+                set(gca, 'XLim', [0, 256], 'YLim', [0, 10000], 'FontSize', 20);
+                set(gcf, 'Color', [1, 1, 1])
+%smoothhisot is the same as histo when smooth=1
+
+             
+            
+            
+            
+            bar(smoothhisto{1}')
+            set(gca, 'YScale', 'log');
+            
+            
+            a = [obj.ImageInfo.corcoef];
+            d = [obj.ImageInfo.CorNextStack];
+            
+            %histogram shows correlation coefficientadjacent images of the same fish
+            [h2, g2] = setfigax1(obj);
+            histogram(a(d == 0), 0.90:0.005:1);
+            hold on
+            histogram(a(d == 1), 0.90:0.005:1);
+            setfigax2(obj, g2);
+            set(g2, 'XLim', [0.90, 1]);
+            set(g2, 'YLim', [0.5, 300])
+            set(g2, 'YScale', 'log');
+            set(g2, 'YTick', [1, 2, 5, 10, 100, 200]);
+            set(g2, 'YTickLabels', [1, 2, 5, 10, {'10^2'}, {''}]);
+            set(g2, 'YMinorGrid', 'off');
+            
+            set(g2, 'XTick', [0.9:0.02:1]);
+            %set(g2, 'XTickLabels', [0.90,{''},0.92,{''},0.94,{''},0.96,{''},0.98,{''},1]);
+            
+            g2.XLabel.String = 'correlation coefficient';
+            g2.YLabel.String = 'counts';
+            realsizeandsave(obj, h2);
+        end
+        
+    end
+    
     
     methods(Static)
         function SpotCoordsFiltered = SpotsInsiteArea(SpotParametersSingle, SpotCoords)
             %selects only Spots instite area 'SpotParametersSingle'
             
             %{
-            SpotParametersSingle = SpotParameters{ifish};
-            SpotCoords = [X3',Y3']
+               SpotParametersSingle = SpotParameters{ifish};
+               SpotCoords = [X3',Y3']
             %}
             
             Xrow = SpotCoords(:, 1);
