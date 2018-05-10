@@ -78,7 +78,14 @@ SpotVectorArrayProbability = SpotTemplateVar.SpotVectorArrayProbability;
 SVAP_index = SpotTemplateVar.SVAP_index;
 %clear SpotTemplateVar
 
+%% Machine learning SpotParameters
+load([TemplatePath3dpf,'/SpotTemplate.mat'],'SpotTemplateVar');
+ClassifierInfo = load([SourcePath, filesep, 'Microglia classifiers', filesep ,'pksvc5050.mat'],'wp');
+Classifier = ClassifierInfo.wp;
 
+
+
+%%
 
 filename = 'Template3dpf'
 
@@ -105,8 +112,9 @@ save([SourcePath, '/', filename, '.mat'], 'SpotContrastVector', '-append')
 save([SourcePath, '/', filename, '.mat'], 'SpotVectorArrayProbability', '-append')
 save([SourcePath, '/', filename, '.mat'], 'SVAP_index', '-append')
 
+save([SourcePath, '/', filename, '.mat'], 'Classifier', '-append')
+
 CompleteTemplate = load([SourcePath, '/', 'Template3dpf', '.mat'])
 
 
 
-end
