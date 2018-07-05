@@ -47,7 +47,6 @@ classdef SpotNGlia
         fsxy = [6, 5];
         exportit = false;
     end
-    
     properties(Transient = true)
         CompleteTemplate
         PreprocessionInfo
@@ -57,11 +56,13 @@ classdef SpotNGlia
         SpotDetectionInfo
         SpotsDetected
         SpotParameters
+        
+        RegObject %new registration parameters
     end
     
     methods
-        %constructor function
-        function obj = SpotNGlia(mode1)
+        
+        function obj = SpotNGlia(mode1) %constructor function
             
             %obj.NewPath(0) default mode, UI for FishPath and SavePath, source is assumed to be in SpotNGlia folder
             %obj.NewPath(1) UI for FishPath, SavePath and SourcePath
@@ -69,7 +70,6 @@ classdef SpotNGlia
             %obj.NewPath(10) this mode assumes the trainingset and set known paths
             %obj.NewPath(11) this mode assumes that Fishpath and SavePath are equal and user UI to select new path
             %obj.NewPath(12) switch between own pc's for MultiBatch on Seagate harddisk
-            
             
             if ~exist('mode1', 'var')
                 mode1 = 0;
@@ -85,11 +85,12 @@ classdef SpotNGlia
                 
                 load([obj.SourcePath, '/', 'zfinput.mat']); %#ok<LOAD>
                 obj.ZFParameters = zfinput;
-                obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
+                obj = LoadTemplate(obj);
                 
                 %file which contains all batch specific computation info
                 matObj = matfile([obj.SavePath, '/', obj.InfoName, '.mat']);
                 obj.InfoResult = whos(matObj);
+                
                 
             end
         end
@@ -333,7 +334,7 @@ classdef SpotNGlia
         end
         function obj = PreProcession(obj, fishnumbers)
             
-            %TODO set black to white for removing the referencebar, 
+            %TODO set black to white for removing the referencebar,
             %after imagemerging it gets blured an is no longer black which
             %gave an issue for background removal, the triangle method (Zack threshold method)
             
@@ -437,21 +438,21 @@ classdef SpotNGlia
             
             
             %{
-                                 %Stack has to be added but than input parameters are needed,
-                                 so the function PreprocessionSNG has to be separated in that
-                                 case. For now we choose to store every image the object. If it
-                                 leads to memory issue on other obtion has to be made. For
-                                 example save the images in a folder outsite the object.
+                                     %Stack has to be added but than input parameters are needed,
+                                     so the function PreprocessionSNG has to be separated in that
+                                     case. For now we choose to store every image the object. If it
+                                     leads to memory issue on other obtion has to be made. For
+                                     example save the images in a folder outsite the object.
  
-                                 for k1 = 1:nfishes
-                                     fn = fishnumbers(k1);
-                                     ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
-                                     for k2 = 1:numel(ImageSlice)
-                                     ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
-                                     [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
-                                     %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
+                                     for k1 = 1:nfishes
+                                         fn = fishnumbers(k1);
+                                         ImageSlice = cell(1,obj.StackInfo(fn).stacksize);%preallocate for every new slice
+                                         for k2 = 1:numel(ImageSlice)
+                                         ImageSlice = imread([obj.FishPath,'/',obj.StackInfo(fn).imagenames{k2}]);
+                                         [ImageSliceCor{k2},~] = sng_RGB_IATwarp2(ImageSlice(:,:,1:3),obj.PreprocessionInfo(k1).ColorWarp{1});
+                                         %[cellImg1{k2}, ~] = iat_inverse_warping(ImageSliceCor{k2}, obj.PreprocessionInfo(k1).SliceWarp{k2}, par.transform, 1:N, 1:M);
+                                         end
                                      end
-                                 end
             %}
             if nfishes > 1
                 ExtendedDeptOfFieldInfo(nfishes) = struct('IndexMatrix', [], ...
@@ -494,31 +495,40 @@ classdef SpotNGlia
             %load complete template
             obj = obj.LoadTemplate;
             
-            
             %folder to save AlignedFish
             TempFolderName = ([obj.SavePath, '/', 'AlignedFish']);
             if ~exist(TempFolderName, 'dir')
                 mkdir(TempFolderName)
             end
+            
             %preallocation
             MaxFishColor = zeros(nfishes, 3);
             MeanFishColor = zeros(nfishes, 3);
             RegistrationInfo = cell(nfishes, 1);
             
+            RegObject(1:nfishes) = SNGAlignment(obj);
+            
             for k1 = 1:nfishes
                 waitbar(k1/nfishes, h, ['Registration ', num2str(k1), ' / ', num2str(nfishes)])
                 fn = fishnumbers(k1);
                 CombinedFish = imread([obj.SavePath, '/', 'CombinedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
-                [AlignedFishTemp, RegistrationInfo{k1, 1}] = AlignmentSNG(CombinedFish, obj.CompleteTemplate, obj.ZFParameters);
-                %obj.AlignedFish(k1).image = AlignedFishTemp; %because it
-                %takes to much space
+                
+                %[AlignedFishTemp, RegistrationInfo{k1, 1}] = AlignmentSNG(CombinedFish, obj.CompleteTemplate, obj.ZFParameters);
+                
+                RegObject(k1).Icombined = CombinedFish;
+                RegObject(k1) = RegObject(k1).All;
+                RegistrationInfo{k1, 1} = oldoutputfunction(RegObject(k1)); %to be removed later, use instead RegObject itself
+                AlignedFishTemp = RegObject(k1).Ialigned;
+                RegObject(k1) = RegObject(k1).ClearVars;
+                
                 imwrite(uint8(AlignedFishTemp), [TempFolderName, '/', obj.StackInfo(k1).stackname, '.tif'], ...
                     'WriteMode', 'overwrite', 'Compression', 'none');
                 %generates matrix with MeanFishColors
+                
                 MeanFishColor(k1, 1:3) = RegistrationInfo{k1}(strcmp({RegistrationInfo{k1}.name}, 'MeanFishColor')).value;
                 MaxFishColor(k1, 1:3) = RegistrationInfo{k1}(strcmp({RegistrationInfo{k1}.name}, 'MaxFishColor')).value;
-                
             end
+            
             obj.BatchInfo.MeanMaxFishColor = mean(MaxFishColor(:));
             obj.BatchInfo.StdMaxFishColor = std(MaxFishColor(:));
             obj.BatchInfo.MeanFishColor = mean(MeanFishColor(:));
@@ -527,6 +537,11 @@ classdef SpotNGlia
             
             obj.saveit
             save([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo', '-append')
+            save([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegObject', '-append')
+            
+            %TODO zou later een vervanger voor RegistrationInfo kunnen worden
+            %%save([obj.SavePath, '/', obj.InfoName, 'v2.mat'], 'RegObject', '-append')
+            
             delete(h)
         end
         function obj = BrainSegmentation(obj, fishnumbers)
@@ -566,11 +581,9 @@ classdef SpotNGlia
         end
         function obj = SpotDetection(obj, fishnumbers)
             
-            obj = obj.LoadTemplate;
-            load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo')
-            
-            %load checkup if exist from pre SpotNGlia1.4.0
-            obj = FillCheckup(obj);
+            obj = obj.LoadTemplate; %load template
+            obj = obj.LoadParameters('BrainSegmentationInfo');
+            obj = FillCheckup(obj); %load checkup if exist from pre SpotNGlia1.4.0
             
             h = waitbar(0, 'SpotDetection', 'Name', 'SpotNGlia');
             
@@ -590,9 +603,9 @@ classdef SpotNGlia
             %        'ShortestPathValue',[],...
             %        'BrainEdge',[]);
             %end
+            %preallocation
             SpotsDetected = cell(nfishes, 1);
             SpotParameters = cell(nfishes, 1);
-            
             
             if nfishes > 1
                 SpotDetectionInfo(nfishes) = struct('Multiproduct', [], ...
@@ -603,11 +616,11 @@ classdef SpotNGlia
                 fn = fishnumbers(k1);
                 waitbar(k1/nfishes, h, ['SpotDetection ', num2str(k1), ' / ', num2str(nfishes)])
                 AlignedFish = imread([obj.SavePath, '/', 'AlignedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
-                [SpotsDetected{k1}, SpotParameters{k1}, SpotDetectionInfo(k1)] = SpotDetectionSNG(AlignedFish, obj.CompleteTemplate, BrainSegmentationInfo(k1).BrainEdge, obj.ZFParameters);
+                [SpotsDetected{k1}, SpotParameters{k1}, SpotDetectionInfo(k1)] = SpotDetectionSNG(AlignedFish, obj.CompleteTemplate, obj.BrainSegmentationInfo(k1).BrainEdge, obj.ZFParameters);
                 
                 %update Computations
                 obj.Computations(k1).Spots = reshape([SpotsDetected{k1}.Centroid], 2, numel(SpotsDetected{k1}))';
-                obj.Computations(k1).Midbrain = fliplr(BrainSegmentationInfo(k1).BrainEdge);
+                obj.Computations(k1).Midbrain = fliplr(obj.BrainSegmentationInfo(k1).BrainEdge);
                 obj.Computations(k1).Counts = numel(SpotsDetected{k1});
                 
                 %update checkup after new spot computations
@@ -883,7 +896,6 @@ classdef SpotNGlia
         obj = CheckFish(obj, ifish, INFO)
         %Showt(obj, subject)
     end
-    
     methods(Hidden = true)
         Mask = BrainMask(obj, fishnumbers)
         %BrainOptimization(obj, fishnumbers)
@@ -924,18 +936,18 @@ classdef SpotNGlia
             
             
             %{
-                           load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
-                           if exist('SpotsDetected')
-                               for k1 = 1:numel(SpotsDetected)
-                                   nspots(k1,1) = numel(SpotsDetected{k1});
+                               load([obj.SavePath,'/',obj.InfoName,'.mat'], 'SpotsDetected')
+                               if exist('SpotsDetected')
+                                   for k1 = 1:numel(SpotsDetected)
+                                       nspots(k1,1) = numel(SpotsDetected{k1});
+                                   end
+ 
+                                   Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
+                                   title = {obj.InfoName,'images','nspots'}
+ 
+                                   ds = cell2dataset([title;Sheet]);
+                                   export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
                                end
- 
-                               Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
-                               title = {obj.InfoName,'images','nspots'}
- 
-                               ds = cell2dataset([title;Sheet]);
-                               export(ds,'file',[P{1},'/',I{1},'.csv'],'delimiter',',')
-                           end
             %}
         end
         function obj = LoadTemplate(obj)
@@ -1010,6 +1022,29 @@ classdef SpotNGlia
             %    cmbr{k1} = BrainSegmentationInfo(k1).BrainEdge;
             %    obj.SpotParameters{k1} = SpotDetectionInfo{k1}(strcmp({SpotDetectionInfo{k1}.name},'SpotParameters')).value;
             %end
+        end
+        function obj = LoadParameters(obj, InfoName)
+            
+            switch InfoName
+                case {'RegistrationInfo'}
+                    if isempty(obj.RegistrationInfo)
+                        temp = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo');
+                        obj.RegistrationInfo = temp.RegistrationInfo;
+                    end
+                case {'BrainSegmentationInfo'}
+                    if isempty(obj.BrainSegmentationInfo)
+                        temp = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'BrainSegmentationInfo');
+                        obj.BrainSegmentationInfo = temp.BrainSegmentationInfo;
+                    end
+                case {'RegObject'}
+                    if isempty(obj.RegObject)
+                        temp = load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegObject');
+                        if isempty(fields(temp))
+                            RegObject(1:numel(obj.StackInfo)) = SNGAlignment(obj);
+                            obj.RegObject = RegObject;
+                        end
+                    end
+            end
         end
         function obj = BrainVal(obj, BrainSegmentationInfo, fishnumbers)
             %fishnumbers has to correspondent with BrainSegmentationInfo if given
@@ -1599,48 +1634,10 @@ classdef SpotNGlia
             end
             disp([obj.SaveName])
         end
-        
-        %supporting functions used for the Show functions
-        function [figurehandle, axishandle] = setfigax1(obj)
-            %fsx = 5;fsy = 10;
-            figurehandle = figure('PaperUnits', 'centimeters', 'Color', [1, 1, 1]);
-            axishandle = gca;
-            sng_figcm(obj.fsxy(1), obj.fsxy(2));
-        end
-        function setfigax2(obj, axishandle)
-            set(axishandle, 'FontName', 'arial', 'FontSize', 8, 'XGrid', 'on', 'YGrid', 'on');
-            set(axishandle, 'Units', 'centimeters', 'Position', [1.2, 1.2, obj.fsxy(1) - 1.7, obj.fsxy(2) - 1.7]);
-            %set(axishandle, 'YLim', [-0.02, 1.02]);
-        end
-        function realsizeandsave(obj, figurehandle)
-            if obj.exportit
-                export_fig(figurehandle, [obj.SavePath, num2str(figurehandle.Number)], '-png', '-r600', '-nocrop');
-            end
-            
-            %sets the right scaling
-            User1 = getenv('USER');
-            User2 = getenv('username');
-            OS = getenv('OS');
-            if strcmp(User1, 'samuelgeurts') && isempty(User2) && isempty(OS)
-                ScaledFigure.calibrateDisplay(113.6); %113.6 for macbook pro screen, 96 inch for erasmus screen
-            elseif strcmp(OS, 'Windows_NT') && strcmp(User2, '260018')
-                ScaledFigure.calibrateDisplay(96); %113.6 for macbook pro screen, 96 inch for erasmus screen
-            else
-            end
-            
-            
-            ScaledFigure(figurehandle, 'reuse');
-            set(figurehandle, 'Units', 'Centimeters');
-            set(figurehandle, 'Position', (get(figurehandle, 'Position') + [obj.fsxy(1), 0, 0, 0]));
-        end
-        
-        
     end
-    
     methods %all Show methods
         
-        
-        function Show(obj, subject, exportit, fsxy)
+        function obj = Show(obj, subject, exportit, fsxy, var)
             
             if ~exist('subject', 'var')
                 subject = [];
@@ -1648,7 +1645,7 @@ classdef SpotNGlia
             if exist('exportit', 'var')
                 obj.exportit = exportit;
             end
-            if exist('fsxy', 'var')
+            if exist('fsxy', 'var') && ~isempty(fsxy)
                 obj.fsxy = fsxy;
             end
             
@@ -1659,7 +1656,70 @@ classdef SpotNGlia
             if ismember(2, subject); obj.ShowFishDiscrimination2; end
             if ismember(3, subject); obj.ShowFishDiscrimination3; end
             if ismember(4, subject); obj.ShowFishDiscrimination4; end
+            if ismember(5, subject); obj.ShowBackgroundRemoval(var); end
+
+            if ismember(6, subject); obj = obj.ShowRotationPreproc(var); end
+            if ismember(7, subject); obj = obj.ShowFishRotationplot(var); end
+            if ismember(8, subject); obj = obj.ShowRotatedFishes(var); end
             
+            
+            
+        end
+        function obj = ShowImageTemplate(obj, fn)
+            
+            obj.fsxy(1) = [5]; %give only width
+            
+            %LOAD/COMPUTE VALUES
+            %obj = PresetShowRegistration(obj,fn);
+            
+            sz = size(TheImageToShow);
+            obj.fsxy(2) = sz(1) / sz(2) * obj.fsxy(1); %height is dependent on width
+            
+            [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+            
+            %PLOT IMAGE
+            
+            g.Position = [0, 0, 1, 1]; axis off;
+            
+            realsizeandsave(obj, h, ['RotatedReflection_', k]);
+            
+        end
+        function obj = ShowPlotTemplate(obj, fn)
+            %output "obj" is to store Registration parameters in object
+            %which can be used for ShowMethods on the same fish
+            
+            obj.fsxy = ([5, 4]);
+            
+            %LOAD/COMPUTE VALUES
+            %obj = PresetShowRegistration(obj,fn);
+            [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+            
+            %PLOT FIGURES
+            
+               %histogram(a(d == 0), 0.90:0.005:1);
+               %hold on
+               %histogram(a(d == 1), 0.90:0.005:1);
+            
+            
+            setfigax2(obj, g); %preset axis with standard fond and size
+            
+            %SET AXIS
+            
+               %set(g, 'XLim', [0.90, 1]);
+               %set(g, 'XTick', [0.9:0.02:1]);
+               %set(g, 'XTickLabels', [0.90,{''},0.92,{''},0.94,{''},0.96,{''},0.98,{''},1]);
+               %set(g, 'XTickLabels', [0,{'1/2\pi'},{'\pi'},{'3/2\pi'},{'2\pi'}]);
+               %g.XLabel.String = 'correlation coefficient';
+               
+               %set(g, 'YLim', [0.5, 300]);
+               %set(g, 'YScale', 'log');
+               %set(g, 'YTick', [1, 2, 5, 10, 100, 200]);
+               %set(g, 'YTickLabels', [1, 2, 5, 10, {'10^2'}, {''}]);
+               %set(g, 'YMinorGrid', 'off');
+               %g.YLabel.String = 'counts';
+            
+            
+            realsizeandsave(obj, h, 'SaveName');
         end
         function ShowFishDiscrimination1(obj)
             
@@ -1673,7 +1733,7 @@ classdef SpotNGlia
             histogram(a(d == 1), 0.90:0.005:1);
             setfigax2(obj, g2);
             set(g2, 'XLim', [0.90, 1]);
-            set(g2, 'YLim', [0.5, 300])
+            set(g2, 'YLim', [0.5, 300]);
             set(g2, 'YScale', 'log');
             set(g2, 'YTick', [1, 2, 5, 10, 100, 200]);
             set(g2, 'YTickLabels', [1, 2, 5, 10, {'10^2'}, {''}]);
@@ -1685,7 +1745,7 @@ classdef SpotNGlia
             
             g2.XLabel.String = 'correlation coefficient';
             g2.YLabel.String = 'counts';
-            realsizeandsave(obj, h2);
+            realsizeandsave(obj, h2, 'FishDiscrimination1');
         end
         function ShowFishDiscrimination2(obj)
             a = [obj.ImageInfo.corcoef];
@@ -1710,32 +1770,32 @@ classdef SpotNGlia
             setfigax2(obj, g1)
             g1.XLabel.String = 'correlation coefficient';
             g1.YLabel.String = 'counts';
-            realsizeandsave(obj, h1)
+            realsizeandsave(obj, h1, 'FishDiscrimination2')
             
             %{
-                   %histogram of modulus shift around the mean of similar images
-                   [h3, g3] = setfigax1;
-                       histogram(c(d == 0),0:0.16:1.6);
-                       hold on
-                       hh=histogram(c(d == 1),0:0.16:2.5);
-                       set(hh,'FaceColor',[0.8500    0.3250    0.0980]);
-                       set(gca,'YLim',[0.6,301]);
-                       set(gca,'YScale','log');
-                       set(gca,'YTick',[1,10,100]);
-                       set(gca,'YTickLabels',[1,10,{'10^2'}])
-                   setfigax2(g3)
-                   g3.XLabel.String = 'translation modulus [pix]';
-                   g3.YLabel.String = 'counts';
-                   realsizeandsave(h3)
+                       %histogram of modulus shift around the mean of similar images
+                       [h3, g3] = setfigax1;
+                           histogram(c(d == 0),0:0.16:1.6);
+                           hold on
+                           hh=histogram(c(d == 1),0:0.16:2.5);
+                           set(hh,'FaceColor',[0.8500    0.3250    0.0980]);
+                           set(gca,'YLim',[0.6,301]);
+                           set(gca,'YScale','log');
+                           set(gca,'YTick',[1,10,100]);
+                           set(gca,'YTickLabels',[1,10,{'10^2'}])
+                       setfigax2(g3)
+                       g3.XLabel.String = 'translation modulus [pix]';
+                       g3.YLabel.String = 'counts';
+                       realsizeandsave(h3)
  
-            %histogram of angular shift zoomed out
+                %histogram of angular shift zoomed out
  
  
-                   [h3, g3] = setfigax1;
-                       h=histogram(c(d == 1),[-pi:pi/20:pi])
-                       set(h,'FaceColor',[0.8500    0.3250    0.0980])
-                       hold on
-                       h=histogram(c(d == 0),[-pi:pi/20:pi])
+                       [h3, g3] = setfigax1;
+                           h=histogram(c(d == 1),[-pi:pi/20:pi])
+                           set(h,'FaceColor',[0.8500    0.3250    0.0980])
+                           hold on
+                           h=histogram(c(d == 0),[-pi:pi/20:pi])
             %}
         end
         function ShowFishDiscrimination3(obj)
@@ -1760,7 +1820,7 @@ classdef SpotNGlia
             
             g4.XLabel.String = 'translation x-axis [pix]';
             g4.YLabel.String = 'translation y-axis [pix]';
-            realsizeandsave(obj, h4)
+            realsizeandsave(obj, h4, 'FishDiscrimination3')
         end
         function ShowFishDiscrimination4(obj)
             %scatterplot of translation zoomed in
@@ -1823,7 +1883,7 @@ classdef SpotNGlia
             text(1.65, -0.32, [num2str(maxdeg), '\circ'], 'FontName', 'arial', 'FontSize', 8);
             text(1.65, -0.95, [num2str(mindeg), '\circ'], 'FontName', 'arial', 'FontSize', 8);
             
-            realsizeandsave(obj, h4);
+            realsizeandsave(obj, h4, 'FishDiscrimination4');
             
         end
         function ShowBackgroundRemoval(obj, fn)
@@ -1832,12 +1892,21 @@ classdef SpotNGlia
                 obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
             end
             sng_zfinputAssign(obj.ZFParameters, 'Registration')
-                       
+            
             if fn <= 0
                 %open chosen images from separate folder
                 PathName = '/Volumes/Macintosh HD/OneDrive/BIGR Zebrafish/presentation nov-2016/remove background test/'
-                Dropboxmap = (fileparts(obj.SourcePath));
-                PathName = [Dropboxmap, filesep, 'Images for Report', filesep];
+                
+                %find dropbox folder
+                Dropboxfolder = obj.SourcePath;
+                i = 0;
+                b = '';
+                while ~strcmp(b, 'Dropbox') && (i <= 5) %removes folder uptil dropbox folder is found
+                    [Dropboxfolder, b] = fileparts(Dropboxfolder);
+                    i = i + 1;
+                end
+                
+                PathName = [Dropboxfolder, filesep, 'Dropbox', filesep, 'Images for Report', filesep];
                 FileName1 = 'image0015.tif';
                 FileName2 = 'image0049.tif';
                 FileName3 = 'Image56.tif';
@@ -1861,70 +1930,269 @@ classdef SpotNGlia
             %[I20, BackgroundMask, BackgroundThreshold] = sng_RemoveBackgroundColor3(Img, Method, Smooth, ChannelMethod);
             
             for j = 1:3
-                [Img2(:, :, j), thr(j), histo{j}, smoothhisto{j}] = sng_RemoveBackground(Img(:, :, j), Method, Smooth);
+                [Img2(:, :, j), thr(j), histo{j}, smoothhisto{j}, Tables{j}] = sng_RemoveBackground(Img(:, :, j), Method, Smooth);
             end
-                
-                %histogram of original image
-                Hr1 = histcounts(double(Img(:,:,1)), [0:1:255]);              
-                figure; bar(Hr1, 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
-                set(gca, 'XLim', [0, 256], 'YLim', [0, 100000], 'FontSize', 20);
-                set(gcf, 'Color', [1, 1, 1])
-                  
-                %histogram of image with removed background
-                Hr1 = histcounts(double(Img2(:,:,1)), [0:1:255]);              
-                figure; bar(Hr1, 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
-                set(gca, 'XLim', [0, 256], 'YLim', [0, 100000], 'FontSize', 20);
-                set(gcf, 'Color', [1, 1, 1])
-                
-                
-                %histogram of the 50pixel boundary
-                figure; bar(fliplr(histo{1}), 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
-                set(gca, 'XLim', [0, 256], 'YLim', [0, 10000], 'FontSize', 20);
-                set(gcf, 'Color', [1, 1, 1])
-%smoothhisot is the same as histo when smooth=1
-
-             
+            %coordinates form lines and arrows
+            tc = Tables{1}.Threshold; %for arrow
+            hc = Tables{1}.Halfway;
+            pc = Tables{1}.Peak; %for line
+            lc = Tables{1}.LastValue;
+            textc = (tc - hc) / 2 + hc; %for halfway arro
             
+            %{
+                    %histogram of original image
+                    Hr1 = histcounts(double(Img(:,:,1)), [0:1:255]);
+                    figure; bar(Hr1, 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
+                    set(gca, 'XLim', [0, 256], 'YLim', [0, 100000], 'FontSize', 20);
+                    set(gcf, 'Color', [1, 1, 1])
+            %}
             
+            %{
+                    %histogram of image with removed background
+                    Hr1 = histcounts(double(Img2(:,:,1)), [0:1:255]);
+                    figure; bar(Hr1, 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
+                    set(gca, 'XLim', [0, 256], 'YLim', [0, 100000], 'FontSize', 20);
+                    set(gcf, 'Color', [1, 1, 1])
+            %}
             
-            bar(smoothhisto{1}')
-            set(gca, 'YScale', 'log');
+            %histogram of the 50pixel boundary
+            [f1, a1] = setfigax1(obj);
             
+            bar(fliplr(histo{1}), 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
+            set(gcf, 'Color', [1, 1, 1])
             
-            a = [obj.ImageInfo.corcoef];
-            d = [obj.ImageInfo.CorNextStack];
-            
-            %histogram shows correlation coefficientadjacent images of the same fish
-            [h2, g2] = setfigax1(obj);
-            histogram(a(d == 0), 0.90:0.005:1);
             hold on
-            histogram(a(d == 1), 0.90:0.005:1);
-            setfigax2(obj, g2);
-            set(g2, 'XLim', [0.90, 1]);
-            set(g2, 'YLim', [0.5, 300])
-            set(g2, 'YScale', 'log');
-            set(g2, 'YTick', [1, 2, 5, 10, 100, 200]);
-            set(g2, 'YTickLabels', [1, 2, 5, 10, {'10^2'}, {''}]);
-            set(g2, 'YMinorGrid', 'off');
+            %line
+            plot(255-[pc(1), lc(1)], [pc(2), lc(2)], 'Color', [0, 0, 0])
             
-            set(g2, 'XTick', [0.9:0.02:1]);
-            %set(g2, 'XTickLabels', [0.90,{''},0.92,{''},0.94,{''},0.96,{''},0.98,{''},1]);
+            %text
+            th = text(255-textc(1), textc(2), 'd');
+            set(th, 'VerticalAlignment', 'top');
+            set(th, 'HorizontalAlignment', 'right');
             
-            g2.XLabel.String = 'correlation coefficient';
-            g2.YLabel.String = 'counts';
-            realsizeandsave(obj, h2);
+            setfigax2(obj, a1);
+            
+            set(a1, 'YTick', [5000, 10000]);
+            set(a1, 'YTickLabels', [{'5k'}, {'10k'}]);
+            set(a1, 'XLim', [0, 255])
+            set(a1, 'YLim', [0, pc(2) * 1.1])
+            set(a1, 'XTick', [0, 255]);
+            set(a1, 'XTickLabels', [{'black'}, {'white'}]);
+            %g1.XLabel.String = 'correlation coefficient';
+            a1.YLabel.String = 'counts';
+            
+            set(a1, 'Units', 'Normalized');
+            pbp = plotboxpos(a1);
+            transformx = pbp(3) / (diff(get(a1, 'XLim')));
+            transformy = pbp(4) / (diff(get(a1, 'YLim')));
+            tcn(1) = ((255 - tc(1)) * transformx) + pbp(1);
+            hcn(1) = ((255 - hc(1)) * transformx) + pbp(1);
+            tcn(2) = (tc(2) * transformy) + pbp(2);
+            hcn(2) = (hc(2) * transformy) + pbp(2);
+            annotation('doublearrow', [tcn(1), hcn(1)], [tcn(2), hcn(2)]);
+            
+            realsizeandsave(obj, f1, 'BackGroundRemoval');
         end
         
+        function obj = PresetShowRegistration(obj, fn)
+            
+            obj = LoadParameters(obj, 'RegObject');
+            
+            if isempty(obj.RegObject(fn).Icombined)
+                CombinedFish = imread([obj.SavePath, '/', 'CombinedFish', '/', obj.StackInfo(fn).stackname, '.tif']);
+                obj.RegObject(fn).Icombined = CombinedFish;
+            end
+            if isempty(obj.RegObject(fn).I20)
+                obj.RegObject(fn) = BackgroundRemoval(obj.RegObject(fn));
+            end
+            if isempty(obj.RegObject(fn).I30)
+                obj.RegObject(fn) = Rotationalalignment(obj.RegObject(fn));
+            end
+            if isempty(obj.RegObject(fn).I40)
+                obj.RegObject(fn) = Scalealignment(obj.RegObject(fn));
+            end            
+            if isempty(obj.RegObject(fn).Ialigned)
+                obj.RegObject(fn) = SubPixelAlignment(obj.RegObject(fn));
+            end  
+        end
+        function obj = ShowRotationPreproc(obj, fn)
+            
+            obj.fsxy(1) = [6]; %give only width
+            
+            
+            %LOAD/COMPUTE VALUES
+            obj = PresetShowRegistration(obj, fn);
+            
+            I{1} = obj.RegObject(fn).I20;
+            I{2} = obj.RegObject(fn).I21;
+            I{3} = obj.RegObject(fn).I22;
+            I{4} = obj.RegObject(fn).I22_1;
+            I{5} = obj.RegObject(fn).I22_2;
+            I{6} = obj.RegObject(fn).I22_4;
+            
+            I{7} = obj.RegObject(fn).I23; %global rotation
+            I{8} = obj.RegObject(fn).I24;
+            I{9} = obj.RegObject(fn).I25; %precise rotation
+            I{10} = obj.RegObject(fn).I30;
+            
+            
+            for k = 1:numel(I)
+                          
+                sz = size(I{k});
+                obj.fsxy(2) = sz(1) / sz(2) * obj.fsxy(1); %height is dependent on width
+                
+                [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+                
+                %PLOT IMAGE
+                imagesc(I{k})
+                
+                g.Position = [0, 0, 1, 1]; axis off;
+                
+                realsizeandsave(obj, h, ['RotationImages_fish', num2str(fn),'_', num2str(k)]);
+                
+            end
+        end
+        function obj = ShowFishRotationplot(obj, fn)
+            
+            obj.fsxy = [10, 8];
+            
+            %LOAD/COMPUTE VALUES
+            obj = PresetShowRegistration(obj, fn);
+            
+            [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+            
+            %PLOT FIGURES
+            plot(obj.RegObject(fn).angles1, obj.RegObject(fn).ncorr1);
+            
+            setfigax2(obj, g); %preset axis with standard fond and size
+            
+            %SET AXIS
+            set(g, 'XLim', [0, 2 * pi]);
+            set(g, 'YLim', [-0.4, 1]);
+            %set(g, 'YScale', 'log');
+            %set(g, 'YTick', [1, 2, 5, 10, 100, 200]);
+            %set(g, 'YTickLabels', [1, 2, 5, 10, {'10^2'}, {''}]);
+            %set(g, 'YMinorGrid', 'off');
+            set(g, 'XTick', 2*pi*linspace(0, 1, 5));
+            set(g, 'XTickLabels', [0, 90, 180, 270, 360]);
+            g.XLabel.String = 'rotation angle';
+            g.YLabel.String = 'correlation coefficient';
+            %}
+            
+            realsizeandsave(obj, h, 'Rotationplot');
+            
+        end
+        function obj = ShowRotatedFishes(obj, fn)
+            
+            obj.fsxy(1) = [6];
+            
+            %LOAD/COMPUTE VALUES
+            obj = PresetShowRegistration(obj, fn);
+         
+            for k = 1:numel(obj.RegObject(fn).I22_3)
+                
+                sz = size(obj.RegObject(fn).I22_3{k});
+                obj.fsxy(2) = sz(1) / sz(2) * obj.fsxy(1);
+                
+                [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+                
+                %PLOT FIGURES
+                imagesc(uint8(obj.RegObject(fn).I22_3{k}));
+                axis off;
+                
+                %SET AXIS
+                g.Position = [0, 0, 1, 1]; axis off;
+                
+                angle = uint16(obj.RegObject(fn).angles1(obj.RegObject(fn).RotationIndices)*(180 / pi));
+                realsizeandsave(obj, h, ['RotatedReflection_fish', num2str(fn),'_ang',num2str(angle(k))]);
+            end
+        end      
+        function obj = ShowScalePlot(obj, fn)
+            %output "obj" is to store Registration parameters in object
+            %which can be used for ShowMethods on the same fish
+            
+            %obj.fsxy = ([5, 4]);
+            
+            %LOAD/COMPUTE VALUES
+            obj = PresetShowRegistration(obj,fn);
+            [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+            
+            %PLOT FIGURES
+            xrange = obj.RegObject(fn).ScaleRange;
+            xaxs = linspace(xrange(1),xrange(2),200);
+            plot(xaxs,obj.RegObject(fn).maxk(1,:))
+            hold on; plot(xaxs,obj.RegObject(fn).maxk(2,:))
+            
+            
+            setfigax2(obj, g); %preset axis with standard fond and size
+            
+            %SET AXIS                               
+               set(g, 'XLim', xrange);
+               set(g, 'XTick', xrange(1):0.2:xrange(2));
+               %set(g, 'XTickLabels', [0 90 180 270 360]);
+               g.XLabel.String = 'Scale factor';
+              
+               ylimtemp = get(g, 'YLim');
+               set(g, 'YLim', [ylimtemp(1), 1]);
+               %set(g, 'YScale', 'log');
+               %set(g, 'YTick', [1, 2, 5, 10, 100, 200]);
+               %set(g, 'YTickLabels', [1, 2, 5, 10, {'10^2'}, {''}]);
+               set(g, 'YMinorGrid', 'off');
+               g.YLabel.String = 'correlation coefficient';
+            %}
+            
+            realsizeandsave(obj, h, 'ScaleCorrelation');
+        end
+
+        %supporting functions used for the Show functions
+        function [f1, a1] = setfigax1(obj)
+            %fsx = 5;fsy = 10;
+            f1 = figure('PaperUnits', 'centimeters', 'Color', [1, 1, 1]);
+            a1 = gca;
+            sng_figcm(obj.fsxy(1), obj.fsxy(2)); 
+        end
+        function setfigax2(obj, a1)
+            set(a1, 'FontName', 'arial', 'FontSize', 8, 'XGrid', 'on', 'YGrid', 'on');
+            set(a1, 'Units', 'centimeters', 'Position', [1.2, 1.2, obj.fsxy(1) - 1.7, obj.fsxy(2) - 1.7]);
+            %set(axishandle, 'YLim', [-0.02, 1.02]);
+        end
+        function realsizeandsave(obj, f1, name)      
+            if ~exist('name', 'var')
+                name = 'noname';
+            end
+            
+            if ~exist([obj.SavePath, filesep,'Images'],'dir')
+                mkdir([obj.SavePath, filesep,'Images'])
+            end
+            
+            if obj.exportit
+                export_fig(f1, [obj.SavePath, filesep,'Images',filesep,name], '-png', '-r600', '-nocrop');
+            end
+            
+            %sets the right scaling
+            User1 = getenv('USER');
+            User2 = getenv('username');
+            OS = getenv('OS');
+            if strcmp(User1, 'samuelgeurts') && isempty(User2) && isempty(OS)
+                ScaledFigure.calibrateDisplay(113.6); %113.6 for macbook pro screen, 96 inch for erasmus screen
+            elseif strcmp(OS, 'Windows_NT') && strcmp(User2, '260018')
+                ScaledFigure.calibrateDisplay(96); %113.6 for macbook pro screen, 96 inch for erasmus screen
+            else
+            end    
+            
+            ScaledFigure(f1, 'reuse');
+            set(f1, 'Units', 'Centimeters');
+            set(f1, 'Position', (get(f1, 'Position') + [obj.fsxy(1), 0, 0, 0]));
+        end
     end
-    
     
     methods(Static)
         function SpotCoordsFiltered = SpotsInsiteArea(SpotParametersSingle, SpotCoords)
             %selects only Spots instite area 'SpotParametersSingle'
             
             %{
-               SpotParametersSingle = SpotParameters{ifish};
-               SpotCoords = [X3',Y3']
+                   SpotParametersSingle = SpotParameters{ifish};
+                   SpotCoords = [X3',Y3']
             %}
             
             Xrow = SpotCoords(:, 1);
@@ -1941,6 +2209,39 @@ classdef SpotNGlia
             
             [SpotCoordsFiltered] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
         end
+        function sng_figcm(fsx,fsy,DPI)
+%gives image real size in centimeters use for export with the export_fig function
+%because the dpi is fixed to 72, the screen size differs per screen
+%Give the real dpi value to create a copy of the figure such that it is
+%displayed with real size in centimeters
+
+%Example: sng_figcm(10,8,113.6)
+
+%{
+fsx = obj.fsxy(1)
+fsy = obj.fsxy(2)
+%}
+
+    h1 = gcf;
+    set(h1,'PaperUnits','centimeters','Color',[1 1 1]);
+    set(h1,'Units','centimeters');
+    pos = get(h1,'Position');
+    pos(3) = fsx;
+    pos(4) = fsy;
+    set(h1,'Units','centimeters','Position',pos);
+
+    if exist('DPI','var')
+        ScaledFigure.calibrateDisplay(DPI);
+        ScaledFigure(gcf,'copy');
+        set(gcf,'Units','Centimeters');
+        set(gcf,'Position',(get(gcf,'Position') + [fsx 0 0 0]));
+
+    end
+    
+    
+    
+end
+
     end
     
     
