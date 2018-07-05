@@ -1,4 +1,4 @@
-function [Ialligned,rgoutput] = AllignmentLink5(Icombined,CompleteTemplate,zfinput)
+function [Ialligned,rgoutput] = AlignmentSNG(Icombined,CompleteTemplate,zfinput)
 % this function is a subfunction of "Main Function" which alligns a fish
 % with a given template in a couple of steps.
 % The function is strongly based on "HorizontalFish7"
@@ -109,9 +109,7 @@ end
 
 [tform4,~,CorCoef] = sng_AllignFish2Template2(template,I55,Scale3,AffineMethod,Levels,Iterations,Initialization);%missingoutput=I60
 
-
 %CorCoef= sng_NCCoi(uint8(I65),template);
-
 
 tform_1234 = affine2d(tform1.T*tform2.T*tform3.T*tform4.T);
 
