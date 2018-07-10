@@ -952,8 +952,12 @@ classdef SpotNGlia
         end
         function obj = LoadTemplate(obj)
             if isempty(obj.CompleteTemplate)
-                obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
+                %obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
+                temp = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
+                obj.CompleteTemplate = temp.objt;
             end
+            
+
         end
         function obj = LoadAnnotations(obj)
             
@@ -1888,9 +1892,7 @@ classdef SpotNGlia
         end
         function ShowBackgroundRemoval(obj, fn)
             
-            if isempty(obj.CompleteTemplate)
-                obj.CompleteTemplate = load([obj.SourcePath, '/', 'Template3dpf', '.mat']);
-            end
+            obj = LoadTemplate(obj);
             sng_zfinputAssign(obj.ZFParameters, 'Registration')
             
             if fn <= 0
