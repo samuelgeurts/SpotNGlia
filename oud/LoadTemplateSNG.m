@@ -1,10 +1,14 @@
-function [CompleteTemplate] = LoadTemplateLink3(TemplatePath3dpf)
+%it seems that this functions is replaced by MakeTemplateMat en no longer neede to be used
+
+
+function [CompleteTemplate] = LoadTemplateSNG(TemplatePath3dpf)
 
 
 %version LoadTemplateLink2
 %    add input PAth
 %version LoadTemplateLink3
 %    Template information based on newest 50 fish 3dpf stack
+
 
 %% Load template and template Parameters
 

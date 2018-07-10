@@ -1,3 +1,6 @@
+%Combines informatie from Source folder with different informatie about the template ands stores it in a single mat file also
+%in the source folder.
+
 
 
 SourcePath = uigetdir;
@@ -5,7 +8,7 @@ SourcePath = uigetdir;
 %{
 SourcePath = obj.SourcePath
 %}
-TemplatePath3dpf = [SourcePath, '/', 'Template 3 dpf']
+TemplatePath3dpf = [SourcePath, '/', 'Template 3 dpf'];
 
 %% Mean Fish Registration Template
 %based on older template, can be updated with 50 fish batch but lead
