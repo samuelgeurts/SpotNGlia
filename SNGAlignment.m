@@ -114,12 +114,10 @@ classdef SNGAlignment
         function obr = SNGAlignment(SpotNGliaObject) %constructor
             obr = obr.zfproperties(SpotNGliaObject.ZFParameters);
             
-            if ~isempty(SpotNGliaObject.CompleteTemplate)
-                obr.template = SpotNGliaObject.CompleteTemplate.Template;
-            else
-                CompleteTemplate = load([SpotNGliaObject.SourcePath, '/', 'Template3dpf', '.mat']);
-                obr.template = CompleteTemplate.Template;
+            if isempty(SpotNGliaObject.CompleteTemplate)    
+                SpotNGliaObject = SpotNGliaObject.LoadTemplate;
             end
+            obr.template = SpotNGliaObject.CompleteTemplate.Template;
         end
         function obr = zfproperties(obr, ZFParameters)
             temp = ZFParameters(strcmp({ZFParameters.stage}, 'Registration'));
