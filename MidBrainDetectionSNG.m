@@ -1,4 +1,4 @@
-function [Ibrain,Parameters] = MidBrainDetectionSNG(AlignedFish,CompleteTemplate,ZFParameters);
+function [Ibrain,Parameters] = MidBrainDetectionSNG(AlignedFish,CompleteTemplate,ZFParameters)
 %Detect midbrain
 %works in combination with other "Link" functions
 %based on MidBraindetection 2 and GeneratePolarTransforms2
