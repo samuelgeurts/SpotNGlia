@@ -58,17 +58,16 @@ classdef SpotNGlia < handle
         SpotDetectionInfo
         SpotsDetected
         SpotParameters
-        RegObject %new registration parameters
     end   
     properties(Transient = true)%, Hidden = true)
     	CompleteTemplate
-        
+        RegObject %new registration parameters
+       
         
     end
     
     
     methods
-        
         function obj = SpotNGlia(mode1) %constructor function
             
             %obj.NewPath(0) default mode, UI for FishPath and SavePath, source is assumed to be in SpotNGlia folder
@@ -84,7 +83,7 @@ classdef SpotNGlia < handle
             
             if ~isempty(mode1)
                 
-                obj = NewPath(obj, mode1);
+                NewPath(obj, mode1);
                 
                 [~, folder] = fileparts(obj.FishPath);
                 obj.SaveName = strcat('SNG_', folder);
@@ -92,7 +91,6 @@ classdef SpotNGlia < handle
                 
                 load([obj.SourcePath, filesep, 'zfinput.mat']); %#ok<LOAD>
                 obj.ZFParameters = zfinput;
-                %obj = LoadTemplate(obj);
                 
                 %file which contains all batch specific computation info
                 matObj = matfile([obj.SavePath, filesep, obj.InfoName, '.mat']);
@@ -248,13 +246,26 @@ classdef SpotNGlia < handle
             obj.OS = getenv('OS');
             
         end
+        
+        function value = get.CompleteTemplate(obj)
+            if isempty(obj.CompleteTemplate)
+                temp = load([obj.SourcePath, filesep, 'Template3dpf', '.mat']);
+                obj.CompleteTemplate = temp.objt;
+                obj.CompleteTemplate.SpotNGliaObject = obj;
+                disp('loading Template3dpf')
+            end
+            value = obj.CompleteTemplate;
+        end
+    
+        
+        
         function SliceCombination(obj, slicenumbers)
             %computes imageinfo and stackinfo
             %       sorting = ['date' or 'name']
             %       CheckImageInfo_TF [true/false]
-            %Example:   obj = SliceCombination(obj)
-            %Example:   obj = SliceCombination(obj,'date',true)
-            %Example:   obj = SliceCombination(obj,'name',true)
+            %Example:   SliceCombination(obj)
+            %Example:   SliceCombination(obj,'date',true)
+            %Example:   SliceCombination(obj,'name',true)
             
             if ~isempty(obj.ImageInfo)
                 answer = questdlg('Are you sure to overwrite ImageInfo and StackInfo', '', 'Ok', 'Cancel', 'Cancel');
@@ -498,9 +509,6 @@ classdef SpotNGlia < handle
             nfishes = numel(fishnumbers);
             obj.fishnumbers.registration = fishnumbers;
             
-            %load complete template
-            %obj = obj.LoadTemplate;
-            
             %folder to save AlignedFish
             TempFolderName = ([obj.SavePath, filesep, 'AlignedFish']);
             if ~exist(TempFolderName, 'dir')
@@ -561,10 +569,6 @@ classdef SpotNGlia < handle
             nfishes = numel(fishnumbers);
             obj.fishnumbers.brainsegmentation = fishnumbers;
             
-            %load complete template
-            %obj = obj.LoadTemplate;
-            
-            
             if nfishes > 1
                 BrainSegmentationInfo(nfishes) = struct('EdgeFilterWidth', [], ...
                     'ShortestPath', [], ...
@@ -587,9 +591,8 @@ classdef SpotNGlia < handle
         end
         function SpotDetection(obj, fishnumbers)
             
-            %obj = obj.LoadTemplate; %load template
-            obj = obj.LoadParameters('BrainSegmentationInfo');
-            obj = FillCheckup(obj); %load checkup if exist from pre SpotNGlia1.4.0
+            obj.LoadParameters('BrainSegmentationInfo');
+            FillCheckup(obj); %load checkup if exist from pre SpotNGlia1.4.0
             
             h = waitbar(0, 'SpotDetection', 'Name', 'SpotNGlia');
             
@@ -651,7 +654,7 @@ classdef SpotNGlia < handle
             TEMPLATE = load([obj.SourcePath, filesep, 'Template3dpf.mat'], 'ref_temp', 'SVAP_index', 'SpotVectorArrayProbability');
             
             %load checkup if exist from pre SpotNGlia1.4.0
-            obj = FillCheckup(obj);
+            FillCheckup(obj);
             
             h = waitbar(0, 'SpotDetection', 'Name', 'SpotNGlia');
             
@@ -708,7 +711,7 @@ classdef SpotNGlia < handle
             TEMPLATE = load([obj.SourcePath, filesep, 'Template3dpf.mat'], 'ref_temp', 'Classifier');
             
             %load checkup if exist from pre SpotNGlia1.4.0
-            obj = FillCheckup(obj);
+            FillCheckup(obj);
             
             h = waitbar(0, 'SpotDetection', 'Name', 'SpotNGlia');
             
@@ -818,26 +821,6 @@ classdef SpotNGlia < handle
                 end
             end
         end
-        %{
-        function CorrectCheckBrain(obj)
-            %this function updates the spots according to previous added or removed spots
-            
-            %         obj.checkup(k1).Spots
-            %         obj.checkup(k1).SpotAdditions
-            %         obj.checkup(k1).SpotRemovals
-            %
-            %
-            %         [obj.checkup(k1).Spots]
-            %
-            %
-            %         [TF, ~] = ismember([obj.checkup(k1).Spots], [obj.checkup(k1).SpotAdditions], 'rows');
-            %         sc.XData(TF) = [];
-            %         sc.YData(TF) = [];
-            %         %add previous added spots
-            %         sc.XData = [sc.XData, ph2.XData];
-            %         sc.YData = [sc.YData, ph2.YData];
-        end
-        %}        
         function CompleteProgram(obj, fishnumbers)
             obj.overwriteFile = true;
             
@@ -849,11 +832,11 @@ classdef SpotNGlia < handle
                 error('at least one fish does not exist in StackInfo')
             end
             
-            obj = obj.PreProcession(fishnumbers);
-            obj = obj.ExtendedDeptOfField(fishnumbers);
-            obj = obj.Registration(fishnumbers);
-            obj = obj.BrainSegmentation(fishnumbers);
-            obj = obj.SpotDetection(fishnumbers);
+            obj.PreProcession(fishnumbers);
+            obj.ExtendedDeptOfField(fishnumbers);
+            obj.Registration(fishnumbers);
+            obj.BrainSegmentation(fishnumbers);
+            obj.SpotDetection(fishnumbers);
             
             obj.overwriteFile = false;
             
@@ -899,6 +882,26 @@ classdef SpotNGlia < handle
             obj.BatchInfo.MeanFishColor = mean(MeanFishColor(:));
             obj.BatchInfo.StdMeanFishColor = std(MeanFishColor(:));
         end
+        %{
+        function CorrectCheckBrain(obj)
+            %this function updates the spots according to previous added or removed spots
+            
+            %         obj.checkup(k1).Spots
+            %         obj.checkup(k1).SpotAdditions
+            %         obj.checkup(k1).SpotRemovals
+            %
+            %
+            %         [obj.checkup(k1).Spots]
+            %
+            %
+            %         [TF, ~] = ismember([obj.checkup(k1).Spots], [obj.checkup(k1).SpotAdditions], 'rows');
+            %         sc.XData(TF) = [];
+            %         sc.YData(TF) = [];
+            %         %add previous added spots
+            %         sc.XData = [sc.XData, ph2.XData];
+            %         sc.YData = [sc.YData, ph2.YData];
+        end
+        %}        
         
         ShowFishHeadHist(obj, fishnumber)
         ShowMaxFishHist(obj, fishnumber)
@@ -913,8 +916,8 @@ classdef SpotNGlia < handle
         
         function buildsheet(obj)
             
-            obj = FillComputations(obj); %for pre SNG1.4.0
-            obj = FillCheckup(obj);
+            FillComputations(obj); %for pre SNG1.4.0
+            FillCheckup(obj);
             
             if ~isempty(obj.checkup)
                 nspots2 = [obj.checkup.Counts];
@@ -972,14 +975,6 @@ classdef SpotNGlia < handle
                         export(ds,'file',[P{1},filesep,I{1},'.csv'],'delimiter',',')
                     end
             %}
-        end
-        function value = get.CompleteTemplate(obj)
-            if isempty(obj.CompleteTemplate)
-                temp = load([obj.SourcePath, filesep, 'Template3dpf', '.mat']);
-                obj.CompleteTemplate = temp.objt;
-                disp('loading Template3dpf')
-            end
-            value = obj.CompleteTemplate;
         end
         function LoadAnnotations(obj)
             
@@ -1284,8 +1279,8 @@ classdef SpotNGlia < handle
             %if checkup is generated, TtestVal will compute on those and store in
             %obj.SpotBrainStats. This is not very pretty and should be changed later
             
-            obj = FillCheckup(obj); %pre1.4.0
-            obj = FillComputations(obj);
+            FillCheckup(obj); %pre1.4.0
+            FillComputations(obj);
             
             if ~exist('SpotN', 'var')
                 SpotN = [obj.Computations.Counts];
@@ -1694,22 +1689,27 @@ classdef SpotNGlia < handle
             
         end
         function showImageTemplate(obj, fn)
-            
-            obj.fsxy(1) = 5; %give only width
-            
+
             %LOAD/COMPUTE VALUES
-            %obj = PresetshowRegistration(obj,fn);
+            %Image = obj.CompleteTemplate.Template;
+            SIZE = size(Image);
             
-            sz = size(TheImageToShow);
-            obj.fsxy(2) = sz(1) / sz(2) * obj.fsxy(1); %height is dependent on width
-            
-            [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+            %SET FIGURE SIZE
+            %obj.fsxy(1) = 5; %set width
+            obj.fsxy(2) = 4; %set height                       
+            %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+            obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+            %CREATE FIGURE WITH AXIS 
+            [h, g] = setfigax1(obj);
             
             %PLOT IMAGE
+            imagesc(Image)
             
             g.Position = [0, 0, 1, 1]; axis off;
             
-            realsizeandsave(obj, h, ['RotatedReflection_', k]);
+            %EXPORT IMAGE
+            realsizeandsave(obj, h, ['defaultImage']);
             
         end
         function showPlotTemplate(obj, fn)
@@ -1920,7 +1920,6 @@ classdef SpotNGlia < handle
         end
         function showBackgroundRemoval(obj, fn)
             
-            %obj = LoadTemplate(obj);
             sng_zfinputAssign(obj.ZFParameters, 'Registration')
             
             if fn <= 0
@@ -2026,7 +2025,7 @@ classdef SpotNGlia < handle
         
         function PresetShowRegistration(obj, fn)
             
-            obj = LoadParameters(obj, 'RegObject');
+            LoadParameters(obj, 'RegObject');
             
             if isempty(obj.RegObject(fn).Icombined)
                 CombinedFish = imread([obj.SavePath, filesep, 'CombinedFish', filesep, obj.StackInfo(fn).stackname, '.tif']);
@@ -2174,27 +2173,98 @@ classdef SpotNGlia < handle
             realsizeandsave(obj, h, 'ScaleCorrelation');
         end
         
-        function showMidBrainEdges(obj, fn)
-            
-            obj.fsxy(1) = [5]; %give only width
-            
+        function showMidBrainContours(obj)          
+
             %LOAD/COMPUTE VALUES
             templateImage = obj.CompleteTemplate.Template;
-            Xcoordinates = obj.CompleteTemplate.midbrainXCoordList
-            
+            nMidbrainXCoordList = obj.CompleteTemplate.midbrainXCoordList;
+            nMidbrainYCoordList = obj.CompleteTemplate.midbrainYCoordList;
             SIZE = obj.CompleteTemplate.Size;
-            obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
             
-            [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+            %SET FIGURE SIZE
+            %obj.fsxy(1) = 5; %set width
+            obj.fsxy(2) = 4; %set height                       
+            %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+            obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+            %CREATE FIGURE WITH AXIS 
+            [h, g] = setfigax1(obj);
             
             %PLOT IMAGE
+            nFishes = numel(nMidbrainXCoordList);       
+            imagesc(templateImage)
+            for iFish = 1:nFishes
+                hold on
+                plot(nMidbrainXCoordList{iFish},nMidbrainYCoordList{iFish})
+            end
             
             g.Position = [0, 0, 1, 1]; axis off;
             
-            realsizeandsave(obj, h, ['RotatedReflection_', k]);
+            %EXPORT IMAGE
+            realsizeandsave(obj, h, ['MidBrainContours']);
+        end    
+        function showForeBrainContours(obj)
+                        
+            %LOAD/COMPUTE VALUES
+            templateImage = obj.CompleteTemplate.Template;
+            nForebrainXCoordList = obj.CompleteTemplate.forebrainXCoordList;
+            nForebrainYCoordList = obj.CompleteTemplate.forebrainYCoordList;
+            SIZE = obj.CompleteTemplate.Size;
             
+            %SET FIGURE SIZE
+            %obj.fsxy(1) = 5; %set width
+            obj.fsxy(2) = 4; %set height                       
+            %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+            obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+            %CREATE FIGURE WITH AXIS                         
+            [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+            
+            %PLOT IMAGE           
+            nFishes = numel(nForebrainXCoordList);       
+            imagesc(templateImage)
+            for iFish = 1:nFishes
+                hold on
+                plot(nForebrainXCoordList{iFish},nForebrainYCoordList{iFish})
+            end
+            
+            g.Position = [0, 0, 1, 1]; axis off;
+            %EXPORT IMAGE                        
+            realsizeandsave(obj, h, ['ForeBrainContours']); %export with savename  
         end
-        
+        function showMidBrainBand(obj)
+                        
+            %LOAD/COMPUTE VALUES
+            Image{1} = obj.CompleteTemplate.Template;
+            %Image{2} = obj.CompleteTemplate.BandMidBrain;
+            %Image{3} = obj.CompleteTemplate.MidBrainDistanceMap;
+
+            contourCenter = obj.CompleteTemplate.MeanMidBrain;
+            contourInner = obj.CompleteTemplate.midbrainInnerContour;
+            contourOuter = obj.CompleteTemplate.midbrainOuterContour;
+            
+            SIZE = obj.CompleteTemplate.Size;
+            
+            %SET FIGURE SIZE
+            %obj.fsxy(1) = 5; %set width
+            obj.fsxy(2) = 4; %set height                       
+            %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+            obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+            %CREATE FIGURE WITH AXIS                         
+            [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+            
+            %PLOT IMAGE           
+            imagesc(Image{1})
+            hold on
+            plot(contourCenter(:,2),contourCenter(:,1),'Color',[0 166 214]/255,'LineWidth' , 2)
+            plot(contourInner(:,2),contourInner(:,1),'Color',[110 187 213]/255,'LineWidth' , 1)
+            plot(contourOuter(:,2),contourOuter(:,1),'Color',[110 187 213]/255,'LineWidth' , 1)
+
+            g.Position = [0, 0, 1, 1]; axis off;
+            %EXPORT IMAGE                        
+            realsizeandsave(obj, h, ['MidBrainBand']); %export with savename  
+        end        
         
         %supporting functions used for the show functions
         function [f1, a1] = setfigax1(obj)
