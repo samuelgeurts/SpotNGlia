@@ -1,4 +1,4 @@
-classdef SpotNGlia
+classdef SpotNGlia < handle
     
     properties
         FishPath = []
@@ -961,15 +961,14 @@ classdef SpotNGlia
 
         end
         
-%         function value = get.CompleteTemplate(obj)
-% 
-%             if isempty(obj.CompleteTemplate)
-%                 temp = load([obj.SourcePath, filesep, 'Template3dpf', '.mat']);
-%                 obj.CompleteTemplate = temp.objt;
-%                 disp('loading Template3dpf')
-%             end
-%             value = obj.CompleteTemplate;
-%         end
+        function value = get.CompleteTemplate(obj)
+            if isempty(obj.CompleteTemplate)
+                temp = load([obj.SourcePath, filesep, 'Template3dpf', '.mat']);
+                obj.CompleteTemplate = temp.objt;
+                disp('loading Template3dpf')
+            end
+            value = obj.CompleteTemplate;
+        end
         
         
         %function path = getsourcepath(obj)
