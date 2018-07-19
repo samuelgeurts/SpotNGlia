@@ -1,4 +1,4 @@
-classdef SNGTemplate
+classdef SNGTemplate < handle
     % class for generating template object. Based on the function MakeTemplateMat
     % which it replaces. Running the function load the needed template
     % variables and creates the template on a chosen location. In future the load function has to be replaced by the functions
@@ -25,7 +25,6 @@ classdef SNGTemplate
         SpotVectorArrayProbability
         SVAP_index
     end
-    
     properties(Transient = true)
         % Eyes
         EyeRegion1
@@ -58,8 +57,7 @@ classdef SNGTemplate
         % Spot
         SpotContrastVector
         Classifier
-    end
-    
+    end 
     properties(Transient = true)
         % Brain Images
         
@@ -77,7 +75,7 @@ classdef SNGTemplate
         end
         
         
-        function objt = loadTemplate(objt)
+        function loadTemplate(objt)
             % Mean Fish Registration Template
             %based on older template, can be updated with 50 fish batch but lead
             %probably not to improvement. Source is not sure, TemplateGeneration?
@@ -87,7 +85,7 @@ classdef SNGTemplate
             objt.Size = SIZE;
             objt.ref_temp = imref2d(SIZE);
         end   
-        function objt = loadEyeParameters(objt)
+        function loadEyeParameters(objt)
             %Eye region, annotated by Anouk H
             %annotated on the older template
             temp = sng_html2roi2([objt.TemplatePath3dpf, '/edof_eyes.html']);
@@ -111,7 +109,7 @@ classdef SNGTemplate
             figure;imagesc(eyem1+eyem2)
             %}
         end
-        function objt = loadBrainEdge(objt)
+        function loadBrainEdge(objt)
             % Brain Edge Template
             % has te be removed later on
             %a more normal function would be better
@@ -119,7 +117,7 @@ classdef SNGTemplate
             objt.EdgeTemplate1 = temp.EdgeTemplate;
             
         end
-        function objt = loadSpotParameters(objt)
+        function loadSpotParameters(objt)
             % Spot Parameters
             % generated with SpotTemplate2
             temp = load([objt.TemplatePath3dpf, '/SpotTemplate.mat'], 'SpotTemplateVar');
@@ -129,7 +127,7 @@ classdef SNGTemplate
             %clear SpotTemplateVar
             
         end
-        function objt = loadMachineLearningParameters(objt)
+        function loadMachineLearningParameters(objt)
             %Based on the function MakeTemplateMat. Running the function load the needed template
             %variables and creates the template on a chosen location. In future the load function has to be replaced by the functions
             %really generating the template instead of loading.
@@ -139,7 +137,7 @@ classdef SNGTemplate
             ClassifierInfo = load([objt.sourcePath, filesep, 'Microglia classifiers', filesep, 'pksvc5050.mat'], 'wp');
             objt.Classifier = ClassifierInfo.wp;
         end
-        function objt = loadBrainParameters(objt)
+        function loadBrainParameters(objt)
             % Brain
             %generated with the function TemplateBrainParameters
             
@@ -160,24 +158,24 @@ classdef SNGTemplate
             %Meanforbrain makes not much sense as it variates largely
             %it must be dependt on the midbrean and eyes
         end
-        function objt = loadAll(objt)
+        function loadAll(objt)
             %Based on the function MakeTemplateMat. Running the function load the needed template
             %variables and creates the template on a chosen location. In future the load function has to be replaced by the functions
             %really generating the template instead of loading.
             
-            objt = objt.loadBrainEdge;
-            objt = objt.loadBrainParameters;
-            objt = objt.loadEyeParameters;
-            objt = objt.loadMachineLearningParameters;
-            objt = objt.loadSpotParameters;
-            objt = objt.loadTemplate;
+            objt.loadBrainEdge;
+            objt.loadBrainParameters;
+            objt.loadEyeParameters;
+            objt.loadMachineLearningParameters;
+            objt.loadSpotParameters;
+            objt.loadTemplate;
         end   
 
         function save(objt)
             save(strcat(objt.sourcePath, filesep, objt.fileName, '.mat'), 'objt');
         end
         
-        function objt = BrainTemplate(objt, obj)
+        function BrainTemplate(objt, obj)
             % function based on TemplateBrainParameters
             % this function needs aan SpotNGlia object to retrieve information from, stackinfo information
             % transform raw midbrain coords to horizontal fish coords and create skeleton
