@@ -48,7 +48,7 @@ classdef SpotNGlia
         exportit = false;
     end
     properties(Transient = true)
-        CompleteTemplate
+        %CompleteTemplate
         PreprocessionInfo
         ExtendedDeptOfFieldInfo
         RegistrationInfo
@@ -58,6 +58,9 @@ classdef SpotNGlia
         SpotParameters
         
         RegObject %new registration parameters
+    end
+    properties(Transient = true)
+        CompleteTemplate
     end
     
     methods
@@ -845,7 +848,6 @@ classdef SpotNGlia
             obj = obj.BrainSegmentation(fishnumbers);
             obj = obj.SpotDetection(fishnumbers);
             
-            % obj.ShowFish([], true)
         end
         function obj = HistPar(obj, fishnumbers)
             %function to add a mean fish color parameter to the RegisterationInfo variable saved in INFO_...
@@ -895,7 +897,7 @@ classdef SpotNGlia
         obj = CheckFish(obj, ifish, INFO)
         %Showt(obj, subject)
     end
-    methods(Hidden = true)
+    methods%(Hidden = true)
         Mask = BrainMask(obj, fishnumbers)
         %BrainOptimization(obj, fishnumbers)
         %obj2 = SpotOptimization2(obj, fishnumbers, zfinputlist)
@@ -958,6 +960,24 @@ classdef SpotNGlia
             
 
         end
+        
+%         function value = get.CompleteTemplate(obj)
+% 
+%             if isempty(obj.CompleteTemplate)
+%                 temp = load([obj.SourcePath, filesep, 'Template3dpf', '.mat']);
+%                 obj.CompleteTemplate = temp.objt;
+%                 disp('loading Template3dpf')
+%             end
+%             value = obj.CompleteTemplate;
+%         end
+        
+        
+        %function path = getsourcepath(obj)
+        %    path = obj.SourcePath;
+        %end
+        
+        
+        
         function obj = LoadAnnotations(obj)
             
             %annotated midbrain roi
@@ -1045,7 +1065,9 @@ classdef SpotNGlia
                         if isempty(fields(temp))
                             RegObject(1:numel(obj.StackInfo)) = SNGAlignment(obj);
                             obj.RegObject = RegObject;
-                        end
+                        else
+                            obj.RegObject = temp.RegObject;
+                        end                 
                     end
             end
         end
@@ -1640,7 +1662,7 @@ classdef SpotNGlia
     end
     methods %all Show methods
         
-        function obj = Show(obj, subject, exportit, fsxy, var)
+        function obj = show(obj, subject, exportit, fsxy, var)
             
             if ~exist('subject', 'var')
                 subject = [];
@@ -1652,28 +1674,28 @@ classdef SpotNGlia
                 obj.fsxy = fsxy;
             end
             
-            %ShowFishDiscrimination1 - histogram shows correlation coefficient adjacent images
-            %ShowFishDiscrimination2 - scatterplot of translation
+            %showFishDiscrimination1 - histogram shows correlation coefficient adjacent images
+            %showFishDiscrimination2 - scatterplot of translation
             
-            if ismember(1, subject); obj.ShowFishDiscrimination1; end
-            if ismember(2, subject); obj.ShowFishDiscrimination2; end
-            if ismember(3, subject); obj.ShowFishDiscrimination3; end
-            if ismember(4, subject); obj.ShowFishDiscrimination4; end
-            if ismember(5, subject); obj.ShowBackgroundRemoval(var); end
+            if ismember(1, subject); obj.showFishDiscrimination1; end
+            if ismember(2, subject); obj.showFishDiscrimination2; end
+            if ismember(3, subject); obj.showFishDiscrimination3; end
+            if ismember(4, subject); obj.showFishDiscrimination4; end
+            if ismember(5, subject); obj.showBackgroundRemoval(var); end
 
-            if ismember(6, subject); obj = obj.ShowRotationPreproc(var); end
-            if ismember(7, subject); obj = obj.ShowFishRotationplot(var); end
-            if ismember(8, subject); obj = obj.ShowRotatedFishes(var); end
+            if ismember(6, subject); obj = obj.showRotationPreproc(var); end
+            if ismember(7, subject); obj = obj.showFishRotationplot(var); end
+            if ismember(8, subject); obj = obj.showRotatedFishes(var); end
             
             
             
         end
-        function obj = ShowImageTemplate(obj, fn)
+        function obj = showImageTemplate(obj, fn)
             
             obj.fsxy(1) = [5]; %give only width
             
             %LOAD/COMPUTE VALUES
-            %obj = PresetShowRegistration(obj,fn);
+            %obj = PresetshowRegistration(obj,fn);
             
             sz = size(TheImageToShow);
             obj.fsxy(2) = sz(1) / sz(2) * obj.fsxy(1); %height is dependent on width
@@ -1687,9 +1709,9 @@ classdef SpotNGlia
             realsizeandsave(obj, h, ['RotatedReflection_', k]);
             
         end
-        function obj = ShowPlotTemplate(obj, fn)
+        function obj = showPlotTemplate(obj, fn)
             %output "obj" is to store Registration parameters in object
-            %which can be used for ShowMethods on the same fish
+            %which can be used for showMethods on the same fish
             
             obj.fsxy = ([5, 4]);
             
@@ -1724,7 +1746,7 @@ classdef SpotNGlia
             
             realsizeandsave(obj, h, 'SaveName');
         end
-        function ShowFishDiscrimination1(obj)
+        function showFishDiscrimination1(obj)
             
             a = [obj.ImageInfo.corcoef];
             d = [obj.ImageInfo.CorNextStack];
@@ -1750,7 +1772,7 @@ classdef SpotNGlia
             g2.YLabel.String = 'counts';
             realsizeandsave(obj, h2, 'FishDiscrimination1');
         end
-        function ShowFishDiscrimination2(obj)
+        function showFishDiscrimination2(obj)
             a = [obj.ImageInfo.corcoef];
             d = [obj.ImageInfo.CorNextStack];
             
@@ -1801,7 +1823,7 @@ classdef SpotNGlia
                            h=histogram(c(d == 0),[-pi:pi/20:pi])
             %}
         end
-        function ShowFishDiscrimination3(obj)
+        function showFishDiscrimination3(obj)
             %scatterplot of translation zoomed out
             
             d = [obj.ImageInfo.CorNextStack];
@@ -1825,7 +1847,7 @@ classdef SpotNGlia
             g4.YLabel.String = 'translation y-axis [pix]';
             realsizeandsave(obj, h4, 'FishDiscrimination3')
         end
-        function ShowFishDiscrimination4(obj)
+        function showFishDiscrimination4(obj)
             %scatterplot of translation zoomed in
             
             b = [obj.ImageInfo.moduluswarp];
@@ -1889,7 +1911,7 @@ classdef SpotNGlia
             realsizeandsave(obj, h4, 'FishDiscrimination4');
             
         end
-        function ShowBackgroundRemoval(obj, fn)
+        function showBackgroundRemoval(obj, fn)
             
             obj = LoadTemplate(obj);
             sng_zfinputAssign(obj.ZFParameters, 'Registration')
@@ -2016,7 +2038,7 @@ classdef SpotNGlia
                 obj.RegObject(fn) = SubPixelAlignment(obj.RegObject(fn));
             end  
         end
-        function obj = ShowRotationPreproc(obj, fn)
+        function obj = showRotationPreproc(obj, fn)
             
             obj.fsxy(1) = [6]; %give only width
             
@@ -2053,7 +2075,7 @@ classdef SpotNGlia
                 
             end
         end
-        function obj = ShowFishRotationplot(obj, fn)
+        function obj = showFishRotationplot(obj, fn)
             
             obj.fsxy = [10, 8];
             
@@ -2083,7 +2105,7 @@ classdef SpotNGlia
             realsizeandsave(obj, h, 'Rotationplot');
             
         end
-        function obj = ShowRotatedFishes(obj, fn)
+        function obj = showRotatedFishes(obj, fn)
             
             obj.fsxy(1) = [6];
             
@@ -2108,9 +2130,9 @@ classdef SpotNGlia
                 realsizeandsave(obj, h, ['RotatedReflection_fish', num2str(fn),'_ang',num2str(angle(k))]);
             end
         end      
-        function obj = ShowScalePlot(obj, fn)
+        function obj = showScalePlot(obj, fn)
             %output "obj" is to store Registration parameters in object
-            %which can be used for ShowMethods on the same fish
+            %which can be used for showMethods on the same fish
             
             %obj.fsxy = ([5, 4]);
             
@@ -2144,8 +2166,32 @@ classdef SpotNGlia
             
             realsizeandsave(obj, h, 'ScaleCorrelation');
         end
+        
+        function obj = showMidBrainEdges(obj, fn)
+            
+            obj.fsxy(1) = [5]; %give only width
+            
+            %LOAD/COMPUTE VALUES
+            templateImage = obj.CompleteTemplate.Template;
+            Xcoordinates
+            
+            SIZE = obj.CompleteTemplate.Size;
+            obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+            
+            [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+            
+            %PLOT IMAGE
+            
+            g.Position = [0, 0, 1, 1]; axis off;
+            
+            realsizeandsave(obj, h, ['RotatedReflection_', k]);
+            
+        end
 
-        %supporting functions used for the Show functions
+        
+        
+
+        %supporting functions used for the show functions
         function [f1, a1] = setfigax1(obj)
             %fsx = 5;fsy = 10;
             f1 = figure('PaperUnits', 'centimeters', 'Color', [1, 1, 1]);
