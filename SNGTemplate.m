@@ -10,6 +10,8 @@ classdef SNGTemplate < handle
         TemplatePath3dpf
         RoiBrainPath
         
+        SpotNGliaObject
+        
         %Template 
         Template
         Size
@@ -42,7 +44,8 @@ classdef SNGTemplate < handle
         skeletonm
         midbrainXCoordList
         midbrainYCoordList
-        
+        midbrainInnerContour
+        midbrainOuterContour
         
         % ForeBrain
         ForbrainInfo = struct('Poly', [], 'Area', [], 'Centroid', [], 'BoundingBox', []);
@@ -73,8 +76,13 @@ classdef SNGTemplate < handle
             %folder with all brain rois
             objt.RoiBrainPath = [objt.sourcePath, filesep, 'Roi brain']; 
         end
-        
-        
+        function value = get.midbrainXCoordList(objt)
+            if isempty(objt.midbrainXCoordList)
+                disp('compute Brain parameters');
+                objt.BrainTemplate; %compute all Brain paramaters including midbrainXCoordList
+            end
+            value = objt.midbrainXCoordList;
+        end
         function loadTemplate(objt)
             % Mean Fish Registration Template
             %based on older template, can be updated with 50 fish batch but lead
@@ -170,12 +178,10 @@ classdef SNGTemplate < handle
             objt.loadSpotParameters;
             objt.loadTemplate;
         end   
-
         function save(objt)
             save(strcat(objt.sourcePath, filesep, objt.fileName, '.mat'), 'objt');
-        end
-        
-        function BrainTemplate(objt, obj)
+        end     
+        function BrainTemplate(objt)
             % function based on TemplateBrainParameters
             % this function needs aan SpotNGlia object to retrieve information from, stackinfo information
             % transform raw midbrain coords to horizontal fish coords and create skeleton
@@ -186,9 +192,9 @@ classdef SNGTemplate < handle
             %subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.03], [0.04 0.03], [0.03 0.03]);
             
             
-            %obj = obj.LoadParameters('RegistrationInfo');
-            obj = obj.LoadParameters('RegObject');
-            tformList = [obj.RegObject.tform_1234];
+            %obj.LoadParameters('RegistrationInfo');
+            objt.SpotNGliaObject.LoadParameters('RegObject');
+            tformList = [objt.SpotNGliaObject.RegObject.tform_1234];
             
             SIZE = objt.Size; %the size of the Template
             
@@ -236,10 +242,10 @@ classdef SNGTemplate < handle
             rpm(50) = struct('Area', [], 'Centroid', [], 'BoundingBox', []);
             rpf(50) = struct('Area', [], 'Centroid', [], 'BoundingBox', []);
             
-            C1m = true(SIZE(1), SIZE(2));
-            C2m = false(SIZE(1), SIZE(2));
-            C1f = true(SIZE(1), SIZE(2));
-            C2f = false(SIZE(1), SIZE(2));
+            midbrainInnerArea = true(SIZE(1), SIZE(2));
+            midbrainOuterArea = false(SIZE(1), SIZE(2));
+            forebrainInnerArea = true(SIZE(1), SIZE(2));
+            forebrainOuterArea = false(SIZE(1), SIZE(2));
             
             for iRoiFile = 1:nRoiFiles
                 %affine transformation tform object
@@ -263,20 +269,24 @@ classdef SNGTemplate < handle
                plot(xc,yc)
                 %}
                 %generates outer mask and inner mask
-                BWm = poly2mask(double(midbrainXCoordList{iRoiFile}), double(midbrainYCoordList{iRoiFile}), SIZE(1), SIZE(2));
-                C1m = BWm & C1m;
-                C2m = BWm | C2m;
+                midbrainAreaMask = poly2mask(double(midbrainXCoordList{iRoiFile}), double(midbrainYCoordList{iRoiFile}), SIZE(1), SIZE(2));
+                midbrainInnerArea = midbrainAreaMask & midbrainInnerArea;
+                midbrainOuterArea = midbrainAreaMask | midbrainOuterArea;
                 %figure;imagesc(BWm)
+                
+                midbrainInnerContour = bwboundaries(midbrainInnerArea);
+                midbrainOuterContour = bwboundaries(midbrainOuterArea);
+                
                 %stores individual information
                 MidbrainInfo(iRoiFile).Poly = ROI{iRoiFile, 1}.mnCoordinates;
-                rpm(iRoiFile) = regionprops(BWm, 'Area', 'Centroid', 'BoundingBox');
+                rpm(iRoiFile) = regionprops(midbrainAreaMask, 'Area', 'Centroid', 'BoundingBox');
                 
                 %FORBRAIN
                 [forebrainXCoordList{iRoiFile}, forebrainYCoordList{iRoiFile}] = transformPointsForward(iTform, ROI{iRoiFile, 2}.mnCoordinates(:, 1), ROI{iRoiFile, 2}.mnCoordinates(:, 2));
                 %generates outer mask and inner mask
                 BWf = poly2mask(double(forebrainXCoordList{iRoiFile}), double(forebrainYCoordList{iRoiFile}), SIZE(1), SIZE(2));
-                C1f = BWf & C1f;
-                C2f = BWf | C2f;
+                forebrainInnerArea = BWf & forebrainInnerArea;
+                forebrainOuterArea = BWf | forebrainOuterArea;
                 %stores individual information
                 ForbrainInfo(iRoiFile).Poly = ROI{iRoiFile, 2}.mnCoordinates;
                 rpf(iRoiFile) = regionprops(BWf, 'Area', 'Centroid', 'BoundingBox');
@@ -310,22 +320,25 @@ classdef SNGTemplate < handle
             
             %%
             %Midbrain
-            bandm = boolean(C2m-C1m);
+            bandm = boolean(midbrainOuterArea-midbrainInnerArea);
             distancemapm = bwdist(~bandm);
             distancemapblurm = imgaussfilt(distancemapm, 20);
             skeletonm = bwmorph(bandm, 'shrink', Inf);
             [X, Y] = find(skeletonm);
             MeanMidBrain = sng_OrderContourCoordinates([X, Y]);
             
+    
+            
+            
             % centrum based on the region in the center of brain with the largest
             % distance from all brain edges
-            dd = bwdist(~C1m);
+            dd = bwdist(~midbrainInnerArea);
             [~, cx] = max(max(dd));
             [~, cy] = max(max(dd'));
             Centroidm = [cx, cy];
             
             %Forbrain
-            bandf = boolean(C2f-C1f);
+            bandf = boolean(forebrainOuterArea-forebrainInnerArea);
             distancemapf = bwdist(~bandf);
             distancemapblurf = imgaussfilt(distancemapf, 20);
             skeletonf = bwmorph(bandf, 'shrink', Inf);
@@ -370,6 +383,11 @@ classdef SNGTemplate < handle
             objt.MidBrainDistanceMap = distancemapm;
             objt.BandMidBrain = bandm;
             
+            objt.midbrainXCoordList = midbrainXCoordList;
+            objt.midbrainYCoordList = midbrainYCoordList;
+            objt.forebrainXCoordList = forebrainXCoordList;
+            objt.forebrainYCoordList = forebrainYCoordList;
+            
             objt.distancemapblurm = distancemapblurm;
             objt.skeletonm = skeletonm;
             objt.MeanForeBrain = MeanForBrain;
@@ -380,6 +398,10 @@ classdef SNGTemplate < handle
             
             objt.MidbrainInfo = MidbrainInfo;
             objt.ForbrainInfo = ForbrainInfo;
+            
+            objt.midbrainInnerContour = midbrainInnerContour{1};
+            objt.midbrainOuterContour = midbrainOuterContour{1};
+    
             
             
         end
