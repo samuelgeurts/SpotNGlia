@@ -19,15 +19,29 @@ classdef SNGTemplate < handle
         
         %Midbrain 
         CenterMidBrain
-        MidBrainDistanceMap
+        %MidBrainDistanceMap
+        BandMidBrain
+        polarMidbrainBandWithGaussianWithBlurr
         %Edge Template
         EdgeTemplate1
         
         %Spot 
         SpotVectorArrayProbability
         SVAP_index
+    end %basic
+    properties (Constant = true) %inputparameters
+        %these input parameters maybe should be added to the main inpur
+        %structure. But because it is a template variable only maybe to a \
+        %separete variable. -maybe think about it
+
+        %the sigma based variable of the gaussian added to the polar transform of the 
+        %probability band of the midbrains. Used to increase the probability
+        %area without changing the basic probability area based on the 50 fish
+        %batch
+        sigmabasedVariable = 6;
+        extraSmoothingKernel = [5,5]  
     end
-    properties(Transient = true)
+    properties(Transient = true) %additional output
         % Eyes
         EyeRegion1
         EyeRegion2
@@ -39,7 +53,8 @@ classdef SNGTemplate < handle
         % MidBrain
         MidbrainInfo = struct('Poly', [], 'Area', [], 'Centroid', [], 'BoundingBox', []);
         MeanMidBrain
-        BandMidBrain
+        MidBrainDistanceMap
+        
         distancemapblurm
         skeletonm
         midbrainXCoordList
@@ -47,6 +62,11 @@ classdef SNGTemplate < handle
         midbrainInnerContour
         midbrainOuterContour
         
+        squareMidbrainBand 
+        polarMidbrainBand
+        polarMidbrainBandWithGaussian
+        listGaussians
+
         % ForeBrain
         ForbrainInfo = struct('Poly', [], 'Area', [], 'Centroid', [], 'BoundingBox', []);
         MeanForeBrain
@@ -60,11 +80,9 @@ classdef SNGTemplate < handle
         % Spot
         SpotContrastVector
         Classifier
-    end 
-    properties(Transient = true)
+    end
+    properties(Transient = true) %image output
         % Brain Images
-        
- 
     end
     
     methods
@@ -77,12 +95,23 @@ classdef SNGTemplate < handle
             objt.RoiBrainPath = [objt.sourcePath, filesep, 'Roi brain']; 
         end
         function value = get.midbrainXCoordList(objt)
+            %caller function to run BrainTemplate
             if isempty(objt.midbrainXCoordList)
                 disp('compute Brain parameters');
                 objt.BrainTemplate; %compute all Brain paramaters including midbrainXCoordList
             end
             value = objt.midbrainXCoordList;
         end
+        function value = get.squareMidbrainBand(objt)
+            %caller function to run polarProbabilityMidbrain
+            %asumed is that checking for squareMidbrainBand is enough
+            if isempty(objt.squareMidbrainBand)
+                disp('compute Brain parameters');
+                objt.polarProbabilityMidbrain; %compute polar band
+            end
+            value = objt.squareMidbrainBand;
+        end      
+        
         function loadTemplate(objt)
             % Mean Fish Registration Template
             %based on older template, can be updated with 50 fish batch but lead
@@ -401,11 +430,79 @@ classdef SNGTemplate < handle
             
             objt.midbrainInnerContour = midbrainInnerContour{1};
             objt.midbrainOuterContour = midbrainOuterContour{1};
+ 
+        end  
+        function polarProbabilityMidbrain(objt)
+            %% Polar transform distancemap    
     
+            %DONE: use more suffisticated method to exclude area in shortest path
+            %finding, multiply shortest path with based on brains blurred distancemap
+            %to exclude some area from pathfinding
             
+            %TODO: add band to generateskeleton function output instead of computing from distancemap
+            
+            %using the distancemap wont help as the probability goes to much down
+            %for areas where the real probability is high. 
+            %IsquareMB = sng_boxaroundcenter(objt.MidBrainDistanceMap,objt.CenterMidBrain,[],0);
+
+            %1000x1000 box around midbrain band
+            squareMidbrainBand = sng_boxaroundcenter(objt.BandMidBrain,objt.CenterMidBrain,[],0);
+            
+            
+            %{
+            figure;imagesc(objt.BandMidBrain)
+            figure;imagesc(IsquareMB)
+            figure;imagesc(boolean(IsquareMB));sng_imfix;colormap gray
+            %}
+
+            polarMidbrainBand = sng_Im2Polar3(squareMidbrainBand); %polar transform
+            polarMidbrainBand = permute(polarMidbrainBand,[2,1,3]); %horizontal orientation
+            %{
+            figure;imagesc(Polarmidbrainband)
+            %}
+            
+            %IDistmap3 contains added gausian filter at te boudary i.e. the values of
+            %IDistmap which are 1 stays 1, i.e. the plane is preserved                    
+            %sigmabasedVariable = 6; added to propeties
+            
+            [nRows, nColumns] = size(polarMidbrainBand);
+            polarMidbrainBandWithGaussian = polarMidbrainBand;
+            center = 501;
+            listGaussians = cell(1,nColumns);
+            
+            for iColumn = 1: nColumns     
+                a = find(polarMidbrainBand(:,iColumn) == 1,1,'first');
+                b = find(polarMidbrainBand(:,iColumn) == 1,1,'last');
+
+                %a gaussian formula
+                %y = gaussmf([-500:1:500],[(b-a)/blurvar 0])';
+                %for versions without fuzzy logic toolbox
+                listGaussians{iColumn} = exp(-((-500:1:500)-0).^2/(2*((b-a)/objt.sigmabasedVariable).^2))';
+                polarMidbrainBandWithGaussian(1:a,iColumn) = listGaussians{iColumn}(center-a+1:center);
+                polarMidbrainBandWithGaussian(b:nRows,iColumn) = listGaussians{iColumn}(center:center+nRows-b);
+            end
+            %a bit of gaussian blur added
+            
+            %{
+                figure;imagesc(polarMidbrainBandWithGaussian)
+            %}
+            
+            %extraSmoothingKernel = [5,5] %added to properties
+            polarMidbrainBandWithGaussianWithBlurr = imgaussfilt(polarMidbrainBandWithGaussian,objt.extraSmoothingKernel);
+            %figure;plot(y) % a gaussian
+        
+            %{
+                figure;imagesc(IDistmap4)
+            %}
+            
+            objt.squareMidbrainBand = squareMidbrainBand;
+            objt.polarMidbrainBand = polarMidbrainBand;
+            objt.polarMidbrainBandWithGaussian = polarMidbrainBandWithGaussian;
+            objt.polarMidbrainBandWithGaussianWithBlurr = polarMidbrainBandWithGaussianWithBlurr;
+            objt.listGaussians = listGausians;
             
         end
-        
     end
+        
 end
 
