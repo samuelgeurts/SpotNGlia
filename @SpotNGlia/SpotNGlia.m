@@ -257,8 +257,6 @@ classdef SpotNGlia < handle
             value = obj.CompleteTemplate;
         end
     
-        
-        
         function SliceCombination(obj, slicenumbers)
             %computes imageinfo and stackinfo
             %       sorting = ['date' or 'name']
@@ -2242,6 +2240,58 @@ classdef SpotNGlia < handle
             contourCenter = obj.CompleteTemplate.MeanMidBrain;
             contourInner = obj.CompleteTemplate.midbrainInnerContour;
             contourOuter = obj.CompleteTemplate.midbrainOuterContour;
+            centerPoint = obj.CompleteTemplate.CenterMidBrain;
+
+            SIZE = obj.CompleteTemplate.Size;
+            
+            %SET FIGURE SIZE
+            %obj.fsxy(1) = 5; %set width
+            obj.fsxy(2) = 4; %set height                       
+            %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+            obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+            %CREATE FIGURE WITH AXIS                         
+            [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+            
+            %PLOT IMAGE           
+
+            imagesc(Image{1})
+            hold on
+            plot(contourCenter(:,2),contourCenter(:,1),'Color',[0 166 214]/255,'LineWidth' , 2)
+            plot(contourInner(:,2),contourInner(:,1),'Color',[110 187 213]/255,'LineWidth' , 1)
+            plot(contourOuter(:,2),contourOuter(:,1),'Color',[110 187 213]/255,'LineWidth' , 1)
+
+            plot(centerPoint(1),centerPoint(2),'Color',[226 26 26]/255,'LineWidth' , 2,'Marker' , 'X')
+            
+            g.Position = [0, 0, 1, 1]; axis off;
+            
+            
+            %it is nog exacly 1000 what it should be but it is just for showing
+            %this figure that it is made a bit smaller to be able to see whole
+            %square
+            rectangle('Position',[centerPoint-480 960 960],'EdgeColor',[226 26 26]/255,'LineWidth' , 1);
+            
+            %EXPORT IMAGE                        
+            realsizeandsave(obj, h, ['MidBrainBand']); %export with savename  
+        end
+        
+        function showMidBrainBand2(obj)
+            %%%%%%%%%follow with other brain images
+            obj.LoadParameters('BrainSegmentationInfo')
+
+            
+            
+            
+            %LOAD/COMPUTE VALUES
+            Image{1} = obj.CompleteTemplate.Template;
+            %Image{2} = obj.CompleteTemplate.BandMidBrain;
+            %Image{3} = obj.CompleteTemplate.MidBrainDistanceMap;
+
+            contourCenter = obj.CompleteTemplate.MeanMidBrain;
+            contourInner = obj.CompleteTemplate.midbrainInnerContour;
+            contourOuter = obj.CompleteTemplate.midbrainOuterContour;
+            centerPoint = obj.CompleteTemplate.CenterMidBrain;
+
             
             SIZE = obj.CompleteTemplate.Size;
             
@@ -2261,10 +2311,17 @@ classdef SpotNGlia < handle
             plot(contourInner(:,2),contourInner(:,1),'Color',[110 187 213]/255,'LineWidth' , 1)
             plot(contourOuter(:,2),contourOuter(:,1),'Color',[110 187 213]/255,'LineWidth' , 1)
 
+            p1 = plot(centerPoint(1),centerPoint(2),'Color',[226 26 26]/255,'LineWidth' , 2,'Marker' , 'X')
+            
             g.Position = [0, 0, 1, 1]; axis off;
             %EXPORT IMAGE                        
             realsizeandsave(obj, h, ['MidBrainBand']); %export with savename  
         end        
+        
+        
+        
+        
+        
         
         %supporting functions used for the show functions
         function [f1, a1] = setfigax1(obj)
