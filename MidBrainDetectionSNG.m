@@ -114,7 +114,10 @@ sng_zfinputAssign(ZFParameters,'BrainSegmentation')
     %}
 
 %% Polar transform distancemap    
-    
+%computation moved to complete template as it has to be don once
+
+
+%{
     %DONE: use more suffisticated method to exclude area in shortest path
     %finding, multiply shortest path with based on brains blurred distancemap
     %to exclude some area from pathfinding
@@ -137,7 +140,7 @@ sng_zfinputAssign(ZFParameters,'BrainSegmentation')
     %IDistmap which are 1 stays 1, i.e. the plane is preserved
     blurvar = 6;
     IDistmap3 = IDistmap;
-    sz=size(IDistmap3)
+    sz = size(IDistmap3);
     center = 501;
     for k2 = 1:sz(2)
     a = find(IDistmap3(:,k2) == 1,1,'first');
@@ -152,10 +155,14 @@ sng_zfinputAssign(ZFParameters,'BrainSegmentation')
     %a bit of gaussian blur added
     IDistmap4 = imgaussfilt(IDistmap3,[5,5]);
     %figure;plot(y) % a gaussian
+%}
+
+
 
 %% Filter image with brain probability 
     
-    INorm2 = INorm .* IDistmap4;
+    %INorm2 = INorm .* IDistmap4;
+    INorm2 = INorm .* CompleteTemplate.polarMidbrainBandWithGaussian;
 
     %{
     figure;imagesc(IDistmap);sng_imfix;colormap gray
@@ -177,7 +184,7 @@ sng_zfinputAssign(ZFParameters,'BrainSegmentation')
 
 
 
-    s = size(INorm3)
+    s = size(INorm3);
     %compute edges
     [edges] = sng_SquareGridDiGraph(si(1:2));
     %compute directer graph
@@ -185,8 +192,8 @@ sng_zfinputAssign(ZFParameters,'BrainSegmentation')
 
 
     %compute shortest path start and end at equal row
-    rows = 100:10:400
-    nrows = numel(rows)
+    rows = 100:10:400;
+    nrows = numel(rows);
     path = zeros(nrows,1000);
 
 
@@ -285,9 +292,9 @@ Parameters.EdgeFilterWidth = filterwidth;
 Parameters.ShortestPath = [J',I'];
 Parameters.ShortestPathValue = mx;
 
-Parameters.BrainEdge = bwbb{1}
+Parameters.BrainEdge = bwbb{1};
 
-Parameters.PolarTransform = INorm3
+Parameters.PolarTransform = INorm3;
 
 
 
