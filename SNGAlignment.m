@@ -112,19 +112,30 @@ classdef SNGAlignment
     
     methods
         function obr = SNGAlignment(SpotNGliaObject) %constructor
-            obr = obr.zfproperties(SpotNGliaObject.ZFParameters);
+            %obr = obr.zfproperties(SpotNGliaObject.ZFParameters);
+            
+            %set subfields of the registration field of the SngInputParameter 
+            %object as properties the obr i.e. SNGAllignment-object
+            inputFields = fields(SpotNGliaObject.SngInputParameters.Registration);
+            for iInputField = 1:numel(inputFields)
+                obr.(inputFields{iInputField}) = SpotNGliaObject.SngInputParameters.Registration.(inputFields{iInputField});
+            end
             
             if isempty(SpotNGliaObject.CompleteTemplate)    
                 SpotNGliaObject = SpotNGliaObject.LoadTemplate;
             end
             obr.template = SpotNGliaObject.CompleteTemplate.Template;
         end
-        function obr = zfproperties(obr, ZFParameters)
-            temp = ZFParameters(strcmp({ZFParameters.stage}, 'Registration'));
-            for k = 1:numel(temp)
-                obr.(temp(k).name) = temp(k).value;
-            end
-        end %assign Registration properties from ZFParameters from SpotNGlia object
+        
+        
+%         function obr = zfproperties(obr, ZFParameters)
+%             temp = ZFParameters(strcmp({ZFParameters.stage}, 'Registration'));
+%             for k = 1:numel(temp)
+%                 obr.(temp(k).name) = temp(k).value;
+%             end
+%         end %assign Registration properties from ZFParameters from SpotNGlia object
+        
+        
         function obr = BackgroundRemoval(obr, Icombined)
             
             if exist('Icombined', 'var')
