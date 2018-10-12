@@ -24,6 +24,7 @@ classdef SpotNGlia < handle
         savedate = []
         
         ZFParameters = []
+        SngInputParameters = [] %this will replace ZFParameters.
         
         StackInfo = []
         ImageInfo = []
@@ -89,14 +90,13 @@ classdef SpotNGlia < handle
                 obj.SaveName = strcat('SNG_', folder);
                 obj.InfoName = strcat('INFO_', folder);
                 
-                load([obj.SourcePath, filesep, 'zfinput.mat']); %#ok<LOAD>
-                obj.ZFParameters = zfinput;
+                %load([obj.SourcePath, filesep, 'zfinput.mat']); %#ok<LOAD>
+                %obj.ZFParameters = zfinput;
+                obj.SngInputParameters = SNGInputParameters;
                 
                 %file which contains all batch specific computation info
                 matObj = matfile([obj.SavePath, filesep, obj.InfoName, '.mat']);
-                obj.InfoResult = whos(matObj);
-                
-                
+                obj.InfoResult = whos(matObj);    
             end
         end
         function NewPath(obj, mode1)
@@ -245,8 +245,7 @@ classdef SpotNGlia < handle
             
             obj.OS = getenv('OS');
             
-        end
-        
+        end 
         function value = get.CompleteTemplate(obj)
             if isempty(obj.CompleteTemplate)
                 temp = load([obj.SourcePath, filesep, 'Template3dpf', '.mat']);
@@ -281,10 +280,15 @@ classdef SpotNGlia < handle
                 % set imagesorting to date or name if not given
                 obj.Sorting = questdlg('Which sorting algorithm do you want?', 'Choose sorting method', 'Date', 'Name', 'Date');
                 if strcmp(obj.Sorting, 'Date')
-                    obj.ZFParameters = sng_zfinput(obj.ZFParameters, 0, 'imageinfo', 'stackselection', 'sorting', 'Date', 'high'); %date or name
+                    %obj.ZFParameters = sng_zfinput(obj.ZFParameters, 0, 'imageinfo', 'stackselection', 'sorting', 'Date', 'high'); %date or name
+                    obj.SngInputParameters.ImageInfo.sorting = 'Date';
+                
                 elseif strcmp(obj.Sorting, 'Name')
-                    obj.ZFParameters = sng_zfinput(obj.ZFParameters, 0, 'imageinfo', 'stackselection', 'sorting', 'Name', 'high'); %date or name
+                    %obj.ZFParameters = sng_zfinput(obj.ZFParameters, 0, 'imageinfo', 'stackselection', 'sorting', 'Name', 'high'); %date or name
+                    obj.SngInputParameters.ImageInfo.sorting = 'Name';
                 end
+                
+                
             end
             
             if isempty(obj.ImageInfo)
@@ -321,7 +325,8 @@ classdef SpotNGlia < handle
                 end
                 obj.slicenumbers.slicecombination = slicenumbers;
                 
-                [obj.ImageInfo] = ImageInfoSNG(obj.ImageInfo, obj.ZFParameters);
+                [obj.ImageInfo] = ImageInfoSNG(obj);                
+                %[obj.ImageInfo] = ImageInfoSNG(obj.ImageInfo, obj.ZFParameters);
                 [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
                 
                 ImageInfo = obj.ImageInfo; %#ok<NASGU>
@@ -418,9 +423,9 @@ classdef SpotNGlia < handle
                     
                     %[CorrectedSlice,ppoutput(k1)] = PreprocessionSNG(ImageSlice,obj.ZFParameters);
                     if k1 == 1
-                        [CorrectedFishTemp, PreprocessionInfo] = PreprocessionSNG(ImageSlice, obj.ZFParameters);
+                        [CorrectedFishTemp, PreprocessionInfo] = PreprocessionSNG(obj, ImageSlice);
                     else
-                        [CorrectedFishTemp, PreprocessionInfo(k1)] = PreprocessionSNG(ImageSlice, obj.ZFParameters);
+                        [CorrectedFishTemp, PreprocessionInfo(k1)] = PreprocessionSNG(obj, ImageSlice);
                     end
                     
                     sng_SaveCell2TiffStack(CorrectedFishTemp, [TempFolderName, filesep, obj.StackInfo(k1).stackname, '.tif'])
@@ -485,7 +490,7 @@ classdef SpotNGlia < handle
                 fn = fishnumbers(k1);
                 
                 CorrectedFish = sng_openimstack2([obj.SavePath, filesep, 'CorrectedFish', filesep, obj.StackInfo(fn).stackname, '.tif']);
-                [CombinedFishTemp, ExtendedDeptOfFieldInfo(k1)] = ExtendedDeptofFieldSNG(CorrectedFish, obj.ZFParameters);
+                [CombinedFishTemp, ExtendedDeptOfFieldInfo(k1)] = ExtendedDeptofFieldSNG(obj, CorrectedFish);
                 %obj.CombinedFish(k1).image = CombinedFishTemp; because it takes to much space
                 imwrite(uint8(CombinedFishTemp), [TempFolderName, filesep, obj.StackInfo(k1).stackname, '.tif'], ...
                     'WriteMode', 'overwrite', 'Compression', 'none');
@@ -579,7 +584,7 @@ classdef SpotNGlia < handle
                 fn = fishnumbers(k1);
                 waitbar(k1/nfishes, h, ['Brain Segmentation ', num2str(k1), ' / ', num2str(nfishes)])
                 AlignedFish = imread([obj.SavePath, filesep, 'AlignedFish', filesep, obj.StackInfo(fn).stackname, '.tif']);
-                [~, BrainSegmentationInfo(k1)] = MidBrainDetectionSNG(AlignedFish, obj.CompleteTemplate, obj.ZFParameters);
+                [~, BrainSegmentationInfo(k1)] = MidBrainDetectionSNG(obj, AlignedFish, obj.CompleteTemplate);
                 %obj.BrainFish(k1).image = BrainFishTemp;
             end
             obj.saveit
@@ -623,7 +628,7 @@ classdef SpotNGlia < handle
                 fn = fishnumbers(k1);
                 waitbar(k1/nfishes, h, ['SpotDetection ', num2str(k1), ' / ', num2str(nfishes)])
                 AlignedFish = imread([obj.SavePath, filesep, 'AlignedFish', filesep, obj.StackInfo(fn).stackname, '.tif']);
-                [SpotsDetected{k1}, SpotParameters{k1}, SpotDetectionInfo(k1)] = SpotDetectionSNG(AlignedFish, obj.CompleteTemplate, obj.BrainSegmentationInfo(k1).BrainEdge, obj.ZFParameters);
+                [SpotsDetected{k1}, SpotParameters{k1}, SpotDetectionInfo(k1)] = SpotDetectionSNG(obj,AlignedFish, obj.CompleteTemplate, obj.BrainSegmentationInfo(k1).BrainEdge);
                 
                 %update Computations
                 obj.Computations(k1).Spots = reshape([SpotsDetected{k1}.Centroid], 2, numel(SpotsDetected{k1}))';
@@ -680,7 +685,7 @@ classdef SpotNGlia < handle
                 for k2 = 1:numel(CorrectedFish)
                     AlignedSlice{k2} = imwarp(CorrectedFish{k2}, tform_complete, 'FillValues', 255, 'OutputView', TEMPLATE.ref_temp);
                 end
-                [SpotsDetected{fn}, SpotParameters{fn}, SpotDetectionInfo(fn)] = SpotDetectionSliceSNG(AlignedSlice, TEMPLATE, INFO.BrainSegmentationInfo(fn).BrainEdge, obj.ZFParameters);
+                [SpotsDetected{fn}, SpotParameters{fn}, SpotDetectionInfo(fn)] = SpotDetectionSliceSNG(obj, AlignedSlice, TEMPLATE, INFO.BrainSegmentationInfo(fn).BrainEdge);
                 
                 %update Computations
                 obj.Computations(fn).Spots = reshape([SpotsDetected{fn}.Centroid], 2, numel(SpotsDetected{fn}))';
@@ -743,7 +748,7 @@ classdef SpotNGlia < handle
                     AlignedSlice{k2} = imwarp(CorrectedFish{k2}, tform_complete, 'FillValues', 255, 'OutputView', TEMPLATE.ref_temp);
                 end
                 %[SpotsDetected{fn}, SpotParameters{fn}, SpotDetectionInfo(fn)] = SpotDetectionSliceSNG(AlignedSlice, TEMPLATE, INFO.BrainSegmentationInfo(fn).BrainEdge, obj.ZFParameters);
-                [SpotParameters{fn}, SpotDetectionInfo(fn)] = SpotDetectionSliceMLSNG(AlignedSlice, obj.ZFParameters);
+                [SpotParameters{fn}, SpotDetectionInfo(fn)] = SpotDetectionSliceMLSNG(obj,AlignedSlice);
                 
                 %maybe an error occurs for some brain optimization
                 
@@ -751,8 +756,8 @@ classdef SpotNGlia < handle
                     SpotParameters{fn}, ...
                     INFO.BrainSegmentationInfo(fn).BrainEdge, ...
                     INFO.RegistrationInfo{fn}, ...
-                    TEMPLATE.Classifier, ...
-                    obj.ZFParameters);
+                    TEMPLATE.Classifier);%, ...
+                    %obj.ZFParameters);
                 
                 %update Computations
                 obj.Computations(fn).Spots = reshape([SpotsDetected{fn}.Centroid], 2, SpotN)';
@@ -769,8 +774,8 @@ classdef SpotNGlia < handle
                         SpotParameters{fn}, ...
                         fliplr(obj.checkup(fn).Midbrain), ...
                         INFO.RegistrationInfo{fn}, ...
-                        TEMPLATE.Classifier, ...
-                        obj.ZFParameters);
+                        TEMPLATE.Classifier);%, ...
+                        %obj.ZFParameters);
                     
                     obj.checkup(fn).Spots = reshape([SpotsDetected_cu.Centroid], 2, SpotN_cu)';
                     obj.checkup(fn).Counts = SpotN_cu;
@@ -938,10 +943,9 @@ classdef SpotNGlia < handle
         function saveit(obj)
             
             fullFilepath = strcat(obj.SavePath, filesep, obj.SaveName, '.mat');
-            
-            
+                      
             if obj.overwriteFile == true || ~exist(fullFilepath, 'file')
-                writefile
+                writeFile(fullFilepath)
             else
                 promptMessage = sprintf('This file already exists:\n%s\nDo you want to overwrite it?', obj.SaveName);
                 titleBarCaption = 'Overwrite?';
@@ -1045,6 +1049,11 @@ classdef SpotNGlia < handle
         function LoadParameters(obj, InfoName)
             
             switch InfoName
+                case {'PreprocessionInfo'}
+                    if isempty(obj.PreprocessionInfo)
+                        temp = load([obj.SavePath, filesep, obj.InfoName, '.mat'], 'PreprocessionInfo');
+                        obj.PreprocessionInfo = temp.PreprocessionInfo;
+                    end                
                 case {'RegistrationInfo'}
                     if isempty(obj.RegistrationInfo)
                         temp = load([obj.SavePath, filesep, obj.InfoName, '.mat'], 'RegistrationInfo');
@@ -1674,15 +1683,24 @@ classdef SpotNGlia < handle
             %showFishDiscrimination1 - histogram shows correlation coefficient adjacent images
             %showFishDiscrimination2 - scatterplot of translation
             
-            if ismember(1, subject); obj.showFishDiscrimination1; end
-            if ismember(2, subject); obj.showFishDiscrimination2; end
-            if ismember(3, subject); obj.showFishDiscrimination3; end
-            if ismember(4, subject); obj.showFishDiscrimination4; end
-            if ismember(5, subject); obj.showBackgroundRemoval(var); end
+            if ismember(01, subject); obj.showFishDiscrimination1; end
+            if ismember(02, subject); obj.showFishDiscrimination2; end
+            if ismember(03, subject); obj.showFishDiscrimination3; end
+            if ismember(04, subject); obj.showFishDiscrimination4; end
+            if ismember(11, subject); obj.showBackgroundRemoval(var); end
             
-            if ismember(6, subject); obj.showRotationPreproc(var); end
-            if ismember(7, subject); obj.showFishRotationplot(var); end
-            if ismember(8, subject); obj.showRotatedFishes(var); end
+            if ismember(a1, subject); obj.showRotationPreproc(var); end
+            if ismember(a2, subject); obj.showFishRotationplot(var); end
+            if ismember(a3, subject); obj.showRotatedFishes(var); end
+            if ismember(a4, subject); obj.showScalePlot(var); end
+            
+            if ismember(b1, subject); obj.showMidBrainContours; end
+            if ismember(b2, subject); obj.showForeBrainContours; end
+            if ismember(b3, subject); obj.showMidBrainBand; end
+            if ismember(b4, subject); obj.showMidBrainBand2; end
+            if ismember(b5, subject); obj.showMidBrainBandIntersection; end
+            
+            
             
             
         end
@@ -1748,7 +1766,7 @@ classdef SpotNGlia < handle
             realsizeandsave(obj, h, 'SaveName');
         end
         function showFishDiscrimination1(obj)
-                        obj.fsxy = [6,5];
+            obj.fsxy = [6,5];
 
             a = [obj.ImageInfo.corcoef];
             d = [obj.ImageInfo.CorNextStack];
@@ -1916,9 +1934,17 @@ classdef SpotNGlia < handle
             realsizeandsave(obj, h4, 'FishDiscrimination4');
             
         end
+        
+        function showRGBCorrection
+        	LoadParameters(obj, 'PreprocessionInfo');
+            %%unfinished
+        end
+        
         function showBackgroundRemoval(obj, fn)
             
-            sng_zfinputAssign(obj.ZFParameters, 'Registration')
+            %sng_zfinputAssign(obj.ZFParameters, 'Registration')
+            obj.SngInputParameters.assign('Registration')
+
             
             if fn <= 0
                 %open chosen images from separate folder
@@ -2019,8 +2045,7 @@ classdef SpotNGlia < handle
             annotation('doublearrow', [tcn(1), hcn(1)], [tcn(2), hcn(2)]);
             
             realsizeandsave(obj, f1, 'BackGroundRemoval');
-        end
-        
+        end        
         function PresetShowRegistration(obj, fn)
             
             LoadParameters(obj, 'RegObject');
@@ -2233,16 +2258,31 @@ classdef SpotNGlia < handle
         function showMidBrainBand(obj)
                         
             %LOAD/COMPUTE VALUES
-            Image{1} = obj.CompleteTemplate.Template;
-            %Image{2} = obj.CompleteTemplate.BandMidBrain;
-            %Image{3} = obj.CompleteTemplate.MidBrainDistanceMap;
-
+            Image = obj.CompleteTemplate.Template;
+   
             contourCenter = obj.CompleteTemplate.MeanMidBrain;
             contourInner = obj.CompleteTemplate.midbrainInnerContour;
             contourOuter = obj.CompleteTemplate.midbrainOuterContour;
             centerPoint = obj.CompleteTemplate.CenterMidBrain;
-
             SIZE = obj.CompleteTemplate.Size;
+            
+            
+            %zoom out to show whole rectangle image
+            addToImage = round(0.04*SIZE); %crusial value determining the zoom
+            newImage = uint8(255 * ones(SIZE + 2*addToImage));
+            newImage(1+addToImage(1):SIZE(1)+addToImage(1),...
+                1+addToImage(2):SIZE(2)+addToImage(2),1:3) = Image;
+            
+            %add to coordinates to fit zoom
+            contourCenter = contourCenter + repmat(addToImage(1:2),size(contourCenter,1),1);
+            contourInner = contourInner + repmat(addToImage(1:2),size(contourInner,1),1);
+            contourOuter = contourOuter + repmat(addToImage(1:2),size(contourOuter,1),1);
+            centerPoint = centerPoint + [addToImage(2),addToImage(1)];
+            SIZE = size(newImage);
+            
+            %figure;imagesc(Image)
+            %figure;imagesc(uint8(newImage))
+            
             
             %SET FIGURE SIZE
             %obj.fsxy(1) = 5; %set width
@@ -2255,7 +2295,7 @@ classdef SpotNGlia < handle
             
             %PLOT IMAGE           
 
-            imagesc(Image{1})
+            imagesc(newImage)
             hold on
             plot(contourCenter(:,2),contourCenter(:,1),'Color',[0 166 214]/255,'LineWidth' , 2)
             plot(contourInner(:,2),contourInner(:,1),'Color',[110 187 213]/255,'LineWidth' , 1)
@@ -2266,62 +2306,96 @@ classdef SpotNGlia < handle
             g.Position = [0, 0, 1, 1]; axis off;
             
             
-            %it is nog exacly 1000 what it should be but it is just for showing
-            %this figure that it is made a bit smaller to be able to see whole
-            %square
-            rectangle('Position',[centerPoint-480 960 960],'EdgeColor',[226 26 26]/255,'LineWidth' , 1);
+            %the rectangle is not exacly 1000 what it should be but it is just 
+            %for showing this figure that it is made a bit smaller to be able to 
+            %see whole square
+            %rectangle('Position',[centerPoint-480 960 960],'EdgeColor',[226 26 26]/255,'LineWidth' , 1);
+            
+            rectangle('Position',[centerPoint-500 1000 1000],'EdgeColor',[226 26 26]/255,'LineWidth' , 1);
+            
+            
             
             %EXPORT IMAGE                        
             realsizeandsave(obj, h, ['MidBrainBand']); %export with savename  
         end
-        
         function showMidBrainBand2(obj)
             %%%%%%%%%follow with other brain images
-            obj.LoadParameters('BrainSegmentationInfo')
+            %obj.LoadParameters('BrainSegmentationInfo')
 
-            
-            
-            
             %LOAD/COMPUTE VALUES
-            Image{1} = obj.CompleteTemplate.Template;
-            %Image{2} = obj.CompleteTemplate.BandMidBrain;
-            %Image{3} = obj.CompleteTemplate.MidBrainDistanceMap;
-
-            contourCenter = obj.CompleteTemplate.MeanMidBrain;
-            contourInner = obj.CompleteTemplate.midbrainInnerContour;
-            contourOuter = obj.CompleteTemplate.midbrainOuterContour;
-            centerPoint = obj.CompleteTemplate.CenterMidBrain;
-
+            Images{1} = obj.CompleteTemplate.squareMidbrainBand;
+            Images{2} = obj.CompleteTemplate.polarMidbrainBand;
+            Images{3} = obj.CompleteTemplate.polarMidbrainBandWithGaussian;
+            Images{4} = obj.CompleteTemplate.polarMidbrainBandWithGaussianWithBlurr;
             
-            SIZE = obj.CompleteTemplate.Size;
+            for iImage = 1:numel(Images)
+                SIZE = size(Images{iImage});
+
+                %SET FIGURE SIZE
+                %obj.fsxy(1) = 4; %set width
+                obj.fsxy(2) = 4; %set height                       
+                %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+                obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+                %CREATE FIGURE WITH AXIS                         
+                [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+
+                %PLOT IMAGE           
+                imagesc(Images{iImage});colormap gray;
+                
+                if iImage >= 2
+                    hold on
+                    plot([500 500],[0,500],'Color',[0 166 214]/255,'LineWidth',2)
+                end
+                
+                g.Position = [0, 0, 1, 1]; axis off;
+                %EXPORT IMAGE                        
+                realsizeandsave(obj, h, ['MidBrainBand',num2str(iImage)]); %export with savename  
+            end
+    
+            
+            
+            
+        end       
+        function showMidBrainBandIntersection(obj)
+                         
+            %LOAD/COMPUTE VALUES
+            rectangle = obj.CompleteTemplate.polarMidbrainBand(:,500);
+            rectangleSmooth = obj.CompleteTemplate.polarMidbrainBandWithGaussianWithBlurr(:,500);
+
             
             %SET FIGURE SIZE
-            %obj.fsxy(1) = 5; %set width
+            obj.fsxy(1) = 5; %set width
             obj.fsxy(2) = 4; %set height                       
             %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
-            obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+            %obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
 
             %CREATE FIGURE WITH AXIS                         
             [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
-            
-            %PLOT IMAGE           
-            imagesc(Image{1})
             hold on
-            plot(contourCenter(:,2),contourCenter(:,1),'Color',[0 166 214]/255,'LineWidth' , 2)
-            plot(contourInner(:,2),contourInner(:,1),'Color',[110 187 213]/255,'LineWidth' , 1)
-            plot(contourOuter(:,2),contourOuter(:,1),'Color',[110 187 213]/255,'LineWidth' , 1)
-
-            p1 = plot(centerPoint(1),centerPoint(2),'Color',[226 26 26]/255,'LineWidth' , 2,'Marker' , 'X')
+            plot(rectangleSmooth,'Color',[110 187 213]/255,'LineWidth',2)
+            plot(rectangle,'Color',[0 166 214]/255,'LineWidth',2)
+             
+            %SET AXIS
+            setfigax2(obj, g);
+            set(g, 'XLim', [1, 500]);
+            set(g, 'XTick', [1, 500]);
+            %set(g, 'XTickLabels', [0.90,{''},0.92,{''},0.94,{''},0.96,{''},0.98,{''},1]);
+            %set(g, 'XTickLabels', [0,{'1/2\pi'},{'\pi'},{'3/2\pi'},{'2\pi'}]);
+            g.XLabel.String = 'row pixels';
             
-            g.Position = [0, 0, 1, 1]; axis off;
+            set(g, 'YLim', [0, 1.1]);
+            %set(g, 'YScale', 'log');
+            set(g, 'YTick', [0,1]);
+            %set(g, 'YTickLabels', [1, 2, 5, 10, {'10^2'}, {''}]);
+            %set(g, 'YMinorGrid', 'off');
+            g.YLabel.String = 'filter value';
+  
             %EXPORT IMAGE                        
-            realsizeandsave(obj, h, ['MidBrainBand']); %export with savename  
-        end        
+            realsizeandsave(obj, h, ['MidBrainBandIntersection']); %export with savename  
+        end           
         
-        
-        
-        
-        
+     
         
         %supporting functions used for the show functions
         function [f1, a1] = setfigax1(obj)
