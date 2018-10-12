@@ -14,7 +14,7 @@ end
 
 h = waitbar(0, 'Load Template', 'Name', 'Loading Data');
 
-obj = LoadTemplate(obj);
+%obj = LoadTemplate(obj);
 
 waitbar(0.03, h, 'Brain, Spot, Registration')
 
@@ -61,8 +61,8 @@ delete(h)
 uiwait(uih)
 
     function InitializeCheckup
-        obj = FillComputations(obj, INFO.BrainSegmentationInfo);
-        obj = FillCheckup(obj);
+        FillComputations(obj, INFO.BrainSegmentationInfo);
+        FillCheckup(obj);
         
         if isempty(obj.checkup)
             obj.checkup = obj.Computations;
@@ -453,12 +453,12 @@ uiwait(uih)
         obj.saveit
         
         waitbar(4/6, h, 'save excel sheet')
-        obj = obj.buildsheet;
+        obj.buildsheet;
         waitbar(1, h, 'complete')
         delete(h)
         
         %update the object in workspace, close and reopen CheckFish
-        objout = obj;
+        %objout = obj; %not nesseary anymore as obj (SpotNGlia) is a handle class now
         close(uih);
         close(fh);
     end
