@@ -1,4 +1,4 @@
-function [SpotsDetected, SpotParameters, SpotDetectionInfo, SpotN] = SpotDetectionSliceSNG(Ialigned, CompleteTemplate, cmbr, ZFParameters)
+function [SpotsDetected, SpotParameters, SpotDetectionInfo, SpotN] = SpotDetectionSliceSNG(obj, Ialigned, CompleteTemplate, cmbr)
 
 
 %Version SpotDetectionLink3
@@ -23,7 +23,9 @@ function [SpotsDetected, SpotParameters, SpotDetectionInfo, SpotN] = SpotDetecti
     ZFParameters = obj.ZFParameters;
     CompleteTemplate = TEMPLATE
 %}
-sng_zfinputAssign(ZFParameters, 'SpotDetection');
+obj.SngInputParameters.assign('SpotDetection')
+
+%sng_zfinputAssign(ZFParameters, 'SpotDetection');
 ScaleLevels = max(MPlevels);
 
 %CubeSizeSpotErode = 4;

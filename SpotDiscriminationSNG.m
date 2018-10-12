@@ -1,5 +1,5 @@
 
-function [SpotsDetected,Spotpar, SpotN] = SpotDiscriminationSNG(Spotpar,cmbr, Reginfo, wp, ZFParameters)
+function [SpotsDetected,Spotpar, SpotN] = SpotDiscriminationSNG(Spotpar,cmbr, Reginfo, wp)
 
 
 %{

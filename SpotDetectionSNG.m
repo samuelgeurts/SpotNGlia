@@ -1,4 +1,5 @@
-function [SpotsDetected,SpotParameters,SpotDetectionInfo,SpotN] = SpotDetectionSNG(Ialigned,CompleteTemplate,cmbr,ZFParameters)
+function [SpotsDetected,SpotParameters,SpotDetectionInfo,SpotN] = SpotDetectionSNG(obj,Ialigned,CompleteTemplate,cmbr)
+
 
 
 %Version SpotDetectionLink3
@@ -24,7 +25,9 @@ ZFParameters =  ZFParametersTemp{1}
 
 
 
-sng_zfinputAssign(ZFParameters,'SpotDetection')
+%sng_zfinputAssign(ZFParameters,'SpotDetection')
+obj.SngInputParameters.assign('SpotDetection')
+
 
 ScaleLevels = max(MPlevels);
 
