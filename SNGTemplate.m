@@ -9,8 +9,9 @@ classdef SNGTemplate < handle
         sourcePath
         TemplatePath3dpf
         RoiBrainPath
+        savePath
         
-        SpotNGliaObject
+        %SpotNGliaObject
         
         %Template 
         Template
@@ -23,7 +24,8 @@ classdef SNGTemplate < handle
         BandMidBrain
         polarMidbrainBandWithGaussianWithBlurr
         %Edge Template
-        EdgeTemplate1
+        %EdgeTemplate1
+        EdgeFilter
         
         %Spot 
         SpotVectorArrayProbability
@@ -39,9 +41,10 @@ classdef SNGTemplate < handle
         %area without changing the basic probability area based on the 50 fish
         %batch
         sigmabasedVariable = 6;
-        extraSmoothingKernel = [5,5]  
+        extraSmoothingKernel = [5,5];
+        filterwidth = 21; %width of the average edge template
     end
-    properties(Transient = true) %additional output
+    properties(Transient = true, Hidden = true) %additional output
         % Eyes
         EyeRegion1
         EyeRegion2
@@ -66,6 +69,9 @@ classdef SNGTemplate < handle
         polarMidbrainBand
         polarMidbrainBandWithGaussian
         listGaussians
+        
+        EdgeTemplate1;
+
 
         % ForeBrain
         ForbrainInfo = struct('Poly', [], 'Area', [], 'Centroid', [], 'BoundingBox', []);
@@ -92,7 +98,9 @@ classdef SNGTemplate < handle
             %folder with all 3dpf template information
             objt.TemplatePath3dpf = [objt.sourcePath, '/', 'Template 3 dpf'];
             %folder with all brain rois
-            objt.RoiBrainPath = [objt.sourcePath, filesep, 'Roi brain']; 
+            objt.RoiBrainPath = [objt.sourcePath, filesep, 'Roi brain'];
+            %folder to save
+            objt.savePath = uigetdir(pwd, 'select template sace path');
         end
         function value = get.midbrainXCoordList(objt)
             %caller function to run BrainTemplate
@@ -153,6 +161,8 @@ classdef SNGTemplate < handle
             temp = load([objt.TemplatePath3dpf, '/EdgeTemplate.mat']); %polar transforms and edge template
             objt.EdgeTemplate1 = temp.EdgeTemplate;
             
+            
+            
         end
         function loadSpotParameters(objt)
             % Spot Parameters
@@ -207,9 +217,12 @@ classdef SNGTemplate < handle
             objt.loadSpotParameters;
             objt.loadTemplate;
         end   
+        
         function save(objt)
             save(strcat(objt.sourcePath, filesep, objt.fileName, '.mat'), 'objt');
+            save(strcat(objt.savePath, filesep, objt.fileName, '.mat'), 'objt');  
         end     
+        
         function BrainTemplate(objt)
             % function based on TemplateBrainParameters
             % this function needs aan SpotNGlia object to retrieve information from, stackinfo information
@@ -499,8 +512,34 @@ classdef SNGTemplate < handle
             objt.polarMidbrainBand = polarMidbrainBand;
             objt.polarMidbrainBandWithGaussian = polarMidbrainBandWithGaussian;
             objt.polarMidbrainBandWithGaussianWithBlurr = polarMidbrainBandWithGaussianWithBlurr;
-            objt.listGaussians = listGausians;
+            objt.listGaussians = listGaussians;
             
+        end
+        function BrainEdgeTemplate(objt)
+            %% generate useable edge filter from edge template
+            %add more templates later on
+            %filterwidth = 21; %has to be an odd numberl
+            
+            EdgeTemp = objt.EdgeTemplate1;
+            EdgeTempMean = mean(EdgeTemp, 2);
+            objt.EdgeFilter = repmat(EdgeTempMean, 1, objt.filterwidth);
+            
+            
+            %{
+             figure;
+             imagesc(uint8(EdgeTemp));axis off tight equal
+             set(gca,'position',[0 0 1 1],'units','normalized')
+             truesize(gcf,12*sng_size(get(get(gca,'Children'),'Cdata'),[1,2]))
+
+             figure;imagesc(uint8(EdgeTemp));axis off equal tight
+             figure;imagesc(uint8(EdgeTempMean));sng_imfix
+
+             figure;
+             imagesc(uint8(EdgeFilter));axis off tight equal
+             set(gca,'position',[0 0 1 1],'units','normalized')
+             truesize(gcf,12*sng_size(get(get(gca,'Children'),'Cdata'),[1,2]))
+            %}
+        
         end
     end
         
