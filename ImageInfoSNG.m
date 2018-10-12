@@ -1,4 +1,7 @@
-function [imageinfo] = ImageInfoSNG(imageinfo,zfinput)
+function [imageinfo] = ImageInfoSNG(obj)
+%function [imageinfo] = ImageInfoSNG(imageinfo,zfinput)
+
+
 %this function measures the correlation af adjacent fish-images in a folder en
 %give the boundaries of batches of fishes that are similar
 
@@ -11,19 +14,20 @@ function [imageinfo] = ImageInfoSNG(imageinfo,zfinput)
 %% parameters
 
 
-if ~exist('zfinput','var')
-    zfinput = struct;
-    zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','sorting','Date','high');   
-    zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','levels',1,'low'); %number of scaled levels correlation is performed
-    zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','iterations',10,'low'); %number of iterations iat is performed
-    zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','scale',1/16,'low'); %lowered initial scale to increase computation speed for correlation
-    zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','threshold',0.96,'severe'); %threshold for correlation selection
-    zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','threshold2',2,'severe'); %threshold for warp modulus
-end
-
-sng_zfinputAssign(zfinput,'imageinfo')
+% if ~exist('zfinput','var')
+%     zfinput = struct;
+%     zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','sorting','Date','high');   
+%     zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','levels',1,'low'); %number of scaled levels correlation is performed
+%     zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','iterations',10,'low'); %number of iterations iat is performed
+%     zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','scale',1/16,'low'); %lowered initial scale to increase computation speed for correlation
+%     zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','threshold',0.96,'severe'); %threshold for correlation selection
+%     zfinput = sng_zfinput(zfinput,0,'imageinfo','stackselection','threshold2',2,'severe'); %threshold for warp modulus
+% end
 
 
+%sng_zfinputAssign(zfinput,'imageinfo')
+obj.SngInputParameters.assign('ImageInfo')
+imageinfo = obj.ImageInfo;
 
 %% imageinfo output variable
 

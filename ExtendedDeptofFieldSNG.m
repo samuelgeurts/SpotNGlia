@@ -1,14 +1,18 @@
-function [Icombined,edoutput] = ExtendedDeptofFieldLink2(CorrectedSlice,zfinput)
+function [Icombined,edoutput] = ExtendedDeptofFieldLink2(obj, CorrectedSlice)
 
 %version ExtendedDeptofFieldLink2
 %       make usable for zfinput parameter system
 
-if ~exist('zfinput','var');
-    zfinput = struct
-    zfinput = sng_zfinput(zfinput,0,'ExtendedDeptOfField','edof','variancedisksize',7,'?'); %sigma for bandpassfilter (lowpass)    
-end
+% if ~exist('zfinput','var');
+%     zfinput = struct
+%     zfinput = sng_zfinput(zfinput,0,'ExtendedDeptOfField','edof','variancedisksize',7,'?'); %sigma for bandpassfilter (lowpass)    
+% end
+% 
+% sng_zfinputAssign(zfinput,'ExtendedDeptOfField')
 
-sng_zfinputAssign(zfinput,'ExtendedDeptOfField')
+obj.SngInputParameters.assign('ExtendedDeptofField')
+
+
 
 [IndexMatrix, variance_sq, Icombined] = sng_StackDOF2(CorrectedSlice,variancedisksize);
 

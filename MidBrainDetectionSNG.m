@@ -1,4 +1,4 @@
-function [Ibrain,Parameters] = MidBrainDetectionSNG(AlignedFish,CompleteTemplate,ZFParameters)
+function [Ibrain,Parameters] = MidBrainDetectionSNG(obj,AlignedFish,CompleteTemplate)
 %Detect midbrain
 %works in combination with other "Link" functions
 %based on MidBraindetection 2 and GeneratePolarTransforms2
@@ -22,7 +22,8 @@ ZFParameters = obj.ZFParameters
 %}
 
 
-sng_zfinputAssign(ZFParameters,'BrainSegmentation')
+%sng_zfinputAssign(ZFParameters,'BrainSegmentation')
+obj.SngInputParameters.assign('BrainSegmentation')
 
 
 
@@ -162,6 +163,7 @@ sng_zfinputAssign(ZFParameters,'BrainSegmentation')
 %% Filter image with brain probability 
     
     %INorm2 = INorm .* IDistmap4;
+    
     INorm2 = INorm .* CompleteTemplate.polarMidbrainBandWithGaussian;
 
     %{
