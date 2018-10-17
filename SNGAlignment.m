@@ -126,16 +126,6 @@ classdef SNGAlignment
             end
             obr.template = SpotNGliaObject.CompleteTemplate.Template;
         end
-        
-        
-%         function obr = zfproperties(obr, ZFParameters)
-%             temp = ZFParameters(strcmp({ZFParameters.stage}, 'Registration'));
-%             for k = 1:numel(temp)
-%                 obr.(temp(k).name) = temp(k).value;
-%             end
-%         end %assign Registration properties from ZFParameters from SpotNGlia object
-        
-        
         function obr = BackgroundRemoval(obr, Icombined)
             
             if exist('Icombined', 'var')

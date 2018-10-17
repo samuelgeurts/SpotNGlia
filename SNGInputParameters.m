@@ -2,13 +2,13 @@ classdef SNGInputParameters
 %class containting SpotNGlia input parameters
     properties
         ImageInfo
-        Preprocession
+        Preprocessing
         ExtendedDeptofField
         Registration
         BrainSegmentation
         SpotDetection
         
-        StoredInputParameters
+        StoredInputParameters  %future property storing other 
     end
     
     
@@ -31,15 +31,15 @@ classdef SNGInputParameters
             objI.ImageInfo.threshold2 = 2;
             objI.ImageInfo.sorting = [];
             
-            objI.Preprocession.onoff = 0;
-            objI.Preprocession.sigmalp = 1;
-            objI.Preprocession.sigmahp = 4;
-            objI.Preprocession.scaleC = 0.2500;
-            objI.Preprocession.levelsC = 2;
-            objI.Preprocession.iterationsC = 10;
-            objI.Preprocession.scaleS = 0.25;
-            objI.Preprocession.levelsS = 3;
-            objI.Preprocession.iterationsS = 20;
+            objI.Preprocessing.onoff = true; %changed 20181015, Think that is should be 1
+            objI.Preprocessing.sigmalp = 1;
+            objI.Preprocessing.sigmahp = 4;
+            objI.Preprocessing.scaleC = 0.2500;
+            objI.Preprocessing.levelsC = 2;
+            objI.Preprocessing.iterationsC = 10;
+            objI.Preprocessing.scaleS = 0.25;
+            objI.Preprocessing.levelsS = 3;
+            objI.Preprocessing.iterationsS = 20;
             
             objI.ExtendedDeptofField.variancedisksize = 7;
             

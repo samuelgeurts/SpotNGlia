@@ -92,7 +92,7 @@ classdef SpotNGlia < handle
                 
                 %load([obj.SourcePath, filesep, 'zfinput.mat']); %#ok<LOAD>
                 %obj.ZFParameters = zfinput;
-                obj.SngInputParameters = SNGInputParameters;
+                obj.SngInputParameters = SNGInputParameters; %%Later een get function van maken misschien
                 
                 %file which contains all batch specific computation info
                 matObj = matfile([obj.SavePath, filesep, obj.InfoName, '.mat']);
@@ -254,8 +254,7 @@ classdef SpotNGlia < handle
                 disp('loading Template3dpf')
             end
             value = obj.CompleteTemplate;
-        end
-    
+        end   
         function SliceCombination(obj, slicenumbers)
             %computes imageinfo and stackinfo
             %       sorting = ['date' or 'name']
@@ -359,14 +358,9 @@ classdef SpotNGlia < handle
             %gave an issue for background removal, the triangle method (Zack threshold method)
             
             h = waitbar(0, 'Preprocession', 'Name', 'SpotNGlia');
+            
             [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
             obj.nfishes = numel(obj.StackInfo);
-            
-            %if ~isempty(obj.ImageInfo)
-            %    [obj.StackInfo] = StackInfoSNG(obj.ImageInfo);
-            %else
-            %    error('First run SliceCombination');
-            %end
             
             if ~obj.ImageInfoChecked_TF
                 answer = questdlg('Do you confirm ImageInfo?', '', 'Yes', 'No', 'No');
@@ -389,14 +383,14 @@ classdef SpotNGlia < handle
                 obj.fishnumbers.preprocession = fishnumbers;
                 
                 %only preallocate if more than 1 fish has to be processed
-                if nfishes > 1
-                    PreprocessionInfo(nfishes) = struct('ColorWarp', [], ...
-                        'SliceWarp', [], ...
-                        'NNC_Img_before', [], ...
-                        'NNC_Img_after', [], ...
-                        'NNC_BP_before', [], ...
-                        'NNC_BP_after', []);
-                end
+%                 if nfishes > 1
+%                     PreprocessionInfo(nfishes) = struct('ColorWarp', [], ...
+%                         'SliceWarp', [], ...
+%                         'NNC_Img_before', [], ...
+%                         'NNC_Img_after', [], ...
+%                         'NNC_BP_before', [], ...
+%                         'NNC_BP_after', []);
+%                 end
                 
                 %folder to save CorrectedFish
                 TempFolderName = ([obj.SavePath, filesep, 'CorrectedFish']);
@@ -404,45 +398,35 @@ classdef SpotNGlia < handle
                     mkdir(TempFolderName)
                 end
                 
-                for k1 = 1:nfishes
+                PreprocessingObject(1:nfishes) = SNGPreprocessing(obj);
+                
+                for iFish = 1:nfishes
                     
-                    waitbar(k1/nfishes, h, ['Preprocession ', num2str(k1), ' / ', num2str(nfishes)])
-                    
-                    %select slices
-                    fn = fishnumbers(k1);
-                    
+                    waitbar(iFish/nfishes, h, ['Preprocession ', num2str(iFish), ' / ', num2str(nfishes)])
+                    fn = fishnumbers(iFish);
+
+                    %Load slices
                     ImageSlice = cell(1, obj.StackInfo(fn).stacksize); %preallocate for every new slice
-                    for k2 = 1:obj.StackInfo(fn).stacksize
-                        ImageSlice{k2} = imread([obj.FishPath, filesep, obj.StackInfo(fn).imagenames{k2}]);
-                        ImageSlice{k2} = im2uint8(ImageSlice{k2});
+                    nSlices = obj.StackInfo(fn).stacksize;
+                    for iSlice = 1:nSlices
+                        ImageSlice{iSlice} = imread([obj.FishPath, filesep, obj.StackInfo(fn).imagenames{iSlice}]);
+                        ImageSlice{iSlice} = im2uint8(ImageSlice{iSlice});
                     end
+                                               
+                    PreprocessingObject(iFish).ImageSlice = ImageSlice;
+                    PreprocessingObject(iFish) = PreprocessingObject(iFish).RgbCorrection;
+                    PreprocessingObject(iFish) = PreprocessingObject(iFish).StackCorrection;
+
+                    sng_SaveCell2TiffStack(PreprocessingObject(iFish).CorrectedSlice,[TempFolderName, filesep, obj.StackInfo(iFish).stackname, '.tif'])
                     
-                    %                    if savefig1_TF
-                    %                        sng_SaveCell2TiffStack(ImageSlice,[SavePath,'/stack/',stackinfo(k1).stackname,'.tif'])
-                    %                    end
-                    
-                    %[CorrectedSlice,ppoutput(k1)] = PreprocessionSNG(ImageSlice,obj.ZFParameters);
-                    if k1 == 1
-                        [CorrectedFishTemp, PreprocessionInfo] = PreprocessionSNG(obj, ImageSlice);
-                    else
-                        [CorrectedFishTemp, PreprocessionInfo(k1)] = PreprocessionSNG(obj, ImageSlice);
-                    end
-                    
-                    sng_SaveCell2TiffStack(CorrectedFishTemp, [TempFolderName, filesep, obj.StackInfo(k1).stackname, '.tif'])
-                    
-                    %obj.CorrectedFish(k1).image = CorrectedFishTemp; <- %save to object takes to much space
-                    
-                    %TODO for imaging   [CorrectedSlice,ppoutput,ImageSliceCor,FiltIm] = PreprocessionSNG(ImageSlice,zfinput)
-                    %                    if savefig2_TF
-                    %                        sng_SaveCell2TiffStack(CorrectedSlice,[obj.SavePath,filesep,StackInfo(k1).stackname,'.tif'])
-                    %                    end
                 end
             end
-            obj.saveit
-            delete(h)
-            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'PreprocessionInfo', '-append')
+            %obj.saveit removed because it is not necessary to save in between
+            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'PreprocessingObject', '-append')
             
+            delete(h)
         end
+        
         function ExtendedDeptOfField(obj, fishnumbers)
             
             h = waitbar(0, 'Extended Dept of Field', 'Name', 'SpotNGlia');
@@ -525,25 +509,25 @@ classdef SpotNGlia < handle
             
             RegObject(1:nfishes) = SNGAlignment(obj);
             
-            for k1 = 1:nfishes
-                waitbar(k1/nfishes, h, ['Registration ', num2str(k1), ' / ', num2str(nfishes)])
-                fn = fishnumbers(k1);
+            for iFish = 1:nfishes
+                waitbar(iFish/nfishes, h, ['Registration ', num2str(iFish), ' / ', num2str(nfishes)])
+                fn = fishnumbers(iFish);
                 CombinedFish = imread([obj.SavePath, filesep, 'CombinedFish', filesep, obj.StackInfo(fn).stackname, '.tif']);
                 
                 %[AlignedFishTemp, RegistrationInfo{k1, 1}] = AlignmentSNG(CombinedFish, obj.CompleteTemplate, obj.ZFParameters);
                 
-                RegObject(k1).Icombined = CombinedFish;
-                RegObject(k1) = RegObject(k1).All;
-                RegistrationInfo{k1, 1} = oldoutputfunction(RegObject(k1)); %to be removed later, use instead RegObject itself
-                AlignedFishTemp = RegObject(k1).Ialigned;
-                RegObject(k1) = RegObject(k1).ClearVars;
+                RegObject(iFish).Icombined = CombinedFish;
+                RegObject(iFish) = RegObject(iFish).All;
+                %%RegistrationInfo{k1, 1} = oldoutputfunction(RegObject(k1)); %to be removed later, use instead RegObject itself
+                AlignedFishTemp = RegObject(iFish).Ialigned;
+                RegObject(iFish) = RegObject(iFish).ClearVars;
                 
-                imwrite(uint8(AlignedFishTemp), [TempFolderName, filesep, obj.StackInfo(k1).stackname, '.tif'], ...
+                imwrite(uint8(AlignedFishTemp), [TempFolderName, filesep, obj.StackInfo(iFish).stackname, '.tif'], ...
                     'WriteMode', 'overwrite', 'Compression', 'none');
                 %generates matrix with MeanFishColors
                 
-                MeanFishColor(k1, 1:3) = RegistrationInfo{k1}(strcmp({RegistrationInfo{k1}.name}, 'MeanFishColor')).value;
-                MaxFishColor(k1, 1:3) = RegistrationInfo{k1}(strcmp({RegistrationInfo{k1}.name}, 'MaxFishColor')).value;
+                MeanFishColor(iFish, 1:3) = RegistrationInfo{iFish}(strcmp({RegistrationInfo{iFish}.name}, 'MeanFishColor')).value;
+                MaxFishColor(iFish, 1:3) = RegistrationInfo{iFish}(strcmp({RegistrationInfo{iFish}.name}, 'MaxFishColor')).value;
             end
             
             obj.BatchInfo.MeanMaxFishColor = mean(MaxFishColor(:));
