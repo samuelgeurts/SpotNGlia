@@ -121,9 +121,10 @@ classdef SNGAlignment
                 obr.(inputFields{iInputField}) = SpotNGliaObject.SngInputParameters.Registration.(inputFields{iInputField});
             end
             
-            if isempty(SpotNGliaObject.CompleteTemplate)    
-                SpotNGliaObject = SpotNGliaObject.LoadTemplate;
-            end
+%             if isempty(SpotNGliaObject.CompleteTemplate)    
+%                 SpotNGliaObject = SpotNGliaObject.LoadTemplate;
+%             end
+            
             obr.template = SpotNGliaObject.CompleteTemplate.Template;
         end
         function obr = BackgroundRemoval(obr, Icombined)
