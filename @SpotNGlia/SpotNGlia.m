@@ -1,5 +1,7 @@
 classdef SpotNGlia < handle
     
+    %TODO set Properties - Object Hidden true before release
+    
     properties
         FishPath = []
         SourcePath = []
@@ -51,7 +53,6 @@ classdef SpotNGlia < handle
         exportit = false;
     end
     properties(Transient = true)
-        
         PreprocessionInfo
         ExtendedDeptOfFieldInfo
         RegistrationInfo
@@ -60,11 +61,10 @@ classdef SpotNGlia < handle
         SpotsDetected
         SpotParameters
     end   
-    properties(Transient = true)%, Hidden = true)
+    properties(Transient = true, Hidden = true)
     	CompleteTemplate
         RegObject %new registration parameters
-       
-        
+        PreprocessingObject %new preprocessing parameters
     end
     
     
@@ -245,16 +245,41 @@ classdef SpotNGlia < handle
             
             obj.OS = getenv('OS');
             
-        end 
+        end
+        
         function value = get.CompleteTemplate(obj)
             if isempty(obj.CompleteTemplate)
                 temp = load([obj.SourcePath, filesep, 'Template3dpf', '.mat']);
                 obj.CompleteTemplate = temp.objt;
-                obj.CompleteTemplate.SpotNGliaObject = obj;
+                %obj.CompleteTemplate.SpotNGliaObject = obj; ?is commented in CompleteTemplate, why?
                 disp('loading Template3dpf')
             end
             value = obj.CompleteTemplate;
-        end   
+        end
+        function value = get.PreprocessingObject(obj)
+            if isempty(obj.PreprocessingObject)
+                disp('loading PreprocessingObject')
+                temp = load([obj.SavePath, filesep, obj.InfoName, '.mat'], 'PreprocessingObject');
+                obj.PreprocessingObject = temp.PreprocessingObject;
+                %obj.PreprocessingObject.SpotNGliaObject = obj; ?not added, maybe necessary
+            end
+            value = obj.PreprocessingObject;
+        end
+        function value = get.RegObject(obj)
+            if isempty(obj.RegObject)
+                disp('loading RegObject')
+                temp = load([obj.SavePath, filesep, obj.InfoName, '.mat'], 'RegObject');
+                if isempty(fields(temp))
+                    temp(1:numel(obj.StackInfo)) = SNGAlignment(obj);
+                    obj.RegObject = temp;
+                else
+                    obj.RegObject = temp.RegObject;
+                end          
+                %obj.RegObject.SpotNGliaObject = obj; ?not added, maybe necessary
+            end
+            value = obj.RegObject;
+        end
+        
         function SliceCombination(obj, slicenumbers)
             %computes imageinfo and stackinfo
             %       sorting = ['date' or 'name']
@@ -398,35 +423,34 @@ classdef SpotNGlia < handle
                     mkdir(TempFolderName)
                 end
                 
-                PreprocessingObject(1:nfishes) = SNGPreprocessing(obj);
-                
+                %is used to be able to use parfor with arbitrary fishnumbers
+                %parfor is only able to fill a struct/class linearly
+                %in future use datasequence (matlab 2018)
+                PreprocessingObject(1:numel(obj.StackInfo)) = SNGPreprocessing(obj);        
                 for iFish = 1:nfishes
                     
-                    waitbar(iFish/nfishes, h, ['Preprocession ', num2str(iFish), ' / ', num2str(nfishes)])
+%                    waitbar(iFish/nfishes, h, ['Preprocession ', num2str(iFish), ' / ', num2str(nfishes)])
                     fn = fishnumbers(iFish);
-
-                    %Load slices
-                    ImageSlice = cell(1, obj.StackInfo(fn).stacksize); %preallocate for every new slice
-                    nSlices = obj.StackInfo(fn).stacksize;
-                    for iSlice = 1:nSlices
-                        ImageSlice{iSlice} = imread([obj.FishPath, filesep, obj.StackInfo(fn).imagenames{iSlice}]);
-                        ImageSlice{iSlice} = im2uint8(ImageSlice{iSlice});
-                    end
-                                               
-                    PreprocessingObject(iFish).ImageSlice = ImageSlice;
-                    PreprocessingObject(iFish) = PreprocessingObject(iFish).RgbCorrection;
-                    PreprocessingObject(iFish) = PreprocessingObject(iFish).StackCorrection;
-
-                    sng_SaveCell2TiffStack(PreprocessingObject(iFish).CorrectedSlice,[TempFolderName, filesep, obj.StackInfo(iFish).stackname, '.tif'])
+        
+                    PreprocessingObject(fn).imageNames = obj.StackInfo(fn).imagenames;
+                    PreprocessingObject(fn).imagePath = obj.FishPath;   
+                    PreprocessingObject(fn).nSlices = obj.StackInfo(fn).stacksize;
+                    PreprocessingObject(fn).iFish = fn;
                     
-                end
+                    PreprocessingObject(fn) = PreprocessingObject(fn).loadImageSlices;
+                    PreprocessingObject(fn) = PreprocessingObject(fn).rgbCorrection;
+                    PreprocessingObject(fn) = PreprocessingObject(fn).rgbWarp;
+                    PreprocessingObject(fn) = PreprocessingObject(fn).stackCorrection;
+
+                    sng_SaveCell2TiffStack(PreprocessingObject(fn).correctedSlice,[TempFolderName, filesep, obj.StackInfo(fn).stackname, '.tif'])
+                    disp(num2str(fn))
+                 end
             end
             %obj.saveit removed because it is not necessary to save in between
             save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'PreprocessingObject', '-append')
             
             delete(h)
-        end
-        
+        end    
         function ExtendedDeptOfField(obj, fishnumbers)
             
             h = waitbar(0, 'Extended Dept of Field', 'Name', 'SpotNGlia');
@@ -1479,7 +1503,7 @@ classdef SpotNGlia < handle
                 %fsx = 5;fsy = 10;
                 figurehandle = figure('PaperUnits', 'centimeters', 'Color', [1, 1, 1]);
                 axishandle = gca;
-                sng_figcm(fsx, fsy);
+                SpotNGlia.sng_figcm(fsx, fsy);
             end
             function setfigax2(axishandle)
                 set(axishandle, 'FontName', 'arial', 'FontSize', 8, 'XGrid', 'on', 'YGrid', 'on');
@@ -1648,6 +1672,35 @@ classdef SpotNGlia < handle
             end
             disp([obj.SaveName])
         end
+        
+        function averageRGBWarp(obj)
+            %displays the average warp and the standart deviation of the rgb alignment
+            %both for the blue to red and green to red channel vector
+            
+            nImages = sum([obj.StackInfo.stacksize]);
+            greenToRedWarp = zeros(nImages,2);
+            blueToRedWarp = zeros(nImages,2);
+            iImage = 1;
+            for iFish = 1:obj.nfishes
+                for iSlice = 1:obj.StackInfo(iFish).stacksize
+                    blueToRedWarp(iImage,1:2) = (obj.PreprocessingObject(iFish).colorWarp{iSlice}{1});
+                    greenToRedWarp(iImage,1:2) = (obj.PreprocessingObject(iFish).colorWarp{iSlice}{2});
+                    iImage = iImage + 1;
+                end
+            end
+            
+            normBlueToRedWarp = sqrt(sum(blueToRedWarp.^2,2)); %norm of the warp
+            normGreenToRedWarp = sqrt(sum(greenToRedWarp.^2,2)); %norm of the warp
+            
+            meanNormBlueToRedWarp = mean(normBlueToRedWarp);
+            meanNormGreenToRedWarp = mean(normGreenToRedWarp);
+            stdnNormBlueToRedWarp = std(normBlueToRedWarp);
+            stdNormGreenToRedWarp = std(normGreenToRedWarp);
+            
+            disp(['blueToRedWarp  mean: ', num2str(meanNormBlueToRedWarp), ' std: ', num2str(stdnNormBlueToRedWarp)]);
+            disp(['greenToRedWarp  mean: ', num2str(meanNormGreenToRedWarp), ' std: ', num2str(stdNormGreenToRedWarp)]);
+            
+        end
     end
     
     methods %all Show methods
@@ -1693,6 +1746,8 @@ classdef SpotNGlia < handle
             %LOAD/COMPUTE VALUES
             %Image = obj.CompleteTemplate.Template;
             SIZE = size(Image);
+            
+            %IMAGE ENHANCEMENT
             
             %SET FIGURE SIZE
             %obj.fsxy(1) = 5; %set width
@@ -1918,12 +1973,145 @@ classdef SpotNGlia < handle
             realsizeandsave(obj, h4, 'FishDiscrimination4');
             
         end
-        
-        function showRGBCorrection
-        	LoadParameters(obj, 'PreprocessionInfo');
-            %%unfinished
+        function showOriginal(obj, fn)
+    
+            imageSlice = cell(1, obj.StackInfo(fn).stacksize); %preallocate for every new slice
+            for iSlice = 1:obj.StackInfo(fn).stacksize
+                imageSlice{iSlice} = imread([obj.FishPath,filesep, obj.StackInfo(fn).imagenames{iSlice}]);              
+                imageSlice{iSlice} = im2uint8(imageSlice{iSlice}(:,:,1:3));                
+            
+            
+            %LOAD/COMPUTE VALUES
+            %Image = obj.CompleteTemplate.Template;
+            SIZE = size(imageSlice{iSlice});
+            
+            %IMAGE ENHANCEMENT
+            
+            %SET FIGURE SIZE
+            %obj.fsxy(1) = 5; %set width
+            obj.fsxy(2) = 3; %set height                       
+            %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+            obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+            %CREATE FIGURE WITH AXIS 
+            [h, g] = setfigax1(obj);
+            
+            %PLOT IMAGE
+            imagesc(imageSlice{iSlice})
+            
+            g.Position = [0, 0, 1, 1]; axis off;
+            
+            %EXPORT IMAGE
+            realsizeandsave(obj, h, ['OriginalImageFish',num2str(fn),'_',num2str(iSlice)]);
+            
+            end
+            
         end
-        
+        function showRGBCorrection1(obj, fn)
+
+            %LOAD/COMPUTE VALUES
+            if isempty(obj.PreprocessingObject(fn).bandFiltered)
+                obj.PreprocessingObject(fn) = obj.PreprocessingObject(fn).loadImageSlices;
+                obj.PreprocessingObject(fn) = obj.PreprocessingObject(fn).rgbBandpassFilter;
+            end
+            Image = obj.PreprocessingObject(fn).bandFiltered{obj.PreprocessingObject.sliceNo};
+            
+            %IMAGE ENHANCEMENT
+                Image2 = abs(0.15*Image);
+
+                SIZE = size(Image);
+
+                %SET FIGURE SIZE
+                %obj.fsxy(1) = 5; %set width
+                obj.fsxy(2) = 10; %set height                       
+                %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+                obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+                %CREATE FIGURE WITH AXIS 
+                [h, g] = setfigax1(obj);
+
+                %PLOT IMAGE
+                imagesc(Image2)
+
+                g.Position = [0, 0, 1, 1]; axis off;
+
+                %EXPORT IMAGE
+                realsizeandsave(obj, h, ['BandFiltered_1']);
+            
+        end	
+        function showRGBCorrection2(obj, fn)
+
+            %LOAD/COMPUTE VALUES
+            if isempty(obj.PreprocessingObject(fn).bandFiltered)
+                obj.PreprocessingObject(fn) = obj.PreprocessingObject(fn).loadImageSlices;
+                obj.PreprocessingObject(fn) = obj.PreprocessingObject(fn).rgbBandpassFilter;
+            end
+            Image = obj.PreprocessingObject(fn).filteredImage{obj.PreprocessingObject.sliceNo};
+            
+            
+            %IMAGE ENHANCEMENT
+                Image2 = abs(0.15*Image);
+
+                SIZE = size(Image);
+
+                %SET FIGURE SIZE
+                %obj.fsxy(1) = 5; %set width
+                obj.fsxy(2) = 8; %set height                       
+                %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+                obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+                %CREATE FIGURE WITH AXIS 
+                [h, g] = setfigax1(obj);
+                
+                %PLOT IMAGE
+                imagesc(Image2)
+
+                g.Position = [0, 0, 1, 1]; axis off;
+
+                %EXPORT IMAGE
+                realsizeandsave(obj, h, ['filteredImage']);
+        end	            
+        function showRGBCorrectionZoom(obj, fn)
+
+            %LOAD/COMPUTE VALUES
+            if isempty(obj.PreprocessingObject(fn).bandFiltered)
+                obj.PreprocessingObject(fn) = obj.PreprocessingObject(fn).loadImageSlices;
+                obj.PreprocessingObject(fn) = obj.PreprocessingObject(fn).rgbBandpassFilter;
+            end
+            Image = obj.PreprocessingObject(fn).filteredImage{obj.PreprocessingObject.sliceNo};
+            
+            
+            %IMAGE ENHANCEMENT
+                Image2 = abs(0.15*Image);
+              
+                SIZE = size(Image);
+                
+                Image2 = Image2(1:SIZE(2)/1,1:end);
+                
+                %zoom parameters
+                zoomn = 20;
+                zoompoint = [1404,643];
+                
+                %SET FIGURE SIZE
+                %obj.fsxy(1) = 5; %set width
+                obj.fsxy(2) = 8; %set height                       
+                %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+                obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+                %CREATE FIGURE WITH AXIS 
+                [h, g] = setfigax1(obj);
+                
+                %PLOT IMAGE
+                imagesc(Image2)
+
+                sng_zoom(zoomn, zoompoint,SIZE,g) 
+                
+                g.Position = [0, 0, 1, 1]; axis off;
+
+                %EXPORT IMAGE
+                realsizeandsave(obj, h, ['filteredImage']);
+        end	            
+                
         function showBackgroundRemoval(obj, fn)
             
             %sng_zfinputAssign(obj.ZFParameters, 'Registration')
