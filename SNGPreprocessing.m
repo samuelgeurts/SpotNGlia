@@ -18,8 +18,12 @@ classdef SNGPreprocessing
         scaleS = [];
         levelsS = [];
         iterationsS = [];
+        %extended dept of field
+        variancedisksize = []; %sets bandpassfilter on or off
+        
         %from CompleteTemplate
         template = []
+        
         
         %ShowMovieProperties
         magnification = [1, 20];
@@ -69,13 +73,13 @@ classdef SNGPreprocessing
             for iInputField = 1:numel(inputFields)
                 obp.(inputFields{iInputField}) = SpotNGliaObject.SngInputParameters.Preprocessing.(inputFields{iInputField});
             end
+            
         end
         function obp = set.imageSlice(obp, val)
             %automatically updating the property nSlices when updating imageSlice
             obp.imageSlice = val;
             obp.nSlices = numel(val);
-        end
-        
+        end    
         function obp = loadImageSlices(obp)                    %Load slices
                 obp.imageSlice = cell(1, obp.nSlices); %preallocate for every new slice
             for iSlice = 1:obp.nSlices
@@ -83,7 +87,6 @@ classdef SNGPreprocessing
                 obp.imageSlice{iSlice} = im2uint8(obp.imageSlice{iSlice}(:,:,1:3));                
             end
         end
-        
         function obp = rgbCorrection(obp)
             %computes rgb correction i.e. translation of color channels
             
@@ -181,6 +184,137 @@ classdef SNGPreprocessing
         function obp = stackCorrection(obp)
             [obp.sliceWarp, obp.correctedSlice] = obp.sng_stackAlignment(obp.imageSliceCor, obp.scaleS, 'translation', obp.levelsS, obp.iterationsS);
         end
+        
+        function obp = ExtendedDeptofField(obp)
+            
+            %version ExtendedDeptofFieldLink2
+            %       make usable for zfinput parameter system
+            %20181204   added to SNGPreprocessing
+            
+            
+            
+            
+            [IndexMatrix, variance_sq, Icombined] = sng_StackDOF2(CorrectedSlice, variancedisksize);
+            
+            
+            %function [IndexMatrix, variance_sq, Icombined] = sng_StackDOF2(ImgCell,win_size,filt)
+
+if ~exist('win_size','var')
+    win_size = 3;
+end
+if ~exist('filt','var')
+    filt = 'max';
+end
+
+obp.variancedisksize
+
+
+n = numel(ImgCell);
+
+[M,N,~] = size(ImgCell{1});
+variance_sq = zeros(M,N,size(ImgCell,1));
+
+
+% Making spherical structuring element for determing the local variance
+% with radisu win_size
+ struc_el = fspecial('disk', win_size)>0;
+ 
+ % Calculating the local variance for each pixel and each slice
+ for i = 1:n 
+    variance = stdfilt(ImgCell{i}, struc_el);
+    variance_sq(:,:,i) = sum(variance,3);
+ 
+    %variance_sq(:,:,i) = sqrt(sum(variance.^2,3));
+
+ end
+ 
+% Making an MxN image with the slice indexes of the maximum/minimum local variance values
+if strcmp(filt,'min')
+    [~,slicen] = min(variance_sq,[],3);    
+elseif strcmp(filt,'max')   
+    [~,slicen] = max(variance_sq,[],3);
+else
+    error('wronginput')
+end
+
+%create a logic image which selects pixels form the different slices
+IndexMatrix = false(size(variance_sq));
+Btemp = (slicen(:) - 1) * M*N; 
+Ctemp = 1:M*N;
+IndexMatrix(Btemp+Ctemp') = true;
+
+if nargout >= 3
+Icombined = sng_SliceCombine(ImgCell,IndexMatrix);
+end
+
+
+
+%{
+figure;imagesc(Img{1})
+figure;imagesc(Img{2})
+figure;imagesc(Img{3})
+figure;imagesc(Img{4})
+
+
+figure;imagesc(variance_sq(:,:,1))
+figure;imagesc(variance_sq(:,:,2))
+figure;imagesc(variance_sq(:,:,3))
+figure;imagesc(variance_sq(:,:,4))
+
+figure;imagesc(Icombined)
+
+%}
+%stacked double used
+%value win_size is char, should be int
+
+
+            
+            
+            
+            Icombined = uint8(Icombined);
+            edoutput.IndexMatrix = uint8(IndexMatrix);
+            edoutput.variance_sq = uint8(variance_sq);
+            
+            
+            %{
+ sz = size(CorrectedSlice{1});
+ for k = 1:numel(CorrectedSlice)
+ figure;imagesc(uint8(CorrectedSlice{k}))
+ axis off tight equal
+ set(gca,'position',[0 0 1 1],'units','normalized')
+ text(sz(2)*0.95,sz(1)*0.05,num2str(k),'FontSize',20)
+ end
+ 
+ for k = 1:numel(CorrectedSlice)
+ figure;imagesc(uint8(variance_sq(:,:,k)));
+ axis off tight equal
+ set(gca,'position',[0 0 1 1],'units','normalized')
+ text(sz(2)*0.95,sz(1)*0.05,num2str(k),'FontSize',20,'Color',[1 1 1])
+ end
+ 
+ SelectionImage = CorrectedSlice;
+ for k = 1:numel(CorrectedSlice)
+ SelectionImage{k}(repmat(slicen,1,1,3) ~= k) = 0;
+ figure;imagesc(uint8(SelectionImage{k}));
+ axis off tight equal
+ set(gca,'position',[0 0 1 1],'units','normalized')
+     if k == 1;
+         text(sz(2)*0.95,sz(1)*0.05,num2str(k),'FontSize',20,'Color',[0 0 0])
+     else
+         text(sz(2)*0.95,sz(1)*0.05,num2str(k),'FontSize',20,'Color',[1 1 1])
+     end
+ end
+ 
+ figure;imagesc(Icombined)
+ set(gca,'position',[0 0 1 1],'units','normalized')
+ axis off tight equal
+ 
+ 
+            %}
+            
+        end
+        
+        
         function showRGBCorrectionZoomIn(obp)
             
             zoomn = obp.magnification;
