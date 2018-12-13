@@ -107,7 +107,7 @@ classdef SpotNGlia
                 %expression = ['\', filesep];
                 splitStr = regexp(SpotNGliaPath, filesep, 'split');
                 path = [];
-                for k1 = 1:numel(splitStr) - 3
+                for k1 = 1:numel(splitStr) - 2
                     path = [path, splitStr{k1}, filesep]; %#ok<AGROW>
                 end
                 obj.SourcePath = [path, 'Source'];
