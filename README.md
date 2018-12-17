@@ -70,6 +70,9 @@ The fishes are shown and braincorrections and spotcorrections can be made
 ```
 obj = obj.CheckFish
 ```
+This is a screenshot of the userinterface.
+![User Interface](https://github.com/samuelgeurts/samuelgeurts.github.io/blob/master/UserInterface.png)
+
 A csv file is generated in the save folder containing all uncorrected and corrected spot data.
 
 ## other usefull functions
