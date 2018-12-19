@@ -70,7 +70,7 @@ The fishes are shown and braincorrections and spotcorrections can be made
 ```
 obj = obj.CheckFish
 ```
-A screenshot of the userinterface which is used to check and correct brain edge and spotlocations.
+A screenshot of the user interface which can be used to check and correct brain edge and spot locations.
 
 ![User Interface](https://samuelgeurts.github.io/SpotNGlia/UserInterface.png)
 
