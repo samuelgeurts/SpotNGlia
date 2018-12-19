@@ -1,11 +1,8 @@
 # SpotNGlia
 
-TODO licence
-TODO user interface + image
-
-With this tool automated counting of microglia cells insite the midbrain of 3dpf zebrafish multistack brightfield images is performed. 
+With this tool automated counting of microglia cells inside the midbrain of 3dpf zebrafish multistack brightfield images is performed. 
 The algorithm can be distinguished in 5 main steps which have to be applied sequential. 
-First, preprocessing which contains image corrections and enhancements on single fish images also the image slices of a single fish are merged such that in focus data is preserved. Second, image registration is applied, where a fish image is transformed such that it is aligned with a template fish with known orientation. Third, segmentation of the brain is applied to find the brain boundaries as we only have to look for microglia (red spots) in the brain area. Finally, a spotdetection method based on wavelets is applied to count microglia. A menu shows to results and enables manual correction.
+First, preprocessing which contains image corrections and enhancements on single fish images also the image slices of a single fish are merged such that in focus data is preserved. Second, image registration is applied, where a fish image is transformed such that it is aligned with a template fish with known orientation. Third, segmentation of the brain is applied to find the brain boundaries as we only have to look for microglia (red spots) in the brain area. Finally, a spotdetection method based on wavelets is applied to count microglia. A menu shows the results and enables manual correction. A csv file with spo is generated for further analysis.
 
 ## Getting Started
 
@@ -13,7 +10,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-This package requires [Matlab](https://nl.mathworks.com/)  R2015b or latter. 
+This package requires [Matlab](https://nl.mathworks.com/) R2015b or later. 
 
 It requires the following toolboxes:
 * [Signal Processing Toolbox](https://nl.mathworks.com/products/signal.html)
@@ -46,7 +43,7 @@ Shows a popup menu to choose a sorting method for the image folder. The images a
 ```
 obj = obj.SliceCombination
 ```
-A popup text appears with explaines the possibility to change the image to fish association or exclude images for the core algorithm:
+A popup text appears with explaines the possibility to change the image-to-fish association or exclude images for the core algorithm:
 
 Check slice combination in ImageInfo and StackInfo.
 Apply corrections in "imageinfo.CorNextStack".
@@ -54,14 +51,15 @@ Apply corrections in "imageinfo.CorNextStack".
 * Set value "2" for removing image from stack.
 * Set value "0" if slice belongs to previous slice
 
-### check fish ot image association 
+### check image-to-fish association 
 The variables 'obj.ImageInfo' and 'obj.StackInfo' are opened to check if the image to fish association is correct. 
 At the column *CorNextStack* in the variable 'obj.ImageInfo' changes of the numbers can be made corresponding the legend above. In the variable 'obj.StackInfo' the results of the image to fish association is visible. If changes are made to obj.ImageInfo, obj.StackInfo will be overwritten when proceeding.
 ```
 openvar('obj.ImageInfo')
 openvar('obj.StackInfo')
 ```
-Runs all core algorithms in order after it is confirmed that obj.ImageInfo contains the correct image to fish association. A Time bar shows up, displaying subsequently *Preprocession*, *Extended dept of field*, *Registration*, *Brain Segmentation* and *Spot Detection*.
+### runs core algorithms
+Runs all core algorithms in order after it is confirmed that obj.ImageInfo contains the correct image to fish association. A time bar shows up, displaying subsequently *Preprocession*, *Extended dept of field*, *Registration*, *Brain Segmentation* and *Spot Detection*.
 ```
 obj = obj.CompleteProgram
 ```
@@ -74,7 +72,7 @@ A screenshot of the user interface which can be used to check and correct brain 
 
 ![User Interface](https://samuelgeurts.github.io/SpotNGlia/UserInterface.png)
 
-A csv file is generated in the save folder containing all uncorrected and corrected spot data.
+A csv file is generated in the chosen save folder containing all uncorrected and corrected spot data.
 
 ## other usefull functions
 
@@ -87,17 +85,17 @@ obj = obj.BrainSegmentation
 obj = obj.SpotDetection
 ````
 ### supporting properties 
-these properties can be set after the SpotNGlia object is created.
+These properties can be set after the SpotNGlia object is created.
 
-prevent to show screen that alerts for check of stackinfo and imageinfo
+Prevents to show screen that alerts for check of stackinfo and imageinfo.
 ```
 obj.ImageInfoChecked_TF = true
 ```
-presetting obj.Sorting *Date* or *Name* prevents to show option menu
+Presetting obj.Sorting *Date* or *Name* prevents to show option menu.
 ```
 obj.Sorting = 'Date'
 ```
-set delimiter to ';' or ',' in csv file depenend on operating system
+Sets delimiter to ';' or ',' in csv file dependend on operating system.
 ```
 obj.Delimiter = ';' 
 ```
