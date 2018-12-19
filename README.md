@@ -70,8 +70,9 @@ The fishes are shown and braincorrections and spotcorrections can be made
 ```
 obj = obj.CheckFish
 ```
-This is a screenshot of the userinterface.
-![User Interface](https://github.com/samuelgeurts/samuelgeurts.github.io/blob/master/UserInterface.png)
+A screenshot of the userinterface which is used to check and correct brain edge and spotlocations.
+
+![User Interface](https://samuelgeurts.github.io/SpotNGlia/UserInterface.png)
 
 A csv file is generated in the save folder containing all uncorrected and corrected spot data.
 
@@ -107,4 +108,4 @@ We use [SemVer](http://semver.org/) for versioning.
 
 ## License
 
-??
+SpotNGLia is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation.
