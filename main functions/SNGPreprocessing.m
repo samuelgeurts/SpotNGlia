@@ -47,8 +47,15 @@ classdef SNGPreprocessing
         NCC_BP_before;
         NCC_BP_after;
         rgbCropValues;
+        
         %stackCorrection
         sliceWarp; % = ECCWarp2;
+        
+        %extended dept of field
+        mergedImage = []
+        IndexMatrix = []
+        variance_sq = []
+        
     end
     properties(Transient = true)
         %IMAGES
@@ -58,12 +65,17 @@ classdef SNGPreprocessing
         %RgbCorrection
         bandFiltered = []
         filteredImage = []
+
+        %extended dept of field
+        IndexMatrix = []
+        variance_sq = []        
+
     end
     
     methods
         function obp = SNGPreprocessing(SpotNGliaObject) %constructor
             
-            if exist('SpotNGliaObject','var')
+            if exist('SpotNGliaObject', 'var')
                 obp.SpotNGliaObject = SpotNGliaObject;
             end
             
@@ -79,12 +91,12 @@ classdef SNGPreprocessing
             %automatically updating the property nSlices when updating imageSlice
             obp.imageSlice = val;
             obp.nSlices = numel(val);
-        end    
-        function obp = loadImageSlices(obp)                    %Load slices
-                obp.imageSlice = cell(1, obp.nSlices); %preallocate for every new slice
+        end
+        function obp = loadImageSlices(obp) %Load slices
+            obp.imageSlice = cell(1, obp.nSlices); %preallocate for every new slice
             for iSlice = 1:obp.nSlices
-                obp.imageSlice{iSlice} = imread([obp.imagePath,filesep, obp.imageNames{iSlice}]);              
-                obp.imageSlice{iSlice} = im2uint8(obp.imageSlice{iSlice}(:,:,1:3));                
+                obp.imageSlice{iSlice} = imread([obp.imagePath, filesep, obp.imageNames{iSlice}]);
+                obp.imageSlice{iSlice} = im2uint8(obp.imageSlice{iSlice}(:, :, 1:3));
             end
         end
         function obp = rgbCorrection(obp)
@@ -110,8 +122,8 @@ classdef SNGPreprocessing
                 end
                 
                 %{
-                         figure;imagesc((obp.filteredImage{iSlice}(:,:,1:3)));axis equal off tight
-                         figure;imagesc(uint8(obp.imageSlice{iSlice}(:,:,1:3)));axis equal off tight
+                          figure;imagesc((obp.filteredImage{iSlice}(:,:,1:3)));axis equal off tight
+                          figure;imagesc(uint8(obp.imageSlice{iSlice}(:,:,1:3)));axis equal off tight
                 %}
             end
         end
@@ -122,7 +134,7 @@ classdef SNGPreprocessing
             
             for iSlice = 1:obp.nSlices
                 %bandpass filter focussed on spotsize passing
-                [obp.filteredImage{iSlice},obp.bandFiltered{iSlice}] = obp.sng_bandpassFilter(obp.imageSlice{iSlice}(:, :, 1:3), obp.sigmalp, obp.sigmahp); %%TODO put this function in this class
+                [obp.filteredImage{iSlice}, obp.bandFiltered{iSlice}] = obp.sng_bandpassFilter(obp.imageSlice{iSlice}(:, :, 1:3), obp.sigmalp, obp.sigmahp); %%TODO put this function in this class
                 
             end
         end
@@ -141,11 +153,11 @@ classdef SNGPreprocessing
                 
                 %compute correlation
                 %{
-                         %normal correlation
-                         CC1 = corr2(filteredImage(:,:,1),filteredImage(:,:,2));
-                         CC2 = corr2(filteredImage2(:,:,1),filteredImage2(:,:,2));
-                         CC3 = corr2(imageSlice{iSlice}(:,:,1),imageSlice{iSlice}(:,:,3));
-                         CC4 = corr2(imageSliceCor{iSlice}(:,:,1),imageSliceCor{iSlice}(:,:,3));
+                          %normal correlation
+                          CC1 = corr2(filteredImage(:,:,1),filteredImage(:,:,2));
+                          CC2 = corr2(filteredImage2(:,:,1),filteredImage2(:,:,2));
+                          CC3 = corr2(imageSlice{iSlice}(:,:,1),imageSlice{iSlice}(:,:,3));
+                          CC4 = corr2(imageSliceCor{iSlice}(:,:,1),imageSliceCor{iSlice}(:,:,3));
                 %}
                 %original image before and after normalised correlation (green-red and blue-red channel)
                 obp.NCC_Img_before{iSlice}(1) = sng_NCC(obp.imageSlice{iSlice}(:, :, 1), obp.imageSlice{iSlice}(:, :, 2));
@@ -170,8 +182,8 @@ classdef SNGPreprocessing
                 [CorrectedfilteredImage, ~] = obp.sng_rgbWarp(obp.filteredImage, obp.colorWarp{iSlice});
                 
                 %{
-                           figure;imagesc((imageSliceCor{iSlice}(:,:,1:3)));axis equal off tight
-                           figure;imagesc((CorrectedfilteredImage(:,:,1:3)));axis equal off tight
+                            figure;imagesc((imageSliceCor{iSlice}(:,:,1:3)));axis equal off tight
+                            figure;imagesc((CorrectedfilteredImage(:,:,1:3)));axis equal off tight
                 %}
                 
                 %bandpass filtered before and after normalised correlation  (green-red and blue-red channel)
@@ -192,122 +204,118 @@ classdef SNGPreprocessing
             %20181204   added to SNGPreprocessing
             
             
-            
-            
             [IndexMatrix, variance_sq, Icombined] = sng_StackDOF2(CorrectedSlice, variancedisksize);
             
             
             %function [IndexMatrix, variance_sq, Icombined] = sng_StackDOF2(ImgCell,win_size,filt)
-
-if ~exist('win_size','var')
-    win_size = 3;
-end
-if ~exist('filt','var')
-    filt = 'max';
-end
-
-obp.variancedisksize
-
-
-n = numel(ImgCell);
-
-[M,N,~] = size(ImgCell{1});
-variance_sq = zeros(M,N,size(ImgCell,1));
-
-
-% Making spherical structuring element for determing the local variance
-% with radisu win_size
- struc_el = fspecial('disk', win_size)>0;
- 
- % Calculating the local variance for each pixel and each slice
- for i = 1:n 
-    variance = stdfilt(ImgCell{i}, struc_el);
-    variance_sq(:,:,i) = sum(variance,3);
- 
-    %variance_sq(:,:,i) = sqrt(sum(variance.^2,3));
-
- end
- 
-% Making an MxN image with the slice indexes of the maximum/minimum local variance values
-if strcmp(filt,'min')
-    [~,slicen] = min(variance_sq,[],3);    
-elseif strcmp(filt,'max')   
-    [~,slicen] = max(variance_sq,[],3);
-else
-    error('wronginput')
-end
-
-%create a logic image which selects pixels form the different slices
-IndexMatrix = false(size(variance_sq));
-Btemp = (slicen(:) - 1) * M*N; 
-Ctemp = 1:M*N;
-IndexMatrix(Btemp+Ctemp') = true;
-
-if nargout >= 3
-Icombined = sng_SliceCombine(ImgCell,IndexMatrix);
-end
-
-
-
-%{
-figure;imagesc(Img{1})
-figure;imagesc(Img{2})
-figure;imagesc(Img{3})
-figure;imagesc(Img{4})
-
-
-figure;imagesc(variance_sq(:,:,1))
-figure;imagesc(variance_sq(:,:,2))
-figure;imagesc(variance_sq(:,:,3))
-figure;imagesc(variance_sq(:,:,4))
-
-figure;imagesc(Icombined)
-
-%}
-%stacked double used
-%value win_size is char, should be int
-
-
+            
+            if ~exist('win_size', 'var')
+                win_size = 3;
+            end
+            if ~exist('filt', 'var')
+                filt = 'max';
+            end
+            
+            obp.variancedisksize
             
             
+            n = numel(ImgCell);
             
-            Icombined = uint8(Icombined);
+            [M, N, ~] = size(ImgCell{1});
+            variance_sq = zeros(M, N, size(ImgCell, 1));
+            
+            
+            % Making spherical structuring element for determing the local variance
+            % with radisu win_size
+            struc_el = fspecial('disk', win_size) > 0;
+            
+            % Calculating the local variance for each pixel and each slice
+            for i = 1:n
+                variance = stdfilt(ImgCell{i}, struc_el);
+                variance_sq(:, :, i) = sum(variance, 3);
+                
+                %variance_sq(:,:,i) = sqrt(sum(variance.^2,3));
+                
+            end
+            
+            % Making an MxN image with the slice indexes of the maximum/minimum local variance values
+            if strcmp(filt, 'min')
+                [~, slicen] = min(variance_sq, [], 3);
+            elseif strcmp(filt, 'max')
+                [~, slicen] = max(variance_sq, [], 3);
+            else
+                error('wronginput')
+            end
+            
+            %create a logic image which selects pixels form the different slices
+            IndexMatrix = false(size(variance_sq));
+            Btemp = (slicen(:) - 1) * M * N;
+            Ctemp = 1:M * N;
+            IndexMatrix(Btemp+Ctemp') = true;
+            
+            if nargout >= 3
+                Icombined = sng_SliceCombine(ImgCell, IndexMatrix);
+            end
+            
+            
+            %{
+ figure;imagesc(Img{1})
+ figure;imagesc(Img{2})
+ figure;imagesc(Img{3})
+ figure;imagesc(Img{4})
+ 
+ 
+ figure;imagesc(variance_sq(:,:,1))
+ figure;imagesc(variance_sq(:,:,2))
+ figure;imagesc(variance_sq(:,:,3))
+ figure;imagesc(variance_sq(:,:,4))
+ 
+ figure;imagesc(Icombined)
+ 
+            %}
+            %stacked double used
+            %value win_size is char, should be int
+            
+            
+            obp.mergedImage = uint8(Icombined);
+            
+            
             edoutput.IndexMatrix = uint8(IndexMatrix);
             edoutput.variance_sq = uint8(variance_sq);
             
             
             %{
- sz = size(CorrectedSlice{1});
- for k = 1:numel(CorrectedSlice)
- figure;imagesc(uint8(CorrectedSlice{k}))
- axis off tight equal
- set(gca,'position',[0 0 1 1],'units','normalized')
- text(sz(2)*0.95,sz(1)*0.05,num2str(k),'FontSize',20)
- end
+  sz = size(CorrectedSlice{1});
+  for k = 1:numel(CorrectedSlice)
+  figure;imagesc(uint8(CorrectedSlice{k}))
+  axis off tight equal
+  set(gca,'position',[0 0 1 1],'units','normalized')
+  text(sz(2)*0.95,sz(1)*0.05,num2str(k),'FontSize',20)
+  end
  
- for k = 1:numel(CorrectedSlice)
- figure;imagesc(uint8(variance_sq(:,:,k)));
- axis off tight equal
- set(gca,'position',[0 0 1 1],'units','normalized')
- text(sz(2)*0.95,sz(1)*0.05,num2str(k),'FontSize',20,'Color',[1 1 1])
- end
+  for k = 1:numel(CorrectedSlice)
+  figure;imagesc(uint8(variance_sq(:,:,k)));
+  axis off tight equal
+  set(gca,'position',[0 0 1 1],'units','normalized')
+  text(sz(2)*0.95,sz(1)*0.05,num2str(k),'FontSize',20,'Color',[1 1 1])
+  end
  
- SelectionImage = CorrectedSlice;
- for k = 1:numel(CorrectedSlice)
- SelectionImage{k}(repmat(slicen,1,1,3) ~= k) = 0;
- figure;imagesc(uint8(SelectionImage{k}));
- axis off tight equal
- set(gca,'position',[0 0 1 1],'units','normalized')
-     if k == 1;
-         text(sz(2)*0.95,sz(1)*0.05,num2str(k),'FontSize',20,'Color',[0 0 0])
-     else
-         text(sz(2)*0.95,sz(1)*0.05,num2str(k),'FontSize',20,'Color',[1 1 1])
-     end
- end
+  SelectionImage = CorrectedSlice;
+  for k = 1:numel(CorrectedSlice)
+  SelectionImage{k}(repmat(slicen,1,1,3) ~= k) = 0;
+  figure;imagesc(uint8(SelectionImage{k}));
+  axis off tight equal
+  set(gca,'position',[0 0 1 1],'units','normalized')
+      if k == 1;
+          text(sz(2)*0.95,sz(1)*0.05,num2str(k),'FontSize',20,'Color',[0 0 0])
+      else
+          text(sz(2)*0.95,sz(1)*0.05,num2str(k),'FontSize',20,'Color',[1 1 1])
+      end
+  end
  
- figure;imagesc(Icombined)
- set(gca,'position',[0 0 1 1],'units','normalized')
- axis off tight equal
+  figure;imagesc(Icombined)
+  set(gca,'position',[0 0 1 1],'units','normalized')
+  axis off tight equal
  
  
             %}
@@ -431,31 +439,31 @@ figure;imagesc(Icombined)
             
             %{
  
-         figure;imshow(filteredImage)
-         figure;imshow(ImagesSliceCor{1})
-         figure;imshow(Images2)
-         figure;imshow(Icombined)
+          figure;imshow(filteredImage)
+          figure;imshow(ImagesSliceCor{1})
+          figure;imshow(Images2)
+          figure;imshow(Icombined)
  
             %}
-        end 
+        end
     end
     
     methods(Static)
-        function [ECCWarp, Img2] = sng_rgbAlignment(Img1, scale, transform, levels, iterations)            
+        function [ECCWarp, Img2] = sng_rgbAlignment(Img1, scale, transform, levels, iterations)
             %RGB2 does te same als RGB but the output functions are turned for speed
             %increase as you only want to now ECCWarp
             
             %log
             %20181022 renamed from sng_RGB2 to sng_rgbAlignment
-
+            
             
             %set parameters
             %{
-                  scale = 1/4;
-                  par.transform = 'translation';
-                  par.levels = 2;
-                  par.iterations = 10; %iterations per level
-                  Img1 = tempImage;
+                   scale = 1/4;
+                   par.transform = 'translation';
+                   par.levels = 2;
+                   par.iterations = 10; %iterations per level
+                   Img1 = tempImage;
             %}
             
             %if ~exist(scale, 'var'); scale = 1 / 4; end
@@ -494,13 +502,13 @@ figure;imagesc(Icombined)
             %20181022 change sng_RGB_IATwarp2 to sng_rgbWarp
             
             %{
-                     %Example
-                     Img1 = ImageSlice{1}(:,:,1:3);
-                     a = ECCWarp{1}{1}
-                     b = ECCWarp{1}{2}
-                     clear ECCWarp
-                     ECCWarp{1} = a
-                     ECCWarp{2} = b
+                      %Example
+                      Img1 = ImageSlice{1}(:,:,1:3);
+                      a = ECCWarp{1}{1}
+                      b = ECCWarp{1}{2}
+                      clear ECCWarp
+                      ECCWarp{1} = a
+                      ECCWarp{2} = b
             %}
             
             %preallocation
@@ -511,17 +519,17 @@ figure;imagesc(Icombined)
             support = supportECC{1} .* supportECC{2};
             
             %{
-                    figure;imagesc(Img1)
-                    figure;imagesc(support)
+                     figure;imagesc(Img1)
+                     figure;imagesc(support)
             %}
             
             %old crop method
             %{
-                    %crop image, find the largest rectangle consist of ones
-                    A = numel(find(support(round(M/2),1:end)));
-                    B = numel(find(support(1:end,round(N/2))));
-                    Img2 = reshape(Img1(repmat(logical(support),1,1,3)),B,A,3);
-                    %figure;imshow(uint8(Img2{j}));
+                     %crop image, find the largest rectangle consist of ones
+                     A = numel(find(support(round(M/2),1:end)));
+                     B = numel(find(support(1:end,round(N/2))));
+                     Img2 = reshape(Img1(repmat(logical(support),1,1,3)),B,A,3);
+                     %figure;imshow(uint8(Img2{j}));
             %}
             
             xr1 = find(support(round(M/2), 1:end), 1, 'first');
@@ -541,7 +549,7 @@ figure;imagesc(Icombined)
             %20181022 change name sng_RGBselection to sng_bandpassFilter
             
             %{
-                   Img = ImageSlice{k}(:,:,1:3);
+                    Img = ImageSlice{k}(:,:,1:3);
             %}
             %Img = imread(Imgloc1{1}{1});
             %Img = Img(:,:,1:3);
@@ -585,20 +593,20 @@ figure;imagesc(Icombined)
             % Img2 = Img1(y1:y2,x1:x2,:);
             
             %{
-                    figure;imagesc(uint8(Img(:,:,1:3)));
+                     figure;imagesc(uint8(Img(:,:,1:3)));
  
  
-                    figure;imagesc(0.15*abs(Img1(:,:,1:3)))
-                    figure;imagesc(0.15*Img2a(:,:,1:3))
-                    figure;imagesc(-0.15*Img2b(:,:,1:3))
+                     figure;imagesc(0.15*abs(Img1(:,:,1:3)))
+                     figure;imagesc(0.15*Img2a(:,:,1:3))
+                     figure;imagesc(-0.15*Img2b(:,:,1:3))
  
-                    l = Img1-min(Img1(:));
+                     l = Img1-min(Img1(:));
  
-                    figure;imagesc(QImg);
-                    figure;imagesc(Img2(:,:,1));colormap('gray')
-                    figure;imagesc(Img2(:,:,2));colormap('gray')
-                    figure;imagesc(Img2(:,:,3));colormap('gray')
-                    sng_figureslide
+                     figure;imagesc(QImg);
+                     figure;imagesc(Img2(:,:,1));colormap('gray')
+                     figure;imagesc(Img2(:,:,2));colormap('gray')
+                     figure;imagesc(Img2(:,:,3));colormap('gray')
+                     sng_figureslide
             %}
             
             % [Img2a,ECCWarp] = sng_RGB(Img1b,1/2,'translation',2,20);
