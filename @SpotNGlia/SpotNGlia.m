@@ -51,6 +51,7 @@ classdef SpotNGlia < handle
         %variable for showing images
         fsxy = [6, 5];
         exportit = false;
+               
     end
     properties(Transient = true)
         PreprocessionInfo
@@ -245,12 +246,11 @@ classdef SpotNGlia < handle
             
             obj.OS = getenv('OS');
             
-        end
-        
+        end     
         function value = get.CompleteTemplate(obj)
             if isempty(obj.CompleteTemplate)
-                temp = load([obj.SourcePath, filesep, 'Template3dpf', '.mat']);
-                obj.CompleteTemplate = temp.objt;
+                %temp = load([obj.SourcePath, filesep, 'Template3dpf', '.mat']);
+                %obj.CompleteTemplate = temp.objt;
                 %obj.CompleteTemplate.SpotNGliaObject = obj; ?is commented in CompleteTemplate, why?
                 disp('loading Template3dpf')
             end
@@ -376,7 +376,7 @@ classdef SpotNGlia < handle
             obj.nfishes = numel(obj.StackInfo);
             
         end
-        function PreProcession(obj, fishnumbers)
+        function PreProcessing(obj, fishnumbers)
             
             %TODO set black to white for removing the referencebar,
             %after imagemerging it gets blured an is no longer black which
@@ -416,12 +416,19 @@ classdef SpotNGlia < handle
 %                         'NNC_BP_before', [], ...
 %                         'NNC_BP_after', []);
 %                 end
-                
+
+
+                %TODO later verwijderen omdat info uit Object gehaald moet worden
                 %folder to save CorrectedFish
-                TempFolderName = ([obj.SavePath, filesep, 'CorrectedFish']);
-                if ~exist(TempFolderName, 'dir')
-                    mkdir(TempFolderName)
+                TempFolderName1 = ([obj.SavePath, filesep, 'CorrectedFish']);
+                if ~exist(TempFolderName1, 'dir')
+                   mkdir(TempFolderName1)
                 end
+                TempFolderName2 = ([obj.SavePath, filesep, 'CombinedFish']);
+                if ~exist(TempFolderName2, 'dir')
+                    mkdir(TempFolderName2)
+                end
+                
                 
                 %is used to be able to use parfor with arbitrary fishnumbers
                 %parfor is only able to fill a struct/class linearly
@@ -429,7 +436,7 @@ classdef SpotNGlia < handle
                 PreprocessingObject(1:numel(obj.StackInfo)) = SNGPreprocessing(obj);        
                 for iFish = 1:nfishes
                     
-%                    waitbar(iFish/nfishes, h, ['Preprocession ', num2str(iFish), ' / ', num2str(nfishes)])
+                    waitbar(iFish/nfishes, h, ['Preprocession ', num2str(iFish), ' / ', num2str(nfishes)])
                     fn = fishnumbers(iFish);
         
                     PreprocessingObject(fn).imageNames = obj.StackInfo(fn).imagenames;
@@ -437,12 +444,22 @@ classdef SpotNGlia < handle
                     PreprocessingObject(fn).nSlices = obj.StackInfo(fn).stacksize;
                     PreprocessingObject(fn).iFish = fn;
                     
-                    PreprocessingObject(fn) = PreprocessingObject(fn).loadImageSlices;
-                    PreprocessingObject(fn) = PreprocessingObject(fn).rgbCorrection;
-                    PreprocessingObject(fn) = PreprocessingObject(fn).rgbWarp;
-                    PreprocessingObject(fn) = PreprocessingObject(fn).stackCorrection;
+%                     PreprocessingObject(fn) = PreprocessingObject(fn).loadImageSlices;
+%                     PreprocessingObject(fn) = PreprocessingObject(fn).rgbCorrection;
+%                     PreprocessingObject(fn) = PreprocessingObject(fn).rgbWarp;
+%                     PreprocessingObject(fn) = PreprocessingObject(fn).stackCorrection;
+%                     PreprocessingObject(fn) = PreprocessingObject(fn).stackWarp;    
+%                     PreprocessingObject(fn) = PreprocessingObject(fn).ExtendedDeptofField;
 
-                    sng_SaveCell2TiffStack(PreprocessingObject(fn).correctedSlice,[TempFolderName, filesep, obj.StackInfo(fn).stackname, '.tif'])
+                    PreprocessingObject(fn) = PreprocessingObject(fn).CompletePreprocessing;
+                    
+                    
+                    %TODO later verwijderen
+                    %save rgb en stack corrected fish
+                    sng_SaveCell2TiffStack(PreprocessingObject(fn).correctedSlice,[TempFolderName1, filesep, obj.StackInfo(fn).stackname, '.tif']);
+                    %save merged fish
+                    imwrite(uint8(PreprocessingObject(fn).mergedImage), [TempFolderName2, filesep, obj.StackInfo(fn).stackname, '.tif'],'WriteMode', 'overwrite', 'Compression', 'none');
+                    
                     disp(num2str(fn))
                  end
             end
@@ -451,6 +468,8 @@ classdef SpotNGlia < handle
             
             delete(h)
         end    
+        
+        %{
         function ExtendedDeptOfField(obj, fishnumbers)
             
             h = waitbar(0, 'Extended Dept of Field', 'Name', 'SpotNGlia');
@@ -458,7 +477,7 @@ classdef SpotNGlia < handle
             if ~exist('fishnumbers', 'var')
                 fishnumbers = 1:numel(obj.StackInfo);
             elseif max(fishnumbers) > numel(obj.StackInfo)
-                error('at least one fish does not exist in PreProcessionInfo')
+                error('at least one fish does not exist in PreProcessingInfo')
             end
             nfishes = numel(fishnumbers);
             
@@ -508,10 +527,15 @@ classdef SpotNGlia < handle
             save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'ExtendedDeptOfFieldInfo', '-append')
             delete(h)
         end
+        %}
+        
         function Registration(obj, fishnumbers)
             
             h = waitbar(0, 'Registration', 'Name', 'SpotNGlia');
             
+            
+            
+          
             if ~exist('fishnumbers', 'var')
                 fishnumbers = 1:numel(obj.StackInfo);
             elseif max(fishnumbers) > numel(obj.StackInfo)
@@ -520,6 +544,7 @@ classdef SpotNGlia < handle
             nfishes = numel(fishnumbers);
             obj.fishnumbers.registration = fishnumbers;
             
+            %TODO delete later on
             %folder to save AlignedFish
             TempFolderName = ([obj.SavePath, filesep, 'AlignedFish']);
             if ~exist(TempFolderName, 'dir')
@@ -529,18 +554,20 @@ classdef SpotNGlia < handle
             %preallocation
             MaxFishColor = zeros(nfishes, 3);
             MeanFishColor = zeros(nfishes, 3);
-            RegistrationInfo = cell(nfishes, 1);
+            %RegistrationInfo = cell(nfishes, 1);
             
             RegObject(1:nfishes) = SNGAlignment(obj);
             
             for iFish = 1:nfishes
                 waitbar(iFish/nfishes, h, ['Registration ', num2str(iFish), ' / ', num2str(nfishes)])
                 fn = fishnumbers(iFish);
-                CombinedFish = imread([obj.SavePath, filesep, 'CombinedFish', filesep, obj.StackInfo(fn).stackname, '.tif']);
+
+                %CombinedFish = imread([obj.SavePath, filesep, 'CombinedFish', filesep, obj.StackInfo(fn).stackname, '.tif']);
+                %RegObject(iFish).Icombined = CombinedFish;
                 
-                %[AlignedFishTemp, RegistrationInfo{k1, 1}] = AlignmentSNG(CombinedFish, obj.CompleteTemplate, obj.ZFParameters);
+                RegObject(iFish).Icombined = obj.PreprocessingObject{fn}.mergedImage
+
                 
-                RegObject(iFish).Icombined = CombinedFish;
                 RegObject(iFish) = RegObject(iFish).All;
                 %%RegistrationInfo{k1, 1} = oldoutputfunction(RegObject(k1)); %to be removed later, use instead RegObject itself
                 AlignedFishTemp = RegObject(iFish).Ialigned;
@@ -553,7 +580,7 @@ classdef SpotNGlia < handle
                 MeanFishColor(iFish, 1:3) = RegistrationInfo{iFish}(strcmp({RegistrationInfo{iFish}.name}, 'MeanFishColor')).value;
                 MaxFishColor(iFish, 1:3) = RegistrationInfo{iFish}(strcmp({RegistrationInfo{iFish}.name}, 'MaxFishColor')).value;
             end
-            
+                      
             obj.BatchInfo.MeanMaxFishColor = mean(MaxFishColor(:));
             obj.BatchInfo.StdMaxFishColor = std(MaxFishColor(:));
             obj.BatchInfo.MeanFishColor = mean(MeanFishColor(:));
@@ -843,8 +870,8 @@ classdef SpotNGlia < handle
                 error('at least one fish does not exist in StackInfo')
             end
             
-            obj.PreProcession(fishnumbers);
-            obj.ExtendedDeptOfField(fishnumbers);
+            obj.PreProcessing(fishnumbers);
+            %obj.ExtendedDeptOfField(fishnumbers);
             obj.Registration(fishnumbers);
             obj.BrainSegmentation(fishnumbers);
             obj.SpotDetection(fishnumbers);
