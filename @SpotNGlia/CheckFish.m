@@ -1,4 +1,8 @@
 function objout = CheckFish(obj, ifish, INFO)
+
+%TODO retrieve information form *Object instead of *Info
+%TODO retrieve images from *Object instead of folder with image files
+
 %application to adjust brain region and spots
 
 %used for assignin to the righ workspace variable
