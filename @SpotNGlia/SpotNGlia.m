@@ -62,7 +62,7 @@ classdef SpotNGlia < handle
         SpotsDetected
         SpotParameters
     end   
-    properties(Transient = true, Hidden = true)
+    properties(Transient = true)%, Hidden = true)
     	CompleteTemplate
         RegObject %new registration parameters
         PreprocessingObject %new preprocessing parameters
@@ -249,9 +249,8 @@ classdef SpotNGlia < handle
         end     
         function value = get.CompleteTemplate(obj)
             if isempty(obj.CompleteTemplate)
-                %temp = load([obj.SourcePath, filesep, 'Template3dpf', '.mat']);
-                %obj.CompleteTemplate = temp.objt;
-                %obj.CompleteTemplate.SpotNGliaObject = obj; ?is commented in CompleteTemplate, why?
+                temp = load([obj.SourcePath, filesep, 'Template3dpf', '.mat']);
+                obj.CompleteTemplate = temp.objt;
                 disp('loading Template3dpf')
             end
             value = obj.CompleteTemplate;
@@ -443,14 +442,8 @@ classdef SpotNGlia < handle
                     PreprocessingObject(fn).imagePath = obj.FishPath;   
                     PreprocessingObject(fn).nSlices = obj.StackInfo(fn).stacksize;
                     PreprocessingObject(fn).iFish = fn;
+                    imagesc(PreprocessingObject(fn).imageSlice{4})
                     
-%                     PreprocessingObject(fn) = PreprocessingObject(fn).loadImageSlices;
-%                     PreprocessingObject(fn) = PreprocessingObject(fn).rgbCorrection;
-%                     PreprocessingObject(fn) = PreprocessingObject(fn).rgbWarp;
-%                     PreprocessingObject(fn) = PreprocessingObject(fn).stackCorrection;
-%                     PreprocessingObject(fn) = PreprocessingObject(fn).stackWarp;    
-%                     PreprocessingObject(fn) = PreprocessingObject(fn).ExtendedDeptofField;
-
                     PreprocessingObject(fn) = PreprocessingObject(fn).CompletePreprocessing;
                     
                     
@@ -552,8 +545,8 @@ classdef SpotNGlia < handle
             end
             
             %preallocation
-            MaxFishColor = zeros(nfishes, 3);
-            MeanFishColor = zeros(nfishes, 3);
+            %MaxFishColor = zeros(nfishes, 3);
+            %MeanFishColor = zeros(nfishes, 3);
             %RegistrationInfo = cell(nfishes, 1);
             
             RegObject(1:nfishes) = SNGAlignment(obj);
@@ -565,30 +558,31 @@ classdef SpotNGlia < handle
                 %CombinedFish = imread([obj.SavePath, filesep, 'CombinedFish', filesep, obj.StackInfo(fn).stackname, '.tif']);
                 %RegObject(iFish).Icombined = CombinedFish;
                 
-                RegObject(iFish).Icombined = obj.PreprocessingObject{fn}.mergedImage
+                RegObject(iFish).Icombined = obj.PreprocessingObject(fn).mergedImage;
 
                 
                 RegObject(iFish) = RegObject(iFish).All;
                 %%RegistrationInfo{k1, 1} = oldoutputfunction(RegObject(k1)); %to be removed later, use instead RegObject itself
                 AlignedFishTemp = RegObject(iFish).Ialigned;
-                RegObject(iFish) = RegObject(iFish).ClearVars;
-                
                 imwrite(uint8(AlignedFishTemp), [TempFolderName, filesep, obj.StackInfo(iFish).stackname, '.tif'], ...
                     'WriteMode', 'overwrite', 'Compression', 'none');
+                
+                RegObject(iFish) = RegObject(iFish).ClearVars;
+                                
                 %generates matrix with MeanFishColors
                 
-                MeanFishColor(iFish, 1:3) = RegistrationInfo{iFish}(strcmp({RegistrationInfo{iFish}.name}, 'MeanFishColor')).value;
-                MaxFishColor(iFish, 1:3) = RegistrationInfo{iFish}(strcmp({RegistrationInfo{iFish}.name}, 'MaxFishColor')).value;
+                %MeanFishColor(iFish, 1:3) = RegistrationInfo{iFish}(strcmp({RegistrationInfo{iFish}.name}, 'MeanFishColor')).value;
+                %MaxFishColor(iFish, 1:3) = RegistrationInfo{iFish}(strcmp({RegistrationInfo{iFish}.name}, 'MaxFishColor')).value;
             end
                       
-            obj.BatchInfo.MeanMaxFishColor = mean(MaxFishColor(:));
-            obj.BatchInfo.StdMaxFishColor = std(MaxFishColor(:));
-            obj.BatchInfo.MeanFishColor = mean(MeanFishColor(:));
-            obj.BatchInfo.StdFishColor = std(MeanFishColor(:));
+            %obj.BatchInfo.MeanMaxFishColor = mean(MaxFishColor(:));
+            %obj.BatchInfo.StdMaxFishColor = std(MaxFishColor(:));
+            %obj.BatchInfo.MeanFishColor = mean(MeanFishColor(:));
+            %obj.BatchInfo.StdFishColor = std(MeanFishColor(:));
             
             
             obj.saveit
-            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'RegistrationInfo', '-append')
+            %save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'RegistrationInfo', '-append')
             save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'RegObject', '-append')
             
             %TODO zou later een vervanger voor RegistrationInfo kunnen worden

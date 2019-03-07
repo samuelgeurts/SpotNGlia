@@ -421,7 +421,7 @@ classdef SNGAlignment
             obr.tform_1234 = affine2d(obr.tform1.T*obr.tform2.T*obr.tform3.T*obr.tform4.T);
             
             obr.Ialigned = imwarp(obr.Icombined, obr.tform_1234, 'FillValues', 255, 'OutputView', imref2d(size(obr.template(:, :, 1))));
-        end
+        end      
         function obr = fishcolorparameters(obr)
             
             %% extra mean fish color parameter
@@ -438,7 +438,7 @@ classdef SNGAlignment
         function obr = ClearVars(obr)
             %INPUT/OUTPUT
             %obr.Icombined = [];
-            obr.Ialigned = [];
+            %obr.Ialigned = [];
             
             %BackgroundRemoval
             obr.I20 = [];
