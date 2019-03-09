@@ -3,7 +3,7 @@ classdef SNGInputParameters
     properties
         ImageInfo
         Preprocessing
-        ExtendedDeptOfField
+        %ExtendedDeptOfField
         Registration
         BrainSegmentation
         SpotDetection
@@ -42,7 +42,7 @@ classdef SNGInputParameters
             objI.Preprocessing.iterationsS = 20;
             objI.Preprocessing.variancedisksize = 7; %changed 20181204, added from separate extdeptoffield to preprocessing
                         
-            objI.ExtendedDeptOfField.variancedisksize = 7;
+            %objI.ExtendedDeptOfField.variancedisksize = 7;
             
             objI.Registration.Method = 'TriangleSmooth';
             objI.Registration.Smooth = 1;
