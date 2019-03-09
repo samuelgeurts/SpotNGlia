@@ -1,4 +1,4 @@
-classdef SNGAlignment
+classdef SNGAlignment < handle
     % this function is a class which makes use of properties from the class SpotNGlia but
     % is also called form the class SpotNGlia. I dont know if this is a nice solution but 
     % matlab dont know subclasses.
@@ -13,6 +13,10 @@ classdef SNGAlignment
     
     properties %(Access = private)
         %INPUTPARAMETERS
+        
+        %Object
+        SpotNGliaObject
+        
         %from CompleteTemplate
         template = []
         
@@ -36,6 +40,10 @@ classdef SNGAlignment
         AffineMethod = [] %affine or translation
         Levels = [] %number of scaled levels correlation is performed
         Iterations = [] %number of iterations iat is performed
+        
+        %info from SpotNGlia
+        iFish
+        
     end
     properties
         %OUTPUTPARAMETERS
@@ -127,6 +135,25 @@ classdef SNGAlignment
             
             obr.template = SpotNGliaObject.CompleteTemplate.Template;
         end
+        
+        function value = get.Icombined(obr)
+            if isempty(obr.Icombined)
+                obr.Icombined = obr.SpotNGliaObject.PreprocessingObject(obr.iFish).mergedImage;
+                disp('load image');
+            end
+            value = obr.Icombined;
+        end       
+        
+        
+        function value = get.Ialigned(obr)
+            if isempty(obr.Ialigned)
+                alignmentWarp(obr);
+                disp('load image');
+            end
+            value = obr.Ialigned;
+        end        
+        
+        
         function obr = BackgroundRemoval(obr, Icombined)
             
             if exist('Icombined', 'var')
@@ -420,8 +447,13 @@ classdef SNGAlignment
             
             obr.tform_1234 = affine2d(obr.tform1.T*obr.tform2.T*obr.tform3.T*obr.tform4.T);
             
+         %   obr.Ialigned = imwarp(obr.Icombined, obr.tform_1234, 'FillValues', 255, 'OutputView', imref2d(size(obr.template(:, :, 1))));
+        end
+        function alignmentWarp(obr)
+            
             obr.Ialigned = imwarp(obr.Icombined, obr.tform_1234, 'FillValues', 255, 'OutputView', imref2d(size(obr.template(:, :, 1))));
-        end      
+        end
+        
         function obr = fishcolorparameters(obr)
             
             %% extra mean fish color parameter
@@ -567,11 +599,12 @@ classdef SNGAlignment
                 obr.Icombined = Icombined;
             end
             
-            obr = BackgroundRemoval(obr);
-            obr = Rotationalalignment(obr);
-            obr = Scalealignment(obr);
-            obr = SubPixelAlignment(obr);
-            obr = fishcolorparameters(obr);
+            BackgroundRemoval(obr);
+            Rotationalalignment(obr);
+            Scalealignment(obr);
+            SubPixelAlignment(obr);
+            fishcolorparameters(obr);
+            alignmentWarp(obr);
         end
         function ShowRotationAlignment(obr)
             figure; imagesc(obr.I20)
