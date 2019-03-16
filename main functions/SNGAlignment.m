@@ -16,10 +16,7 @@ classdef SNGAlignment < handle
         
         %Object
         SpotNGliaObject
-        
-        %from CompleteTemplate
-        template = []
-        
+               
         %BackgroundRemoval
         Method = []
         Smooth = []
@@ -88,11 +85,18 @@ classdef SNGAlignment < handle
         tform_1234 %complete transformation matrix
         MeanFishColor
         MaxFishColor
+        
+        %output image
+        Ialigned
     end
     properties(Transient = true)
         %IMAGES
+        
+        %Input
         Icombined
-        Ialigned
+        %from CompleteTemplate
+        template = []
+        %
         
         %BackgroundRemoval
         I20
@@ -132,27 +136,34 @@ classdef SNGAlignment < handle
 %             if isempty(SpotNGliaObject.CompleteTemplate)    
 %                 SpotNGliaObject = SpotNGliaObject.LoadTemplate;
 %             end
-            
-            obr.template = SpotNGliaObject.CompleteTemplate.Template;
         end
+        function value = get.template(obr)
+            if isempty(obr.template)     
+                obr.template = obr.SpotNGliaObject.CompleteTemplate.Template;
+                disp('load template');       
+            end
+            value = obr.Icombined;
+        end 
         
         function value = get.Icombined(obr)
             if isempty(obr.Icombined)
-                obr.Icombined = obr.SpotNGliaObject.PreprocessingObject(obr.iFish).mergedImage;
-                disp('load image');
+                %disp('load image');
+                error('First load the input image Icombined with obj.RegObject(i).loadMergedImage')
             end
             value = obr.Icombined;
         end       
         
-        
         function value = get.Ialigned(obr)
             if isempty(obr.Ialigned)
                 alignmentWarp(obr);
-                disp('load image');
+                disp('warp image');
             end
             value = obr.Ialigned;
         end        
         
+        function loadMergedImage(obr)
+            obr.Icombined = obr.SpotNGliaObject.PreprocessingObject(obr.iFish).mergedImage;
+        end
         
         function obr = BackgroundRemoval(obr, Icombined)
             
@@ -311,7 +322,7 @@ classdef SNGAlignment < handle
             
         end
         function obr = Scalealignment(obr, I30)
-            
+                              
             if exist('I30', 'var')
                 obr.I30 = I30;
             end
