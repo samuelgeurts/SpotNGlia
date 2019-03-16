@@ -571,7 +571,7 @@ classdef SpotNGlia < handle
 
             for iFish = 1:nfishes
                 fn = fishnumbers(iFish);
-                waitbar(iFish/nfishes, h, ['Brain Segmentation ', num2str(iFish), ' / ', num2str(nfishes)])
+                waitbar(iFish/nfishes, h, ['loading Brain Segmentation', num2str(iFish), ' / ', num2str(nfishes)])
                 
                 BrainSegmentationObject(fn) = SNGMidBrainDetection(obj);
                 BrainSegmentationObject(fn).iFish = fn;
@@ -586,13 +586,14 @@ classdef SpotNGlia < handle
             %run core algorithm single or multitreaded
             if obj.isParallel && (numel(fishnumbers) == numel(obj.StackInfo))
                 %check if isParallel is true and if all fishes are to be processed
+                %TODO fix parfor
                 parfor iFish = 1:nfishes
                     BrainSegmentationObject(iFish).All;
                     disp(num2str(iFish))
                 end
             else
                 for iFish = 1:nfishes
-                    waitbar(iFish/nfishes, h, ['Registration ', num2str(iFish), ' / ', num2str(nfishes)])
+                    waitbar(iFish/nfishes, h, ['Brain Segmentation ', num2str(iFish), ' / ', num2str(nfishes)])
                     fn = fishnumbers(iFish);
                     BrainSegmentationObject(fn).All;
                 end                     
@@ -2573,11 +2574,10 @@ classdef SpotNGlia < handle
             realsizeandsave(obj, h, ['MidBrainBandIntersection']); %export with savename  
         end
         
-        
-        function showImageTemplate2(obj, fn)
+        function showBrain(obj, fn)
 
             %LOAD/COMPUTE VALUES
-            %Image = obj.CompleteTemplate.Template;
+            Image = obj;
             SIZE = size(Image);
             
             %IMAGE ENHANCEMENT

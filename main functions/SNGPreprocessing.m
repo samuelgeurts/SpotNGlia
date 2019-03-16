@@ -6,7 +6,7 @@ classdef SNGPreprocessing < handle
     %IAT toolbox
     
     properties %(Access = private)
-        %Objtect
+        %Object
         SpotNGliaObject
         %INPUTPARAMETERS
         onoff = []; %sets bandpassfilter on or off
