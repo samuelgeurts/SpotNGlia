@@ -148,7 +148,14 @@ classdef SNGAlignment < handle
         function value = get.Icombined(obr)
             if isempty(obr.Icombined)
                 %disp('load image');
-                error('First load the input image Icombined with obj.RegObject(i).loadMergedImage')
+                warning('First load the input image Icombined')
+                %warning is prefered above error as it wont quit the function
+                %warning is prefered above disp as SNGPreprocessing is called which can take computing time
+                obr.Icombined = obr.SpotNGliaObject.PreprocessingObject(obr.iFish).mergedImage;
+                %a separate load function?
+                %pros: it prevents long computing time as previous algorithms has not to be uploaded
+                %cons: a separate function has to be called to load images
+                %pros: maybe parallel computer is available
             end
             value = obr.Icombined;
         end       
@@ -161,9 +168,8 @@ classdef SNGAlignment < handle
             value = obr.Ialigned;
         end        
         
-        function loadMergedImage(obr)
-            obr.Icombined = obr.SpotNGliaObject.PreprocessingObject(obr.iFish).mergedImage;
-        end
+%         function loadMergedImage(obr)
+%         end
         
         function obr = BackgroundRemoval(obr, Icombined)
             
