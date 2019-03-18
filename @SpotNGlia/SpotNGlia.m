@@ -279,6 +279,20 @@ classdef SpotNGlia < handle
             end
             value = obj.RegObject;
         end
+        function value = get.BrainSegmentationObject(obj)
+            if isempty(obj.BrainSegmentationObject)
+                disp('loading BrainSegmentationObject')
+                temp = load([obj.SavePath, filesep, obj.InfoName, '.mat'], 'BrainSegmentationObject');
+                if isempty(fields(temp))
+                    temp(1:numel(obj.StackInfo)) = SNGMidBrainDetection(obj);
+                    obj.BrainSegmentationObject = temp;
+                else
+                    obj.BrainSegmentationObject = temp.BrainSegmentationObject;
+                end          
+                %obj.RegObject.SpotNGliaObject = obj; ?not added, maybe necessary
+            end
+            value = obj.BrainSegmentationObject;
+        end
         
         function SliceCombination(obj, slicenumbers)
             %computes imageinfo and stackinfo
@@ -2375,6 +2389,7 @@ classdef SpotNGlia < handle
             realsizeandsave(obj, h, 'ScaleCorrelation');
         end
         
+        %brain template images        
         function showMidBrainContours(obj)          
 
             %LOAD/COMPUTE VALUES
@@ -2404,7 +2419,7 @@ classdef SpotNGlia < handle
             
             %EXPORT IMAGE
             realsizeandsave(obj, h, ['MidBrainContours']);
-        end    
+        end
         function showForeBrainContours(obj)
                         
             %LOAD/COMPUTE VALUES
@@ -2572,12 +2587,109 @@ classdef SpotNGlia < handle
   
             %EXPORT IMAGE                        
             realsizeandsave(obj, h, ['MidBrainBandIntersection']); %export with savename  
-        end
-        
-        function showBrain(obj, fn)
+        end  
+        function showMidBrainEdgeContour(obj)
 
             %LOAD/COMPUTE VALUES
-            Image = obj;
+            Image = obj.CompleteTemplate.EdgeFilter;
+            %SIZE = size(Image);
+            
+            %SET FIGURE SIZE
+            obj.fsxy(1) = 5; %set width
+            obj.fsxy(2) = 4; %set height              
+
+            %CREATE FIGURE WITH AXIS 
+            [h, g] = setfigax1(obj);
+            hold on
+            plot(Image(:,:,1)/255,'Color','red','LineWidth',2)
+            plot(Image(:,:,2)/255,'Color','green','LineWidth',2)
+            plot(Image(:,:,3)/255,'Color','blue','LineWidth',2)
+            
+            %SET AXIS
+            setfigax2(obj, g);
+            set(g, 'XLim', [1, 31]);
+            set(g, 'XTick', [1,16,31]);
+            set(g, 'XTickLabels', [-15,0,15]);
+            %set(g, 'XTickLabels', [0,{'1/2\pi'},{'\pi'},{'3/2\pi'},{'2\pi'}]);
+            g.XLabel.String = 'crosssection [pix]';
+            
+            set(g, 'YLim', [0, 1]);
+            %set(g, 'YScale', 'log');
+            set(g, 'YTick', [0,1]);
+            %set(g, 'YTickLabels', [1, 2, 5, 10, {'10^2'}, {''}]);
+            %set(g, 'YMinorGrid', 'off');
+            g.YLabel.String = 'intensity';            
+            
+            %legend('Red channel', 'Green channel', 'Blue channel')
+           
+            %EXPORT IMAGE
+            realsizeandsave(obj, h, ['MidBrainEdgeContour']);
+        end    
+        function showMidBrainEdgeTemplate(obj)          
+
+            %LOAD/COMPUTE VALUES
+            Image = obj.CompleteTemplate.EdgeFilter;
+            SIZE = size(Image);
+            
+            %SET FIGURE SIZE
+            %obj.fsxy(1) = 5; %set width
+            obj.fsxy(2) = 4; %set height                       
+            %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+            obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+            %CREATE FIGURE WITH AXIS 
+            [h, g] = setfigax1(obj);
+            
+            %PLOT IMAGE
+            imagesc(uint8(Image))
+            
+            g.Position = [0, 0, 1, 1]; axis off;
+            
+            %EXPORT IMAGE
+            realsizeandsave(obj, h, ['MidBrainEdgeTemplate']);
+        end    
+        
+        %brain images
+        function showBrainSegmentation(obj, fn)
+            %LOAD/COMPUTE VALUES
+            Image{1} = obj.BrainSegmentationObject(fn).Isquare;
+            Image{2} = obj.BrainSegmentationObject(fn).Ipolar;
+            Image{3} = obj.BrainSegmentationObject(fn).ICorr2;
+            Image{4} = obj.BrainSegmentationObject(fn).INorm;
+            Image{5} = obj.BrainSegmentationObject(fn).INorm2;
+            Image{6} = obj.BrainSegmentationObject(fn).Mask;
+            Image{7} = obj.BrainSegmentationObject(fn).PolarTransform;
+            Image{8} = obj.BrainSegmentationObject(fn).Ibrain;
+            for iImage = [1,2,4,5,7]
+            
+            SIZE = size(Image{iImage});
+            
+            %IMAGE ENHANCEMENT
+            
+            %SET FIGURE SIZE
+            %obj.fsxy(1) = 5; %set width
+            obj.fsxy(2) = 4; %set height                       
+            %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+            obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+            %CREATE FIGURE WITH AXIS 
+            [h, g] = setfigax1(obj);
+            
+            %PLOT IMAGE
+            imagesc(Image{iImage})
+            
+            g.Position = [0, 0, 1, 1]; axis off;
+            
+            %EXPORT IMAGE
+            realsizeandsave(obj, h, ['Brain Detection',filesep,'MidBrainSegmentation_fish',num2str(fn),'_',num2str(iImage)]);
+            end
+        end  
+        function showBrainPath(obj, fn)
+            %LOAD/COMPUTE VALUES
+            Image = obj.BrainSegmentationObject(fn).PolarTransform;
+            Path = obj.BrainSegmentationObject(fn).ShortestPath;
+            Paths = obj.BrainSegmentationObject(fn).AllShortestPaths;
+            
             SIZE = size(Image);
             
             %IMAGE ENHANCEMENT
@@ -2592,14 +2704,56 @@ classdef SpotNGlia < handle
             [h, g] = setfigax1(obj);
             
             %PLOT IMAGE
-            imagesc(Image)
+            imagesc(imcomplement(Image));
+            %imagesc((Image));
+
+            hold on 
+            for ipath = 1:numel(Paths)
+                plot(Paths{ipath}(:,1),Paths{ipath}(:,2),'Color',[226/255,26/255,26/255],'LineWidth',1)
+            end
+            plot(Path(:,1),Path(:,2),'Color',[0,0,0],'LineWidth',1)
             
             g.Position = [0, 0, 1, 1]; axis off;
             
             %EXPORT IMAGE
-            realsizeandsave(obj, h, ['defaultImage']);
+            realsizeandsave(obj, h, ['Brain Detection',filesep,'MidBrainPaths','_fish',num2str(fn)]);
+        end      
+        function showBrainEdge(obj, fn)
+            %LOAD/COMPUTE VALUES
+            Image = obj.RegObject(fn).Ialigned;
+            %Image = obj.BrainSegmentationObject(fn).Isquare;
+            Path = obj.BrainSegmentationObject(fn).BrainEdge;
+            %Paths = obj.BrainSegmentationObject(fn).AllShortestPaths;
             
-        end
+          %hold on;plot(bc{1}(:,2),bc{1}(:,1),'Color',[0,176/255,240/255],'LineWidth',2)
+            
+            
+            SIZE = size(Image);
+            
+            %IMAGE ENHANCEMENT
+            
+            %SET FIGURE SIZE
+            %obj.fsxy(1) = 5; %set width
+            obj.fsxy(2) = 4; %set height                       
+            %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+            obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+            %CREATE FIGURE WITH AXIS 
+            [h, g] = setfigax1(obj);
+            
+            %PLOT IMAGE
+            imagesc(Image);
+            %imagesc((Image));
+
+            hold on 
+            plot(Path(:,2),Path(:,1),'Color',[0,0,0],'LineWidth',1)
+            
+            g.Position = [0, 0, 1, 1]; axis off;
+            
+            %EXPORT IMAGE
+            realsizeandsave(obj, h, ['Brain Detection',filesep,'MidBrainEdge','_fish',num2str(fn)]);
+        end        
+        
      
         
         %supporting functions used for the show functions
