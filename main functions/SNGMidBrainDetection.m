@@ -36,6 +36,11 @@ classdef SNGMidBrainDetection < handle
         ShortestPath = []
         ShortestPathValue = []
         BrainEdge = []
+        
+        ShortestPathIndex     
+        Area
+        Hor
+        Ver 
     end
     properties(Transient = true)
         %data from template
@@ -43,13 +48,15 @@ classdef SNGMidBrainDetection < handle
         edgeFilter
         polarMidbrainBandWithGaussianWithBlurr
         
+        %
+        AllShortestPaths
         
         %IMAGES
         alignedImage
         Ibrain
         
         %
-        Isquare
+        Isquare = uint8([])
         Ipolar
         ICorr2
         INorm
@@ -73,26 +80,93 @@ classdef SNGMidBrainDetection < handle
             objB.SpotNGliaObject = SpotNGliaObject;
         end
         
+        %template getter functions
         function value = get.midbrainCenter(objB)
             if isempty(objB.midbrainCenter)
                 objB.midbrainCenter = objB.SpotNGliaObject.CompleteTemplate.CenterMidBrain;
             end
-            value = [];
-        end
-        
+            value = objB.midbrainCenter;
+        end    
         function value = get.edgeFilter(objB)
             if isempty(objB.edgeFilter)
                 objB.edgeFilter = objB.SpotNGliaObject.CompleteTemplate.EdgeFilter;
             end
-            value = [];
-        end
-        
+            value = objB.edgeFilter;
+        end   
         function value = get.polarMidbrainBandWithGaussianWithBlurr(objB)
             if isempty(objB.polarMidbrainBandWithGaussianWithBlurr)
                 objB.polarMidbrainBandWithGaussianWithBlurr = objB.SpotNGliaObject.CompleteTemplate.polarMidbrainBandWithGaussianWithBlurr;
             end
-            value = [];
+            value = objB.polarMidbrainBandWithGaussianWithBlurr;
         end
+        %image getter functions
+        function value = get.alignedImage(objB)
+            if isempty(objB.alignedImage)
+               warning('First load the input image alignedImage with obj.BrainSegmentationObject.loadAlignedImage') 
+               %a separate load function?
+               %pros: it prevents long computing time as previous algorithms has not to be uploaded
+               %cons: a separate function has to be called to load images
+               %pros: maybe parallel computer is available
+               objB.alignedImage = objB.SpotNGliaObject.RegObject(objB.iFish).Ialigned;
+            end
+            value = objB.alignedImage;
+        end  
+        function value = get.Isquare(objB)
+            if isempty(objB.Isquare)
+                objB.polarTransform
+            end
+            value = objB.Isquare;
+        end
+        function value = get.Ipolar(objB)
+            if isempty(objB.Ipolar)
+                objB.polarTransform
+            end
+            value = objB.Ipolar;
+        end        
+        function value = get.ICorr2(objB)
+            if isempty(objB.ICorr2)
+                objB.edgeCorrelation
+            end
+            value = objB.ICorr2;
+        end    
+        function value = get.INorm(objB)
+            if isempty(objB.INorm)
+                objB.edgeCorrelation
+            end
+            value = objB.INorm;
+        end    
+        function value = get.INorm2(objB)
+            if isempty(objB.INorm2)
+                objB.multiplyWithProbabilityMap
+            end
+            value = objB.INorm2;
+        end    
+        function value = get.PolarTransform(objB)
+            if isempty(objB.PolarTransform)
+                objB.findShortestPath
+            end
+            value = objB.PolarTransform;
+        end
+        function value = get.AllShortestPaths(objB)
+            if isempty(objB.AllShortestPaths)
+                objB.findShortestPath
+            end
+            value = objB.AllShortestPaths;
+        end
+        function value = get.Mask(objB)
+            if isempty(objB.Mask)
+                objB.reversePolarTransformPath
+            end
+            value = objB.Mask;
+        end
+        function value = get.Ibrain(objB)
+            if isempty(objB.Mask)
+                objB.reversePolarTransformPath;
+            end
+            value = objB.Ibrain;
+        end
+        
+                
         
         
         function All(objB)
@@ -239,6 +313,7 @@ classdef SNGMidBrainDetection < handle
                 %hold on
                 %plot(J,I,'r','LineWidth',2)
                 %drawnow
+                AllShortestPaths{l} = [J', I'];
             end
             
             %{
@@ -262,13 +337,23 @@ classdef SNGMidBrainDetection < handle
             
             objB.ShortestPath = [J', I'];
             objB.ShortestPathValue = mx;
+            objB.ShortestPathIndex = mx;
             objB.PolarTransform = INorm3;
             onjB.edges = edges;
             onjB.DGraph = DGraph;
-            objB.path = path
+            objB.path = path;
+            objB.Area = Area;
+            objB.Hor = Hor;
+            objB.Ver = Ver;
+            objB.AllShortestPaths = AllShortestPaths;
             
         end
         function reversePolarTransformPath(objB)
+            
+            I = objB.ShortestPath(:,2)';
+            siz = objB.siz;
+            rangex = objB.rangex;
+            rangey = objB.rangey;
             
             s = size(objB.PolarTransform);
             path = objB.path;
@@ -504,7 +589,7 @@ classdef SNGMidBrainDetection < handle
                 exteriorColor = 255;
             end
             
-            ext = exteriorColor * ones(siz(1)+400, siz(2)+400, siz(3));
+            ext = uint8(exteriorColor * ones(siz(1)+400, siz(2)+400, siz(3)));
             ext(201:siz(1)+200, 201:siz(2)+200, :) = Img1;
             
             
