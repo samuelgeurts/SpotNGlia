@@ -11,7 +11,8 @@ classdef SNGTemplate < handle
         RoiBrainPath
         savePath
         
-        %SpotNGliaObject
+        %Object
+        SpotNGliaObject
         
         %Template 
         Template
@@ -235,7 +236,8 @@ classdef SNGTemplate < handle
             
             
             %obj.LoadParameters('RegistrationInfo');
-            objt.SpotNGliaObject.LoadParameters('RegObject');
+            %objt.SpotNGliaObject.LoadParameters('RegObject');
+            
             tformList = [objt.SpotNGliaObject.RegObject.tform_1234];
             
             SIZE = objt.Size; %the size of the Template
