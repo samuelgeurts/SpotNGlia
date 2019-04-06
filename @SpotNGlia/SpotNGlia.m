@@ -619,8 +619,66 @@ classdef SpotNGlia < handle
             obj.saveit
             
             delete(h)
-        end
-        
+        end   
+        function SpotDetectionOOP(obj, fishnumbers)
+            
+            %obj.LoadParameters('BrainSegmentationInfo');
+            FillCheckup(obj); %load checkup if exist from pre SpotNGlia1.4.0
+            
+            h = waitbar(0, 'SpotDetection', 'Name', 'SpotNGlia');
+            
+            if ~exist('fishnumbers', 'var')
+                fishnumbers = 1:numel(obj.StackInfo);
+            elseif max(fishnumbers) > numel(obj.StackInfo)
+                error('at least one fish does not exist in BrainInfo')
+            end
+            nfishes = numel(fishnumbers);
+            obj.fishnumbers.spotdetection = fishnumbers;
+            
+            %load complete template
+            
+            %if nfishes > 1
+            %	spoutput(nfishes) = struct('EdgeFilterWidth',[],...
+            %        'ShortestPath',[],...
+            %        'ShortestPathValue',[],...
+            %        'BrainEdge',[]);
+            %end
+            %preallocation
+            SpotsDetected = cell(nfishes, 1);
+            SpotParameters = cell(nfishes, 1);
+            
+            if nfishes > 1
+                SpotDetectionInfo(nfishes) = struct('Multiproduct', [], ...
+                    'MultiproductThreshold', []);
+            end
+            
+            for k1 = 1:nfishes
+                fn = fishnumbers(k1);
+                waitbar(k1/nfishes, h, ['SpotDetection ', num2str(k1), ' / ', num2str(nfishes)])
+                AlignedFish = imread([obj.SavePath, filesep, 'AlignedFish', filesep, obj.StackInfo(fn).stackname, '.tif']);
+                [SpotsDetected{k1}, SpotParameters{k1}, SpotDetectionInfo(k1)] = SpotDetectionSNG(obj,AlignedFish, obj.CompleteTemplate, obj.BrainSegmentationInfo(k1).BrainEdge);
+                
+                %update Computations
+                obj.Computations(k1).Spots = reshape([SpotsDetected{k1}.Centroid], 2, numel(SpotsDetected{k1}))';
+                obj.Computations(k1).Midbrain = fliplr(obj.BrainSegmentationInfo(k1).BrainEdge);
+                obj.Computations(k1).Counts = numel(SpotsDetected{k1});
+                
+                %update checkup after new spot computations
+                if ~isempty(obj.checkup)
+                    obj.checkup(k1).Spots = obj.SpotsInsiteArea(SpotParameters{k1}, obj.checkup(k1).Midbrain);
+                    obj.checkup(k1).Counts = size(obj.checkup(k1).Spots, 1);
+                end
+            end
+            
+            obj.saveit
+            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'SpotDetectionInfo', '-append')
+            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'SpotsDetected', '-append')
+            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'SpotParameters', '-append')
+            
+            obj.buildsheet
+            
+            delete(h)
+        end        
         function SpotDetection(obj, fishnumbers)
             
             obj.LoadParameters('BrainSegmentationInfo');
@@ -2649,6 +2707,85 @@ classdef SpotNGlia < handle
             realsizeandsave(obj, h, ['MidBrainEdgeTemplate']);
         end    
         
+        %spot template images
+        function showSpotContrast(obj, fn)
+            
+            %output "obj" is to store Registration parameters in object
+            %which can be used for showMethods on the same fish
+            
+            obj.fsxy = ([10, 8]);
+            
+            %LOAD/COMPUTE VALUES
+           
+            spotColorsUnique = single(unique(obj.CompleteTemplate.spotcolorsTT,'rows'))/255;
+            backrColorsUnique = single(unique(obj.CompleteTemplate.backrcolorsTT,'rows'))/255;
+              
+            %PresetShowRegistration(obj,fn);
+            [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+            
+            %PLOT FIGURES
+            
+            scatter3(spotColorsUnique(:, 1), spotColorsUnique(:, 2),...
+                spotColorsUnique(:,3),'Marker','.','MarkerEdgeAlpha',0.5,...
+                'MarkerEdgeColor',[230 70 22]/255);
+            hold on
+            scatter3(backrColorsUnique(:,1),backrColorsUnique(:,2),...
+                backrColorsUnique(:,3),'Marker','.','MarkerEdgeAlpha',0.5,...
+                'MarkerEdgeColor',[0 166 214]/255);
+            view(g,[-63.5 18.8]);
+
+            setfigax2(obj, g); %preset axis with standard fond and size
+            %set(g, 'FontName', 'arial', 'FontSize', 8, 'XGrid', 'on', 'YGrid', 'on');
+            %set(g, 'Units', 'centimeters', 'Position', [1.3, 1, obj.fsxy(1) - 2.2, obj.fsxy(2) - 1.2]);
+            
+            %SET AXIS      
+            set(g, 'XLim', [0, 1]);
+            g.XLabel.String = 'Red';
+            set(g, 'YLim', [0, 1]);
+            g.YLabel.String = 'Green';            
+            set(g, 'ZLim', [0, 1]);
+            g.ZLabel.String = 'Blue';
+            
+            realsizeandsave(obj, h, ['SpotTemplate',filesep,'SpotBackgroundScatterPlot']);
+        end                
+        function showSpotSegmentation(obj)
+            %this showfunction is not automatic
+            %the fish and spot number in the function TemplateSpot in SNGTemplate has to manually changed
+            %TODO update SNGTemplate, than change input to ,fn and sp (fish and spotnumber input)
+            
+            image{1} = obj.CompleteTemplate.Spot1;
+            image{2} = obj.CompleteTemplate.SpotF;
+            image{3} = obj.CompleteTemplate.BackF;
+            image{4} = obj.CompleteTemplate.Mask2;
+            
+            for iImage = 1:4
+            
+                %LOAD/COMPUTE VALUES
+                %Image = obj.CompleteTemplate.Template;
+                SIZE = size(image{iImage});
+
+                %IMAGE ENHANCEMENT
+
+                %SET FIGURE SIZE
+                %obj.fsxy(1) = 5; %set width
+                obj.fsxy(2) = 4; %set height                       
+                %obj.fsxy(2) = SIZE(1) / SIZE(2) * obj.fsxy(1); %height is dependent on width
+                obj.fsxy(1) = SIZE(2) / SIZE(1) * obj.fsxy(2); %width is dependent on height
+
+                %CREATE FIGURE WITH AXIS 
+                [h, g] = setfigax1(obj);
+
+                %PLOT IMAGE
+                imagesc(image{iImage})
+
+                g.Position = [0, 0, 1, 1]; axis off;
+
+                %EXPORT IMAGE
+                realsizeandsave(obj, h, ['SpotTemplate',filesep,'SpotSegmentation',num2str(iImage)]);
+            end
+            
+        end        
+        
         %brain images
         function showBrainSegmentation(obj, fn)
             %LOAD/COMPUTE VALUES
@@ -2754,14 +2891,13 @@ classdef SpotNGlia < handle
             realsizeandsave(obj, h, ['Brain Detection',filesep,'MidBrainEdge','_fish',num2str(fn)]);
         end        
         
-     
-        
         %supporting functions used for the show functions
         function [f1, a1] = setfigax1(obj)
             %fsx = 5;fsy = 10;
             f1 = figure('PaperUnits', 'centimeters', 'Color', [1, 1, 1]);
             a1 = gca;
-            sng_figcm(obj.fsxy(1), obj.fsxy(2));
+     
+            obj.sng_figcm(obj.fsxy(1), obj.fsxy(2));
         end
         function setfigax2(obj, a1)
             set(a1, 'FontName', 'arial', 'FontSize', 8, 'XGrid', 'on', 'YGrid', 'on');
@@ -2773,12 +2909,14 @@ classdef SpotNGlia < handle
                 name = 'noname';
             end
             
-            if ~exist([obj.SavePath, filesep, 'Images'], 'dir')
-                mkdir([obj.SavePath, filesep, 'Images'])
+            [destinationFolder, name] = fileparts([obj.SavePath, filesep, 'Images', filesep, name])
+            
+            if ~exist(destinationFolder, 'dir')
+                mkdir(destinationFolder)
             end
             
             if obj.exportit
-                export_fig(f1, [obj.SavePath, filesep, 'Images', filesep, name], '-png', '-r600', '-nocrop');
+                export_fig(f1, [destinationFolder, filesep, name], '-png', '-r600', '-nocrop');
             end
             
             %sets the right scaling
@@ -2826,7 +2964,7 @@ classdef SpotNGlia < handle
             %because the dpi is fixed to 72, the screen size differs per screen
             %Give the real dpi value to create a copy of the figure such that it is
             %displayed with real size in centimeters
-            
+
             %Example: sng_figcm(10,8,113.6)
             
             %{
@@ -2847,14 +2985,8 @@ classdef SpotNGlia < handle
                 ScaledFigure(gcf, 'copy');
                 set(gcf, 'Units', 'Centimeters');
                 set(gcf, 'Position', (get(gcf, 'Position') + [fsx, 0, 0, 0]));
-                
             end
-            
-            
         end
-        
     end
-    
-    
 end
 
