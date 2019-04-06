@@ -11,20 +11,22 @@ f = int16(-winsiz:winsiz);
 subplot = @(m,n,p) subtightplot (m, n, p, [0 0], [0 0], [0 0]);
 image_TF = true;
 Save_TF = true;
-HistEq_TF = true;
+HistEq_TF = false;  %Wavelet spotdetection doesn work very well when used histogram equalizatio
 
-obj = LoadTemplate(obj);
+%obj = LoadTemplate(obj);
 
-obj.StackInfo
-obj.CompleteTemplate.ref_temp
-obj.ZFParameters
-
-
-
-load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo')
+%obj.StackInfo
+%obj.CompleteTemplate.ref_temp
+%obj.ZFParameters
 
 
-ColorToGrayVector = CompleteTemplate.SpotContrastVector;
+
+%load([obj.SavePath, '/', obj.InfoName, '.mat'], 'RegistrationInfo')
+
+
+% Color to gray vector is in the SNGInputParameters
+%obj.CompleteTemplate.loadSpotParameters
+%ColorToGrayVector = obj.CompleteTemplate.SpotContrastVector;
 %ColorToGrayVector = [0 1 0]
 %ColorToGrayVector = [-0.378629920630393;0.865619921584407;-0.327630179561694]        
 
@@ -37,7 +39,26 @@ zfinput = sng_zfinput(zfinput,0,'SpotDetection','MultiProduct','MPlevels',4:6,''
 zfinput = sng_zfinput(zfinput,0,'SpotDetection','MultiProduct','MPthreshold',1,'');
 %}
 
-sng_zfinputAssign(obj.ZFParameters,'SpotDetection')
+
+%%% assigning variables. Should be replaced later if function is made oop
+%sng_zfinputAssign(obj.ZFParameters,'SpotDetection') 
+%names = fields(obj.SngInputParameters.SpotDetection);
+%for iVariable = 1:numel(names)
+%    value = obj.SngInputParameters.SpotDetection.(names{iVariable});
+%    assignin('caller',names{iVariable},value);
+%end
+ColorToGrayVector = obj.SngInputParameters.SpotDetection.ColorToGrayVector;
+ScaleBase = obj.SngInputParameters.SpotDetection.ScaleBase;
+ScaleLevels = obj.SngInputParameters.SpotDetection.ScaleLevels;
+Kthreshold = obj.SngInputParameters.SpotDetection.Kthreshold;
+MPlevels = obj.SngInputParameters.SpotDetection.MPlevels;
+MPthreshold = obj.SngInputParameters.SpotDetection.MPthreshold;
+MinSpotSize = obj.SngInputParameters.SpotDetection.MinSpotSize;
+MaxSpotSize = obj.SngInputParameters.SpotDetection.MaxSpotSize;
+MinProbability = obj.SngInputParameters.SpotDetection.MinProbability;
+SpotDistLimit = obj.SngInputParameters.SpotDetection.SpotDistLimit;
+ComputeOnSlice = obj.SngInputParameters.SpotDetection.ComputeOnSlice;
+
 
 
 spotcolorsTT = [];
@@ -47,14 +68,20 @@ backrcolorsTT = [];
 for k1 = 1:numel(obj.StackInfo)
     
     %transformation matrix to aligned fish
-    tform_1234 = RegistrationInfo{k1}(strcmp({RegistrationInfo{k1}.name},'tform_complete')).value;
+    %tform_1234 = RegistrationInfo{k1}(strcmp({RegistrationInfo{k1}.name},'tform_complete')).value;
+    tform_1234 = obj.RegObject(k1).tform_1234;
+    
     %open correctedfish
-    CorrectedSlice = sng_openimstack2([obj.SavePath, '/', 'CorrectedFish', '/', obj.StackInfo(k1).stackname, '.tif']);
-   %annotated spots
+    %CorrectedSlice = sng_openimstack2([obj.SavePath, '/', 'CorrectedFish', '/', obj.StackInfo(k1).stackname, '.tif']);
+    CorrectedSlice = obj.PreprocessingObject(k1).correctedSlice;
+    
+    %annotated spots
     RoiMicroglia = ReadImageJROI([obj.AnnotatedSpotPath,'/',obj.StackInfo(k1).stackname,'.roi']);
     spota = RoiMicroglia.mfCoordinates;
     spots = RoiMicroglia.vnSlices;
-    [SpotAnn(:,1),SpotAnn(:,2)] = transformPointsForward(tform_1234,spota(:,1),spota(:,2));
+    
+    %%it seems that this does nothing 
+    %[SpotAnn(:,1),SpotAnn(:,2)] = transformPointsForward(tform_1234,spota(:,1),spota(:,2));
 
     
     
@@ -62,7 +89,7 @@ for k1 = 1:numel(obj.StackInfo)
     % mean(CorrectedSlice{k2}(CorrectedSlice{k2}(:) < bkt(1)))
     %end
     
-        %{
+        
         %histogram equalization
         %Wavelet spotdetection doesn work very well when used histogram equalization
         if HistEq_TF
@@ -86,7 +113,7 @@ for k1 = 1:numel(obj.StackInfo)
         else
             IEqual = CorrectedSlice;
         end
-        %}
+        
     
                 
     
@@ -129,8 +156,8 @@ for k1 = 1:numel(obj.StackInfo)
         spotcolorsarray = Spot1(repmat(SpotMask,1,1,3));
         spotcolors = reshape(spotcolorsarray,numel(spotcolorsarray)/3,3);
 
-        backcolorsarray = Spot1(repmat(BackMask,1,1,3));
-        backcolors = reshape(backrcolorsarray,numel(backrcolorsarray)/3,3);
+        backrcolorsarray = Spot1(repmat(BackMask,1,1,3));
+        backrcolors = reshape(backrcolorsarray,numel(backrcolorsarray)/3,3);
 
         %used for previous color measure probability
         %spotcolorsT = [spotcolorsT;spotcolors];
@@ -145,7 +172,7 @@ for k1 = 1:numel(obj.StackInfo)
         end
         
     end
-    toc
+    
 drawnow
 spotcolorsTT = [spotcolorsTT;spotcolorsT];
 backrcolorsTT = [backrcolorsTT;backrcolorsT];
