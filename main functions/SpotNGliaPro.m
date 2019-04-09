@@ -1,7 +1,7 @@
 classdef SpotNGliaPro < SpotNGlia
     
-    %TODO move all show methods to SpotNGliaPro and add to SpotNGlia-private
-    %TODO make a function that copies all props from an SpotNGlia instance to a SpotNGliaPro instance
+    %@todo move all show methods to SpotNGliaPro and add to SpotNGlia-private
+    %@todo make a function that copies all props from an SpotNGlia instance to a SpotNGliaPro instance
     
     
     properties
