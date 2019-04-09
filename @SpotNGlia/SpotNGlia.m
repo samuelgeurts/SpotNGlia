@@ -1799,7 +1799,7 @@ function CorrectCheckBrain(obj)
             
         end
     end
-%{    
+    
     methods %all Show methods
         function show(obj, subject, exportit, fsxy, var)
             
@@ -3035,12 +3035,6 @@ function CorrectCheckBrain(obj)
             set(f1, 'Position', (get(f1, 'Position') + [obj.fsxy(1), 0, 0, 0]));
         end
     end
-%}    
-    
-    
-    
-    
-    
     
     methods(Static)
         function SpotCoordsFiltered = SpotsInsiteArea(SpotParametersSingle, SpotCoords)
