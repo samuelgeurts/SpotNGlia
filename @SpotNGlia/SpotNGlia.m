@@ -48,8 +48,8 @@ classdef SpotNGlia < handle
         Sorting = []
         
         %variable for showing images
-   %     fsxy = [6, 5];
-   %     exportit = false;
+        %     fsxy = [6, 5];
+        %     exportit = false;
         
         isParallel = []
         isImagesSavedToFolder = [];
@@ -82,10 +82,13 @@ classdef SpotNGlia < handle
             %obj.NewPath(12) switch between own pc's for MultiBatch on Seagate harddisk
             
             if ~exist('mode1', 'var')
-                mode1 = 0;
+                mode1 = [];
             end
             
-            if ~isempty(mode1)
+            %mode1 = 0, users had to call SpotNGlia(0)
+            %TODO update SpotNGlia constructor such that no input parameters does not call NewPath
+            
+            if ~isempty(mode1) 
                 
                 NewPath(obj, mode1);
                 
@@ -293,23 +296,46 @@ classdef SpotNGlia < handle
                 %obj.RegObject.SpotNGliaObject = obj; ?not added, maybe necessary
             end
             value = obj.BrainSegmentationObject;
-        end 
-%         function value = get.ShowObject(obj)
-%             if isempty(obj.ShowObject)
-%                 obj.ShowObject = SNGShow(obj);
-%             end
-%             value = obj.ShowObject;
-%         end
+        end
+        %         function value = get.ShowObject(obj)
+        %             if isempty(obj.ShowObject)
+        %                 obj.ShowObject = SNGShow(obj);
+        %             end
+        %             value = obj.ShowObject;
+        %         end
         
-%         function show(obj, subject, exportit, fsxy)
-%             
-%             subject = [];
-%             exportit = false;
-%             fsxy = [5,6];
-%             
-%             SNGShow(obj, subject, exportit, fsxy)
-%         end        
+        %         function show(obj, subject, exportit, fsxy)
+        %
+        %             subject = [];
+        %             exportit = false;
+        %             fsxy = [5,6];
+        %
+        %             SNGShow(obj, subject, exportit, fsxy)
+        %         end
         
+        function obj2 = castObject(obj)
+            %this function cast the SpotNGlia class to the SpotnGliaPro class and back
+            %all non dependent properties are copied
+            %you can go from SpotNGlia to SpotNGliaPro and vice verse
+            %This works because SpotnGliaPro is inherited from SpotNGlia
+            
+            C = metaclass(SpotNGlia);
+            P = C.Properties;  
+            
+            if strcmp(class(obj),'SpotNGlia')
+                obj2 = SpotNGliaPro;
+            elseif strcmp(class(obj),'SpotNGliaPro')
+                obj2 = SpotNGlia;
+            else
+                error('target should be SpotNGlia or SpotNGliaPro class') 
+            end
+            
+            for k = 1:length(P)
+                if ~P{k}.Dependent
+                    obj2.(P{k}.Name) = obj.(P{k}.Name);
+                end
+            end            
+        end
         
         function SliceCombination(obj, slicenumbers)
             %computes imageinfo and stackinfo
@@ -989,27 +1015,27 @@ classdef SpotNGlia < handle
             obj.BatchInfo.MeanFishColor = mean(MeanFishColor(:));
             obj.BatchInfo.StdMeanFishColor = std(MeanFishColor(:));
         end
-
+        
         
         %{
 function CorrectCheckBrain(obj)
-              %this function updates the spots according to previous added or removed spots
+               %this function updates the spots according to previous added or removed spots
  
-              %         obj.checkup(k1).Spots
-              %         obj.checkup(k1).SpotAdditions
-              %         obj.checkup(k1).SpotRemovals
-              %
-              %
-              %         [obj.checkup(k1).Spots]
-              %
-              %
-              %         [TF, ~] = ismember([obj.checkup(k1).Spots], [obj.checkup(k1).SpotAdditions], 'rows');
-              %         sc.XData(TF) = [];
-              %         sc.YData(TF) = [];
-              %         %add previous added spots
-              %         sc.XData = [sc.XData, ph2.XData];
-              %         sc.YData = [sc.YData, ph2.YData];
-          end
+               %         obj.checkup(k1).Spots
+               %         obj.checkup(k1).SpotAdditions
+               %         obj.checkup(k1).SpotRemovals
+               %
+               %
+               %         [obj.checkup(k1).Spots]
+               %
+               %
+               %         [TF, ~] = ismember([obj.checkup(k1).Spots], [obj.checkup(k1).SpotAdditions], 'rows');
+               %         sc.XData(TF) = [];
+               %         sc.YData(TF) = [];
+               %         %add previous added spots
+               %         sc.XData = [sc.XData, ph2.XData];
+               %         sc.YData = [sc.YData, ph2.YData];
+           end
         %}
         
         ShowFishHeadHist(obj, fishnumber)
@@ -1070,18 +1096,18 @@ function CorrectCheckBrain(obj)
             end
             
             %{
-                      load([obj.SavePath,filesep,obj.InfoName,'.mat'], 'SpotsDetected')
-                      if exist('SpotsDetected')
-                          for k1 = 1:numel(SpotsDetected)
-                              nspots(k1,1) = numel(SpotsDetected{k1});
-                          end
+                       load([obj.SavePath,filesep,obj.InfoName,'.mat'], 'SpotsDetected')
+                       if exist('SpotsDetected')
+                           for k1 = 1:numel(SpotsDetected)
+                               nspots(k1,1) = numel(SpotsDetected{k1});
+                           end
  
-                          Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
-                          title = {obj.InfoName,'images','nspots'}
+                           Sheet = [{obj.StackInfo.stackname}',{obj.StackInfo.stacksize}',num2cell(nspots)]
+                           title = {obj.InfoName,'images','nspots'}
  
-                          ds = cell2dataset([title;Sheet]);
-                          export(ds,'file',[P{1},filesep,I{1},'.csv'],'delimiter',',')
-                      end
+                           ds = cell2dataset([title;Sheet]);
+                           export(ds,'file',[P{1},filesep,I{1},'.csv'],'delimiter',',')
+                       end
             %}
         end
         function LoadAnnotations(obj)
@@ -1799,7 +1825,7 @@ function CorrectCheckBrain(obj)
             
         end
     end
-    
+    %{
     methods %all Show methods
         function show(obj, subject, exportit, fsxy, var)
             
@@ -1953,29 +1979,29 @@ function CorrectCheckBrain(obj)
             realsizeandsave(obj, h1, 'FishDiscrimination2')
             
             %{
-                          %histogram of modulus shift around the mean of similar images
-                          [h3, g3] = setfigax1;
-                              histogram(c(d == 0),0:0.16:1.6);
-                              hold on
-                              hh=histogram(c(d == 1),0:0.16:2.5);
-                              set(hh,'FaceColor',[0.8500    0.3250    0.0980]);
-                              set(gca,'YLim',[0.6,301]);
-                              set(gca,'YScale','log');
-                              set(gca,'YTick',[1,10,100]);
-                              set(gca,'YTickLabels',[1,10,{'10^2'}])
-                          setfigax2(g3)
-                          g3.XLabel.String = 'translation modulus [pix]';
-                          g3.YLabel.String = 'counts';
-                          realsizeandsave(h3)
+                           %histogram of modulus shift around the mean of similar images
+                           [h3, g3] = setfigax1;
+                               histogram(c(d == 0),0:0.16:1.6);
+                               hold on
+                               hh=histogram(c(d == 1),0:0.16:2.5);
+                               set(hh,'FaceColor',[0.8500    0.3250    0.0980]);
+                               set(gca,'YLim',[0.6,301]);
+                               set(gca,'YScale','log');
+                               set(gca,'YTick',[1,10,100]);
+                               set(gca,'YTickLabels',[1,10,{'10^2'}])
+                           setfigax2(g3)
+                           g3.XLabel.String = 'translation modulus [pix]';
+                           g3.YLabel.String = 'counts';
+                           realsizeandsave(h3)
  
-                   %histogram of angular shift zoomed out
+                    %histogram of angular shift zoomed out
  
  
-                          [h3, g3] = setfigax1;
-                              h=histogram(c(d == 1),[-pi:pi/20:pi])
-                              set(h,'FaceColor',[0.8500    0.3250    0.0980])
-                              hold on
-                              h=histogram(c(d == 0),[-pi:pi/20:pi])
+                           [h3, g3] = setfigax1;
+                               h=histogram(c(d == 1),[-pi:pi/20:pi])
+                               set(h,'FaceColor',[0.8500    0.3250    0.0980])
+                               hold on
+                               h=histogram(c(d == 0),[-pi:pi/20:pi])
             %}
         end
         function showFishDiscrimination3(obj)
@@ -2259,19 +2285,19 @@ function CorrectCheckBrain(obj)
             textc = (tc - hc) / 2 + hc; %for halfway arro
             
             %{
-                       %histogram of original image
-                       Hr1 = histcounts(double(Img(:,:,1)), [0:1:255]);
-                       figure; bar(Hr1, 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
-                       set(gca, 'XLim', [0, 256], 'YLim', [0, 100000], 'FontSize', 20);
-                       set(gcf, 'Color', [1, 1, 1])
+                        %histogram of original image
+                        Hr1 = histcounts(double(Img(:,:,1)), [0:1:255]);
+                        figure; bar(Hr1, 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
+                        set(gca, 'XLim', [0, 256], 'YLim', [0, 100000], 'FontSize', 20);
+                        set(gcf, 'Color', [1, 1, 1])
             %}
             
             %{
-                       %histogram of image with removed background
-                       Hr1 = histcounts(double(Img2(:,:,1)), [0:1:255]);
-                       figure; bar(Hr1, 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
-                       set(gca, 'XLim', [0, 256], 'YLim', [0, 100000], 'FontSize', 20);
-                       set(gcf, 'Color', [1, 1, 1])
+                        %histogram of image with removed background
+                        Hr1 = histcounts(double(Img2(:,:,1)), [0:1:255]);
+                        figure; bar(Hr1, 'Facecolor', [0.5, 0.5, 0.5], 'Edgecolor', 'none', 'BarWidth', 1);
+                        set(gca, 'XLim', [0, 256], 'YLim', [0, 100000], 'FontSize', 20);
+                        set(gcf, 'Color', [1, 1, 1])
             %}
             
             %histogram of the 50pixel boundary
@@ -2798,11 +2824,8 @@ function CorrectCheckBrain(obj)
             
         end
         function showSpotHistogram(obj, fn)
-            
-            %output "obj" is to store Registration parameters in object
-            %which can be used for showMethods on the same fish
-            
-            obj.fsxy = ([10, 8]);
+                        
+            %obj.fsxy = ([10, 8]);
             
             %LOAD/COMPUTE VALUES
             S = double(obj.CompleteTemplate.spotcolorsTT);
@@ -2810,82 +2833,144 @@ function CorrectCheckBrain(obj)
             
             bin = 255;
             
-            
-            Shist = sng_chistcount(S', linspace(0, 255, bin+1)); %create bins
-            Bhist = sng_chistcount(B', linspace(0, 255, bin+1)); %
+            %TODO add sng_chistcount to static method en remove from support functions
+            Shist = obj.sng_chistcount(S', linspace(0, 255, bin+1)); %create bins
+            Bhist = obj.sng_chistcount(B', linspace(0, 255, bin+1)); %
             
             Snorm = Shist / size(S, 1);
             Bnorm = Bhist / size(B, 1);
             
-            [minC1, C1, Q1] = sng_threshold2(Snorm, Bnorm); %find threshold
+            [threshold, C1, Q1] = obj.sng_threshold2(Snorm, Bnorm); %find threshold
             
-            sng_chistplot(Snorm, Bnorm, minC1); set(gcf, 'numbertitle', 'off', 'name', 'RGB')
-            
-            %% a new way to transform to gray instead of taking the green values
-            bm = mean(B)
-            sm = mean(S)
+            %sng_chistplot(Snorm, Bnorm, minC1); set(gcf, 'numbertitle', 'off', 'name', 'RGB')
             
             
-            b = (bm - sm)
-            bnorm = b / norm(b)
             
-            mx = dot([255, 255, 255], bnorm)
-            mn = dot([0, 0, 0], bnorm)
+            for i = 1:3   
+                Overlap(i,:) = min(Snorm(i,:),Bnorm(i,:));
+
+                [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+
+                %PLOT FIGURES
+                hold on;
+                        %set(gca,'Xlim',[0,])
+                        bar(Snorm(i,:),'Facecolor',[0.4,0.4,0.8],'Edgecolor','none','BarWidth',1);
+                        bar(Bnorm(i,:),'Facecolor',[0.4,0.8,0.4],'Edgecolor','none','BarWidth',1);
+                        bar(Overlap(i,:),'Facecolor',[0.2,0.6,0.6],'Edgecolor','none','BarWidth',1);
+                        line([threshold(i) threshold(i)],get(gca,'Ylim'),'color',[0 0 0]);
+                hold off;
+                
+                setfigax2(obj, g); %preset axis with standard fond and size
+                %set(g, 'FontName', 'arial', 'FontSize', 8, 'XGrid', 'on', 'YGrid', 'on');
+                set(g, 'Units', 'centimeters', 'Position', [0.2, 1, obj.fsxy(1) - 0.5, obj.fsxy(2) - 1.5]);
+
+                %SET AXIS
+                set(g, 'XLim', [0, 255]);
+                set(g, 'XTick', [0,255]);
+                set(g, 'XTickLabels', [0, 1]);
+
+                set(g, 'YTick', []);
+                g.XLabel.String = 'Intensity';
+
+                realsizeandsave(obj, h, ['SpotTemplate', filesep, 'SpotHistogram', num2str(i)]);
+            end
             
-            st = double(S) * bnorm'; %transformed spot
-            bt = double(B) * bnorm'; %transformed background
+            disp(Q1)
+        end            
+        function showSpotHistogramOptimum(obj, fn)
             
-            st = st * 255 / mx;
-            bt = bt * 255 / mx;
+
+                       
+            %LOAD/COMPUTE VALUES
+            S = double(obj.CompleteTemplate.spotcolorsTT);
+            B = double(obj.CompleteTemplate.backrcolorsTT);
             
-            SThist = histcounts(st, linspace(0, 255, bin+1));
-            BThist = histcounts(bt, linspace(0, 255, bin+1));
+                               
+                % a new way to transform to gray instead of taking the green values
+                bm = mean(B)
+                sm = mean(S)
+
+
+                b = (bm - sm)
+                bnorm = b / norm(b)
+
+                mx = dot([255, 255, 255], bnorm)
+                mn = dot([0, 0, 0], bnorm)
+
+                st = double(S) * bnorm'; %transformed spot
+                bt = double(B) * bnorm'; %transformed background
+
+                st = st * 255 / mx;
+                bt = bt * 255 / mx;
+
+                SThist = obj.sng_chistcount(st, linspace(0, 255, bin+1));
+                BThist = obj.sng_chistcount(bt, linspace(0, 255, bin+1));
+
+                STnorm = SThist / size(S, 1);
+                BTnorm = BThist / size(B, 1);
+
+                [minC2, C2, Q2] = sng_threshold2(STnorm, BTnorm); %find threshold
+
+                sng_chistplot(STnorm, BTnorm, minC2); set(gcf, 'numbertitle', 'off', 'name', 'RGB')
+
+
+                Overlap = min(STnorm, BTnorm);
+                Combination = max(STnorm, BTnorm);
+                Jaccard = 1 - sum(Overlap) / sum(Combination)
+                
             
-            STnorm = SThist / size(S, 1);
-            BTnorm = BThist / size(B, 1);
-            
-            [minC2, C2, Q2] = sng_threshold2(STnorm, BTnorm); %find threshold
-            
-            sng_chistplot(STnorm, BTnorm, minC2); set(gcf, 'numbertitle', 'off', 'name', 'RGB')
             
             
-            Overlap = min(STnorm, BTnorm);
-            Combination = max(STnorm, BTnorm);
-            Jaccard = 1 - sum(Overlap) / sum(Combination)
             
             
-            spotColorsUnique = single(unique(obj.CompleteTemplate.spotcolorsTT, 'rows')) / 255;
-            backrColorsUnique = single(unique(obj.CompleteTemplate.backrcolorsTT, 'rows')) / 255;
             
-            %PresetShowRegistration(obj,fn);
-            [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+            bin = 255;
             
-            %PLOT FIGURES
+            %TODO add sng_chistcount to static method en remove from support functions
+            Shist = obj.sng_chistcount(S', linspace(0, 255, bin+1)); %create bins
+            Bhist = obj.sng_chistcount(B', linspace(0, 255, bin+1)); %
             
-            scatter3(spotColorsUnique(:, 1), spotColorsUnique(:, 2), ...
-                spotColorsUnique(:, 3), 'Marker', '.', 'MarkerEdgeAlpha', 0.5, ...
-                'MarkerEdgeColor', [230, 70, 22]/255);
-            hold on
-            scatter3(backrColorsUnique(:, 1), backrColorsUnique(:, 2), ...
-                backrColorsUnique(:, 3), 'Marker', '.', 'MarkerEdgeAlpha', 0.5, ...
-                'MarkerEdgeColor', [0, 166, 214]/255);
-            view(g, [-63.5, 18.8]);
+            Snorm = Shist / size(S, 1);
+            Bnorm = Bhist / size(B, 1);
             
-            setfigax2(obj, g); %preset axis with standard fond and size
-            %set(g, 'FontName', 'arial', 'FontSize', 8, 'XGrid', 'on', 'YGrid', 'on');
-            %set(g, 'Units', 'centimeters', 'Position', [1.3, 1, obj.fsxy(1) - 2.2, obj.fsxy(2) - 1.2]);
+            [threshold, C1, Q1] = obj.sng_threshold2(Snorm, Bnorm); %find threshold
             
-            %SET AXIS
-            set(g, 'XLim', [0, 1]);
-            g.XLabel.String = 'Red';
-            set(g, 'YLim', [0, 1]);
-            g.YLabel.String = 'Green';
-            set(g, 'ZLim', [0, 1]);
-            g.ZLabel.String = 'Blue';
+            %sng_chistplot(Snorm, Bnorm, minC1); set(gcf, 'numbertitle', 'off', 'name', 'RGB')
             
-            realsizeandsave(obj, h, ['SpotTemplate', filesep, 'SpotBackgroundScatterPlot']);
+            
+            
+            for i = 1:3   
+                Overlap(i,:) = min(Snorm(i,:),Bnorm(i,:));
+
+                [h, g] = setfigax1(obj); %create figure with axis with real-size obj.fsxy
+
+                %PLOT FIGURES
+                hold on;
+                        %set(gca,'Xlim',[0,])
+                        bar(Snorm(i,:),'Facecolor',[0.4,0.4,0.8],'Edgecolor','none','BarWidth',1);
+                        bar(Bnorm(i,:),'Facecolor',[0.4,0.8,0.4],'Edgecolor','none','BarWidth',1);
+                        bar(Overlap(i,:),'Facecolor',[0.2,0.6,0.6],'Edgecolor','none','BarWidth',1);
+                        line([threshold(i) threshold(i)],get(gca,'Ylim'),'color',[0 0 0]);
+                hold off;
+                
+                setfigax2(obj, g); %preset axis with standard fond and size
+                %set(g, 'FontName', 'arial', 'FontSize', 8, 'XGrid', 'on', 'YGrid', 'on');
+                set(g, 'Units', 'centimeters', 'Position', [0.2, 1, obj.fsxy(1) - 0.5, obj.fsxy(2) - 1.5]);
+
+                %SET AXIS
+                set(g, 'XLim', [0, 255]);
+                set(g, 'XTick', [0,255]);
+                set(g, 'XTickLabels', [0, 1]);
+
+                set(g, 'YTick', []);
+                g.XLabel.String = 'Intensity';
+
+                realsizeandsave(obj, h, ['SpotTemplate', filesep, 'SpotHistogram', num2str(i)]);
+            end
+            
+            disp(Q1)
         end
-        
+            
         %brain images
         function showBrainSegmentation(obj, fn)
             %LOAD/COMPUTE VALUES
@@ -3035,14 +3120,15 @@ function CorrectCheckBrain(obj)
             set(f1, 'Position', (get(f1, 'Position') + [obj.fsxy(1), 0, 0, 0]));
         end
     end
+    %}
     
     methods(Static)
         function SpotCoordsFiltered = SpotsInsiteArea(SpotParametersSingle, SpotCoords)
             %selects only Spots instite area 'SpotParametersSingle'
             
             %{
-                      SpotParametersSingle = SpotParameters{ifish};
-                      SpotCoords = [X3',Y3']
+                       SpotParametersSingle = SpotParameters{ifish};
+                       SpotCoords = [X3',Y3']
             %}
             
             Xrow = SpotCoords(:, 1);
@@ -3059,6 +3145,8 @@ function CorrectCheckBrain(obj)
             
             [SpotCoordsFiltered] = reshape([SpotsDetec.Centroid], 2, numel(SpotsDetec))';
         end
+        
+        %{
         function sng_figcm(fsx, fsy, DPI)
             %gives image real size in centimeters use for export with the export_fig function
             %because the dpi is fixed to 72, the screen size differs per screen
@@ -3068,8 +3156,8 @@ function CorrectCheckBrain(obj)
             %Example: sng_figcm(10,8,113.6)
             
             %{
-   fsx = obj.fsxy(1)
-   fsy = obj.fsxy(2)
+    fsx = obj.fsxy(1)
+    fsy = obj.fsxy(2)
             %}
             
             h1 = gcf;
@@ -3121,7 +3209,14 @@ function CorrectCheckBrain(obj)
                 end
             end
         end
-        
+        function [Eh] = sng_chistcount(E_array, edges);
+            %%compute bins
+            for i = 1:size(E_array, 1)
+                %compute bins
+                Eh(i, :) = histcounts(double(E_array(i, :)), edges);
+            end
+        end
+        %}
         
     end
 end
