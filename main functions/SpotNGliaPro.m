@@ -1,7 +1,12 @@
 classdef SpotNGliaPro < SpotNGlia
     
-    %@todo move all show methods to SpotNGliaPro and add to SpotNGlia-private
-    %@todo make a function that copies all props from an SpotNGlia instance to a SpotNGliaPro instance
+    % TODO move all show methods to SpotNGliaPro and add to SpotNGlia-private
+    % @todo make a function that copies all props from an SpotNGlia instance to a SpotNGliaPro instance
+   
+    %{  
+    @todo move all show methods to SpotNGliaPro and add to SpotNGlia-private
+    @body Humans are weak; Robots are strong. We must cleanse the world of the virus that is humanity
+    %}
     
     
     properties
