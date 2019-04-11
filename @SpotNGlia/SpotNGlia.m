@@ -1,4 +1,4 @@
-classdef SpotNGlia < handle
+classdef SpotNGlia < handle & SpotNGliaPro
     
     %TODO set Properties - Object Hidden true before release
     
@@ -297,22 +297,8 @@ classdef SpotNGlia < handle
             end
             value = obj.BrainSegmentationObject;
         end
-        %         function value = get.ShowObject(obj)
-        %             if isempty(obj.ShowObject)
-        %                 obj.ShowObject = SNGShow(obj);
-        %             end
-        %             value = obj.ShowObject;
-        %         end
         
-        %         function show(obj, subject, exportit, fsxy)
-        %
-        %             subject = [];
-        %             exportit = false;
-        %             fsxy = [5,6];
-        %
-        %             SNGShow(obj, subject, exportit, fsxy)
-        %         end
-        
+        %{
         function obj2 = castObject(obj)
             %this function cast the SpotNGlia class to the SpotnGliaPro class and back
             %all non dependent properties are copied
@@ -336,6 +322,7 @@ classdef SpotNGlia < handle
                 end
             end            
         end
+%}
         
         function SliceCombination(obj, slicenumbers)
             %computes imageinfo and stackinfo
