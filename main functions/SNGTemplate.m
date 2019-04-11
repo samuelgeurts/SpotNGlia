@@ -666,7 +666,7 @@ classdef SNGTemplate < handle
                 end
                 
                 
-                %% frame around annotated spots
+                % % frame around annotated spots
                 
                 backrcolorsT = [];
                 spotcolorsT = [];
@@ -732,7 +732,7 @@ classdef SNGTemplate < handle
                 objt.Mask2 = Mask2;
                 
                 
-                %%
+                %     %
                 %{
                  spotcolorsTT2 = unique(objt.spotcolorsTT, 'rows');
                  backrcolorsTT2 = unique(objt.backrcolorsTT, 'rows');
@@ -757,7 +757,7 @@ classdef SNGTemplate < handle
             
             %
             
-            %% feature segmentation.
+            % % feature segmentation.
             %{
   data = double([backrcolorsTT2;spotcolorsTT2]);
   label = [(ones(size(backrcolorsTT2,1),1));2*(ones(size(spotcolorsTT2,1),1))];
@@ -775,7 +775,7 @@ classdef SNGTemplate < handle
  
   figure;scatterd(D)
             %}
-            %% histogram spot/background contrast.
+            % % histogram spot/background contrast.
             %{
   bin = 255;
  
@@ -835,7 +835,7 @@ classdef SNGTemplate < handle
             end
             
             
-            %% Compute BW image based on transform vector
+            % % Compute BW image based on transform vector
             k10 = 10
             CorrectedSlice = sng_openimstack2([PreprocessionPath, '/', stackinfo(k10).stackname, '.tif']);
             Icombined = sng_SliceCombine(CorrectedSlice, stackinfo(k10).ExtendedDeptOfField.IndexMatrix);
@@ -844,7 +844,7 @@ classdef SNGTemplate < handle
             %Img2 = sng_RGB2Gray(Icombined,[0;1;0],true);
             
             
-            %% create volume that contains which a color vector can compared with to determine if it is in the range of spots
+            % % create volume that contains which a color vector can compared with to determine if it is in the range of spots
             
             %spot colorvectors scatter plot
             %{
@@ -935,7 +935,7 @@ classdef SNGTemplate < handle
                 save([TemplatePath3dpf, '/SpotTemplate.mat'], 'SpotTemplateVar');
             end
             
-            %% strech image the optain lower variance of spot color
+            % % strech image the optain lower variance of spot color
             %{
  
  
