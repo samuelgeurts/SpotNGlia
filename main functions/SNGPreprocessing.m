@@ -133,6 +133,23 @@ classdef SNGPreprocessing < handle
             end
             value = obp.mergedImage;
         end
+        function value = get.bandFiltered(obp)
+            if isempty(obp.bandFiltered)
+                obp.rgbBandpassFilter; 
+                disp('Bandpass filtering')
+            end
+            value = obp.bandFiltered;
+        end
+        function value = get.filteredImage(obp)
+            if isempty(obp.filteredImage)
+                obp.rgbBandpassFilter; 
+                disp('Bandpass filtering')
+            end
+            value = obp.filteredImage;
+        end
+
+        
+        
         
         function obp = rgbCorrection(obp)
             %computes rgb correction i.e. translation of color channels
