@@ -9,6 +9,10 @@ function Img2 = sng_RGB2Gray(Img,vector,ynimg)
     Img = Icombined;
     vector = [-0.431770623113389;0.847397560890843;-0.309016994374947] 
 %}    
+if size(vector,2) == 3
+    vector = transpose(vector);
+end
+
 
 r = double(Img(:,:,1));
 g = double(Img(:,:,2));
