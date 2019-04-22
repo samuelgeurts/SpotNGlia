@@ -1,6 +1,9 @@
 classdef SpotNGlia < handle & SpotNGliaPro
     
     %TODO set Properties - Object Hidden true before release
+    %TODO give all algorithms an paralell processing option
+    %BODY BrainSegmentation is already done
+    %TODO make SpotDetection oop
     
     properties
         FishPath = []
