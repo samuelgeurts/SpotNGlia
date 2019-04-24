@@ -166,6 +166,15 @@ classdef SNGTemplate < handle
             end
             value = objt.squareMidbrainBand;
         end
+        function value = get.polarMidbrainBandWithGaussian(objt)
+            %caller function to run polarProbabilityMidbrain
+            %asumed is that checking for squareMidbrainBand is enough
+            if isempty(objt.polarMidbrainBandWithGaussian)
+                disp('compute Brain parameters');
+                objt.polarProbabilityMidbrain; %compute polar band
+            end
+            value = objt.polarMidbrainBandWithGaussian;
+        end
         
         function loadTemplate(objt)
             % Mean Fish Registration Template
@@ -525,6 +534,7 @@ classdef SNGTemplate < handle
             
             [nRows, nColumns] = size(polarMidbrainBand);
             polarMidbrainBandWithGaussian = polarMidbrainBand;
+            
             center = 501;
             listGaussians = cell(1, nColumns);
             
