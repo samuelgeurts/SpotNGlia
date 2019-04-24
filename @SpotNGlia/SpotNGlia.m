@@ -2,8 +2,11 @@ classdef SpotNGlia < handle & SpotNGliaPro
     
     %TODO set Properties - Object Hidden true before release
     %TODO give all algorithms an paralell processing option
-    %BODY BrainSegmentation is already done
-    %TODO make SpotDetection oop
+        %BODY BrainSegmentation is already done
+    %TODO fix variables iFish, fn
+        %BODY for BrainSegmentation and SpotDetection it is fixed already
+    %TODO make structure of PreProcessing and Registration similar to BrainSegmentation
+    %TODO move all remaining show functions to SpotNGliaPro 
     
     properties
         FishPath = []
@@ -54,8 +57,9 @@ classdef SpotNGlia < handle & SpotNGliaPro
         %     fsxy = [6, 5];
         %     exportit = false;
         
-        isParallel = []
-        isImagesSavedToFolder = [];
+        isParallel = false
+        isImagesSavedToFolder = false
+        isSaveObject = true
     end
     properties(Transient = true)
         %PreprocessionInfo
@@ -67,11 +71,11 @@ classdef SpotNGlia < handle & SpotNGliaPro
         SpotParameters
     end
     properties(Transient = true) %, Hidden = true)
-        CompleteTemplate
-        RegObject %new registration parameters
-        PreprocessingObject %new preprocessing parameters
-        BrainSegmentationObject
-        %ShowObject
+        CompleteTemplate = SNGTemplate.empty
+        PreprocessingObject = SNGPreprocessing.empty
+        RegObject = SNGAlignment.empty
+        BrainSegmentationObject = SNGMidBrainDetection.empty
+        SpotDetectionObject = SNGSpotDetection.empty
     end
     
     methods
@@ -269,6 +273,13 @@ classdef SpotNGlia < handle & SpotNGliaPro
                 temp = load([obj.SavePath, filesep, obj.InfoName, '.mat'], 'PreprocessingObject');
                 obj.PreprocessingObject = temp.PreprocessingObject;
                 %obj.PreprocessingObject.SpotNGliaObject = obj; ?not added, maybe necessary
+                if isempty(fields(temp))
+                    for iFish = 1:obj.nfishes
+                    obj.PreprocessingObject(iFish) = SNGPreprocessing(obj);
+                    end
+                else
+                    obj.PreprocessingObject = temp.PreprocessingObject;
+                end
             end
             value = obj.PreprocessingObject;
         end
@@ -277,30 +288,45 @@ classdef SpotNGlia < handle & SpotNGliaPro
                 disp('loading RegObject')
                 temp = load([obj.SavePath, filesep, obj.InfoName, '.mat'], 'RegObject');
                 if isempty(fields(temp))
-                    temp(1:numel(obj.StackInfo)) = SNGAlignment(obj);
-                    obj.RegObject = temp;
+                    for iFish = 1:obj.nfishes
+                    obj.RegObject(iFish) = SNGAlignment(obj);
+                    end
                 else
                     obj.RegObject = temp.RegObject;
                 end
-                %obj.RegObject.SpotNGliaObject = obj; ?not added, maybe necessary
             end
             value = obj.RegObject;
         end
         function value = get.BrainSegmentationObject(obj)
             if isempty(obj.BrainSegmentationObject)
-                disp('loading BrainSegmentationObject')
+                disp('loading BrainSegmentationObject')             
                 temp = load([obj.SavePath, filesep, obj.InfoName, '.mat'], 'BrainSegmentationObject');
                 if isempty(fields(temp))
-                    temp(1:numel(obj.StackInfo)) = SNGMidBrainDetection(obj);
-                    obj.BrainSegmentationObject = temp;
+                    for iFish = 1:obj.nfishes
+                    obj.BrainSegmentationObject(iFish) = SNGMidBrainDetection(obj);
+                    end
                 else
                     obj.BrainSegmentationObject = temp.BrainSegmentationObject;
                 end
-                %obj.RegObject.SpotNGliaObject = obj; ?not added, maybe necessary
+                
             end
             value = obj.BrainSegmentationObject;
+                
         end
-        
+        function value = get.SpotDetectionObject(obj)
+            if isempty(obj.SpotDetectionObject)
+                disp('loading SpotDetectionObject')
+                temp = load([obj.SavePath, filesep, obj.InfoName, '.mat'], 'SpotDetectionObject');
+                if isempty(fields(temp))
+                    for iFish = 1:obj.nfishes
+                    obj.SpotDetectionObject(iFish) = SNGSpotDetection(obj);
+                    end
+                else
+                    obj.SpotDetectionObject = temp.SpotDetectionObject;
+                end
+            end
+            value = obj.SpotDetectionObject;
+        end
         %{
         function obj2 = castObject(obj)
             %this function cast the SpotNGlia class to the SpotnGliaPro class and back
@@ -603,7 +629,7 @@ classdef SpotNGlia < handle & SpotNGliaPro
                 error('at least one fish does not exist in RegistrationInfo')
             end
             
-            nfishes = numel(fishnumbers);
+            nimages = numel(fishnumbers);
             obj.fishnumbers.brainsegmentation = fishnumbers;
             
             %             if nfishes > 1
@@ -616,13 +642,13 @@ classdef SpotNGlia < handle & SpotNGliaPro
             %
             %            BrainSegmentationObject(numel(obj.StackInfo)) = SNGMidBrainDetection(obj);
             
-            for iFish = 1:nfishes
-                fn = fishnumbers(iFish);
-                waitbar(iFish/nfishes, h, ['loading Brain Segmentation', num2str(iFish), ' / ', num2str(nfishes)])
+            for iimage = 1:nimages
+                iFish = fishnumbers(iimage);
+                waitbar(iimage/nimages, h, ['loading Brain Segmentation', num2str(iimage), ' / ', num2str(nimages)])
                 
-                BrainSegmentationObject(fn) = SNGMidBrainDetection(obj);
-                BrainSegmentationObject(fn).iFish = fn;
-                BrainSegmentationObject(fn).alignedImage = obj.RegObject(fn).Ialigned;
+                BrainSegmentationObject(iimage) = SNGMidBrainDetection(obj);
+                BrainSegmentationObject(iimage).iFish = iFish;
+                BrainSegmentationObject(iimage).alignedImage = obj.RegObject(iFish).Ialigned;
             end
             
             %AlignedFish = imread([obj.SavePath, filesep, 'AlignedFish', filesep, obj.StackInfo(fn).stackname, '.tif']);
@@ -631,91 +657,35 @@ classdef SpotNGlia < handle & SpotNGliaPro
             %[Ibrain, Parameters] = BrainSegmentationObject(nfishes).MidBrainDetectionSNG(AlignedFish, CompleteTemplate, ZFParameters)
             
             %run core algorithm single or multitreaded
-            if obj.isParallel && (numel(fishnumbers) == numel(obj.StackInfo))
+            if obj.isParallel && (numel(fishnumbers) == obj.nfishes)
                 %check if isParallel is true and if all fishes are to be processed
                 %TODO fix parfor
-                parfor iFish = 1:nfishes
-                    BrainSegmentationObject(iFish).All;
-                    disp(num2str(iFish))
+                parfor iimage = 1:nimages
+                    BrainSegmentationObject(iimage) = BrainSegmentationObject(iimage).All;
+                    disp(num2str(iimage))
                 end
-            else
-                for iFish = 1:nfishes
-                    waitbar(iFish/nfishes, h, ['Brain Segmentation ', num2str(iFish), ' / ', num2str(nfishes)])
-                    fn = fishnumbers(iFish);
-                    BrainSegmentationObject(fn).All;
+                obj.BrainSegmentationObject = BrainSegmentationObject;
+            else 
+                for iimage = 1:nimages
+                    waitbar(iimage/nimages, h, ['Brain Segmentation ', num2str(iimage), ' / ', num2str(nimages)])
+                    iFish = fishnumbers(iimage);
+                    BrainSegmentationObject(iimage).All;
+                    obj.BrainSegmentationObject(iFish) = BrainSegmentationObject(iimage);
                 end
             end
+            BrainSegmentationObject = obj.BrainSegmentationObject;
             
-            %save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'BrainSegmentationInfo', '-append')
+            if obj.isSaveObject
             save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'BrainSegmentationObject', '-append')
-            obj.BrainSegmentationObject = BrainSegmentationObject;
-            obj.saveit
-            
-            delete(h)
-        end
-        function SpotDetectionOOP(obj, fishnumbers)
-            
-            %obj.LoadParameters('BrainSegmentationInfo');
-            FillCheckup(obj); %load checkup if exist from pre SpotNGlia1.4.0
-            
-            h = waitbar(0, 'SpotDetection', 'Name', 'SpotNGlia');
-            
-            if ~exist('fishnumbers', 'var')
-                fishnumbers = 1:numel(obj.StackInfo);
-            elseif max(fishnumbers) > numel(obj.StackInfo)
-                error('at least one fish does not exist in BrainInfo')
-            end
-            nfishes = numel(fishnumbers);
-            obj.fishnumbers.spotdetection = fishnumbers;
-            
-            %load complete template
-            
-            %if nfishes > 1
-            %	spoutput(nfishes) = struct('EdgeFilterWidth',[],...
-            %        'ShortestPath',[],...
-            %        'ShortestPathValue',[],...
-            %        'BrainEdge',[]);
-            %end
-            %preallocation
-            SpotsDetected = cell(nfishes, 1);
-            SpotParameters = cell(nfishes, 1);
-            
-            if nfishes > 1
-                SpotDetectionInfo(nfishes) = struct('Multiproduct', [], ...
-                    'MultiproductThreshold', []);
             end
             
-            for k1 = 1:nfishes
-                fn = fishnumbers(k1);
-                waitbar(k1/nfishes, h, ['SpotDetection ', num2str(k1), ' / ', num2str(nfishes)])
-                AlignedFish = imread([obj.SavePath, filesep, 'AlignedFish', filesep, obj.StackInfo(fn).stackname, '.tif']);
-                [SpotsDetected{k1}, SpotParameters{k1}, SpotDetectionInfo(k1)] = SpotDetectionSNG(obj, AlignedFish, obj.CompleteTemplate, obj.BrainSegmentationInfo(k1).BrainEdge);
-                
-                %update Computations
-                obj.Computations(k1).Spots = reshape([SpotsDetected{k1}.Centroid], 2, numel(SpotsDetected{k1}))';
-                obj.Computations(k1).Midbrain = fliplr(obj.BrainSegmentationInfo(k1).BrainEdge);
-                obj.Computations(k1).Counts = numel(SpotsDetected{k1});
-                
-                %update checkup after new spot computations
-                if ~isempty(obj.checkup)
-                    obj.checkup(k1).Spots = obj.SpotsInsiteArea(SpotParameters{k1}, obj.checkup(k1).Midbrain);
-                    obj.checkup(k1).Counts = size(obj.checkup(k1).Spots, 1);
-                end
-            end
-            
-            obj.saveit
-            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'SpotDetectionInfo', '-append')
-            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'SpotsDetected', '-append')
-            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'SpotParameters', '-append')
-            
-            obj.buildsheet
-            
+            %obj.saveit        
             delete(h)
         end
         function SpotDetection(obj, fishnumbers)
             
-            obj.LoadParameters('BrainSegmentationInfo');
-            FillCheckup(obj); %load checkup if exist from pre SpotNGlia1.4.0
+            %obj.LoadParameters('BrainSegmentationInfo');
+            %FillCheckup(obj); %load checkup if exist from pre SpotNGlia1.4.0
             
             h = waitbar(0, 'SpotDetection', 'Name', 'SpotNGlia');
             
@@ -724,44 +694,66 @@ classdef SpotNGlia < handle & SpotNGliaPro
             elseif max(fishnumbers) > numel(obj.StackInfo)
                 error('at least one fish does not exist in BrainInfo')
             end
-            nfishes = numel(fishnumbers);
+            nimages = numel(fishnumbers);
             obj.fishnumbers.spotdetection = fishnumbers;
             
-            %load complete template
+            %SpotsDetected = cell(nfishes, 1);
+            %SpotParameters = cell(nfishes, 1);
             
-            %if nfishes > 1
-            %	spoutput(nfishes) = struct('EdgeFilterWidth',[],...
-            %        'ShortestPath',[],...
-            %        'ShortestPathValue',[],...
-            %        'BrainEdge',[]);
-            %end
-            %preallocation
-            SpotsDetected = cell(nfishes, 1);
-            SpotParameters = cell(nfishes, 1);
-            
-            if nfishes > 1
-                SpotDetectionInfo(nfishes) = struct('Multiproduct', [], ...
-                    'MultiproductThreshold', []);
+%             if nfishes > 1
+%                 SpotDetectionInfo(nfishes) = struct('Multiproduct', [], ...
+%                     'MultiproductThreshold', []);
+%             end
+
+            for iimage = 1:nimages
+                iFish = fishnumbers(iimage);
+                waitbar(iimage/nimages, h, ['loading Images for Spot Detection ', num2str(iimage), ' / ', num2str(nimages)])
+                
+                SpotDetectionObject(iimage) = SNGSpotDetection(obj);
+                SpotDetectionObject(iimage).iFish = iFish;
+                SpotDetectionObject(iimage).alignedImage = obj.RegObject(iFish).Ialigned;
             end
             
-            for k1 = 1:nfishes
-                fn = fishnumbers(k1);
-                waitbar(k1/nfishes, h, ['SpotDetection ', num2str(k1), ' / ', num2str(nfishes)])
-                AlignedFish = imread([obj.SavePath, filesep, 'AlignedFish', filesep, obj.StackInfo(fn).stackname, '.tif']);
-                [SpotsDetected{k1}, SpotParameters{k1}, SpotDetectionInfo(k1)] = SpotDetectionSNG(obj, AlignedFish, obj.CompleteTemplate, obj.BrainSegmentationInfo(k1).BrainEdge);
-                
+            if obj.isParallel && (numel(fishnumbers) == obj.nfishes)
+                %it seems parfor skips the transient or hidden properties 
+                %check if isParallel is true and if all fishes are to be processed
+                parfor iimage = 1:nimages
+                    SpotDetectionObject(iimage) = SpotDetectionObject(iimage).All;
+                    disp(num2str(iimage))
+                end
+                obj.SpotDetectionObject = SpotDetectionObject;
+            else
+                for iimage = 1:nimages
+                    waitbar(iimage/nimages, h, ['Spot Detection ', num2str(iimage), ' / ', num2str(nimages)])
+                    iFish = fishnumbers(iimage);
+                    SpotDetectionObject(iimage).All;
+                    obj.SpotDetectionObject(iFish) = SpotDetectionObject(iimage);
+                end
+            end
+            SpotDetectionObject = obj.SpotDetectionObject;
+            
+            if obj.isSaveObject
+            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'SpotDetectionObject', '-append')
+            end
+            
+            
+            for iimage = 1:nimages
+                iFish = fishnumbers(iimage);
+                waitbar(iimage/nimages, h, ['update variables ', num2str(iimage), ' / ', num2str(nimages)])
+
                 %update Computations
-                obj.Computations(k1).Spots = reshape([SpotsDetected{k1}.Centroid], 2, numel(SpotsDetected{k1}))';
-                obj.Computations(k1).Midbrain = fliplr(obj.BrainSegmentationInfo(k1).BrainEdge);
-                obj.Computations(k1).Counts = numel(SpotsDetected{k1});
-                
+                obj.Computations(iFish).Spots = reshape([obj.SpotDetectionObject(iFish).SpotsDetected.Centroid], 2, numel(obj.SpotDetectionObject(iFish).SpotsDetected))';
+                obj.Computations(iFish).Midbrain = fliplr(obj.BrainSegmentationObject(iFish).BrainEdge);
+                obj.Computations(iFish).Counts = numel(obj.SpotDetectionObject(iFish).SpotsDetected);
+
                 %update checkup after new spot computations
                 if ~isempty(obj.checkup)
-                    obj.checkup(k1).Spots = obj.SpotsInsiteArea(SpotParameters{k1}, obj.checkup(k1).Midbrain);
-                    obj.checkup(k1).Counts = size(obj.checkup(k1).Spots, 1);
+                    obj.checkup(iFish).Spots = obj.SpotsInsiteArea(obj.SpotDetectionObject(iFish).SpotParameters, obj.checkup(iFish).Midbrain);
+                    obj.checkup(iFish).Counts = size(obj.checkup(iFish).Spots, 1);
                 end
             end
             
+            %{
             obj.saveit
             save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'SpotDetectionInfo', '-append')
             save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'SpotsDetected', '-append')
@@ -770,7 +762,9 @@ classdef SpotNGlia < handle & SpotNGliaPro
             obj.buildsheet
             
             delete(h)
-        end
+            
+            %}
+        end  
         function SpotDetection2(obj, fishnumbers)
             
             INFO = load([obj.SavePath, filesep, obj.InfoName, '.mat'], 'RegistrationInfo', 'BrainSegmentationInfo');
@@ -956,11 +950,11 @@ classdef SpotNGlia < handle & SpotNGliaPro
             end
             
             obj.PreProcessing(fishnumbers);
-            %obj.ExtendedDeptOfField(fishnumbers);
             obj.Registration(fishnumbers);
             obj.BrainSegmentation(fishnumbers);
             obj.SpotDetection(fishnumbers);
             
+            obj.saveit
             obj.overwriteFile = false;
             
         end
@@ -1005,7 +999,6 @@ classdef SpotNGlia < handle & SpotNGliaPro
             obj.BatchInfo.MeanFishColor = mean(MeanFishColor(:));
             obj.BatchInfo.StdMeanFishColor = std(MeanFishColor(:));
         end
-        
         
         %{
 function CorrectCheckBrain(obj)
