@@ -5,6 +5,8 @@ classdef SNGSpotDetection < handle
     %sng_NCC
     %IAT toolbox
     
+    %TODO split core algorithm up in separate functions
+    
     properties %(Access = private)
         %Object
         SpotNGliaObject
@@ -20,22 +22,38 @@ classdef SNGSpotDetection < handle
         MinProbability
         SpotDistLimit
         ComputeOnSlice
-        %from CompleteTemplate
-        template = []
+
         
         %from SpotNGlia
         iFish
-        imageNames
-        imagePath
+        %imageNames
+        %imagePath
     end
     properties
         %OUTPUTPARAMETERS
-        
-        
+        SpotN %number of detected spots
+        SpotsDetected
     end
     properties(Transient = true, Hidden = true)
         %IMAGES
-        aligendImage = []
+        alignedImage = []
+        
+        %from CompleteTemplate
+        %template = []
+        SVAP_index = []
+        SpotVectorArrayProbability = []
+        
+        %from BrainDetection
+        BrainEdge = []
+        
+        %output parameters
+        thresholdedMultiProduct
+        multiProduct
+        blurredImages,
+        substractedImages,
+        thresholdedImages
+        
+        SpotParameters %all spotinfo
     end
     
     methods
@@ -53,84 +71,65 @@ classdef SNGSpotDetection < handle
             end
             
         end
-        %         function set.imageSlice(obp, val)
-        %             %automatically updating the property nSlices when updating imageSlice
-        %             obp.imageSlice = val;
-        %             obp.nSlices = numel(val);
-        %         end
-        
-        
-        function [SpotsDetected, SpotParameters, SpotDetectionInfo, SpotN] = SpotDetectionSNG(objS, Ialigned, CompleteTemplate, cmbr)
+        function value = get.alignedImage(objS)
+            if isempty(objS.alignedImage)
+               warning('First load the input image alignedImage with SpotDetectionObject(fn).alignedImage = obj.RegObject(fn).Ialigned') 
+               objS.alignedImage = objS.SpotNGliaObject.RegObject(objS.iFish).Ialigned;
+            end
+            value = objS.alignedImage;
+        end 
+        function value = get.BrainEdge(objS)
+            if isempty(objS.BrainEdge)
+                objS.BrainEdge = objS.SpotNGliaObject.BrainSegmentationObject(objS.iFish).BrainEdge;
+            end
+            value = objS.BrainEdge;
+        end
+        function value = get.SVAP_index(objS)
+            if isempty(objS.SVAP_index)
+                objS.SVAP_index = objS.SpotNGliaObject.CompleteTemplate.SVAP_index;
+            end
+            value = objS.SVAP_index;
+        end  
+        function value = get.SpotVectorArrayProbability(objS)
+            if isempty(objS.SpotVectorArrayProbability)
+                objS.SpotVectorArrayProbability = objS.SpotNGliaObject.CompleteTemplate.SpotVectorArrayProbability;
+            end
+            value = objS.SpotVectorArrayProbability;
+        end  
+        function SpotDetection(objS)
             
-            
-            Ialigned = objS.Ialigned;
-            cmbr = objS.cmbr;
-            
-            
-            %Version SpotDetectionLink3
-            % correctiong for color and index 255 vs 256
-            
-            %{
- 
- 
-  Ialigned = AlignedFish;
-  CompleteTemplate = obj.CompleteTemplate;
-  cmbr = BrainSegmentationInfo(k1).BrainEdge;
-  ZFParameters = obj.ZFParameters;
-  ZFParameters = ZFParametersTemp{1}
- 
-            %}
-            %{
-  Ialigned = AlignedFish{k1};
-  CompleteTemplate = obj.CompleteTemplate;
-  cmbr = MidBrain;
-  ZFParameters =  ZFParametersTemp{1}
-            %}
-            
-            
-            %sng_zfinputAssign(ZFParameters,'SpotDetection')
-            %obj.SngInputParameters.assign('SpotDetection')
-            
-            
-            ScaleLevels = max(MPlevels);
-            
+            Ialigned = objS.alignedImage;
+            cmbr = objS.BrainEdge;
+            %ScaleLevels = max(objS.MPlevels);
             
             %TODO: suffisticated color transform of afterwards color detection
             %TODO: apply on original images which are not dept of field combined as :some spots appear due to dof artifacts. Combine images afterwards
-            %TODO:  add more parameters
-            %TODO:  find out how hard thresholding works
+            %TODO: add more parameters
+            %TODO: find out how hard thresholding works
             
+            %RGB to gray algorithm
+            grayscaleImage = sng_RGB2Gray(Ialigned, objS.ColorToGrayVector, false);
             
-            %% RGB to gray algorithm
-            
-            GI = sng_RGB2Gray(Ialigned, ColorToGrayVector, false);
-            
-            
-            %% Generate Wavelets
-            
+            % Generate Wavelets
             %[MultiProductTh,MultiProduct,A,W,Wth] = sng_SpotWavelet(GI,ScaleLevels,ScaleBase,MPlevels,MPthreshold,false);
-            [MultiProductTh, MultiProduct] = sng_SpotWavelet(GI, ScaleLevels, ScaleBase, MPlevels, MPthreshold, false);
-            
+            [objS.thresholdedMultiProduct,objS.multiProduct,...
+                objS.blurredImages,objS.substractedImages,...
+                objS.thresholdedImages] = sng_SpotWavelet(grayscaleImage,...
+                objS.ScaleLevels, objS.ScaleBase, objS.MPlevels,...
+                objS.MPthreshold, false);
             %{
-  figure;imagesc(Ialigned)
-  figure;imagesc(MultiProductTh)
- 
-  for k = 1:size(A,3)
-  figure;imagesc(W(:,:,k))
-  end
- 
- 
+              figure;imagesc(Ialigned)
+              figure;imagesc(MultiProductTh)
+              for k = 1:size(A,3)
+              figure;imagesc(W(:,:,k))
+              end
             %}
             
-            %% SpotMeasure
-            
-            %function sng_spotproperties (Ialigned, MaskedIm)
-            
-            CC = bwconncomp(MultiProductTh);
+            %SpotMeasure
+            CC = bwconncomp(objS.thresholdedMultiProduct);
             L = labelmatrix(CC);
             nspots1 = CC.NumObjects;
             Regions1 = regionprops(L, 'Area', 'PixelIdxList', 'PixelList', 'Centroid', 'Image', 'BoundingBox');
-            
             
             %% Color mean of founded spots
             colormean = zeros(numel(Regions1), 3);
@@ -173,9 +172,9 @@ classdef SNGSpotDetection < handle
             
             probability = zeros(numel(Regions1), 1);
             for k2 = 1:numel(Regions1)
-                in = find(CompleteTemplate.SVAP_index == colorindex(k2));
+                in = find(objS.SVAP_index == colorindex(k2));
                 if ~isempty(in)
-                    probability(k2, 1) = CompleteTemplate.SpotVectorArrayProbability(in);
+                    probability(k2, 1) = objS.SpotVectorArrayProbability(in);
                 end
             end
             temp = num2cell(probability); [Regions1.ColorProbability] = temp{:};
@@ -193,7 +192,7 @@ classdef SNGSpotDetection < handle
             
             %% other discriminations
             
-            cm = [Regions1.ColorProbability] >= MinProbability;
+            cm = [Regions1.ColorProbability] >= objS.MinProbability;
             temp = num2cell(cm); [Regions1.MinProbability] = temp{:};
             
             
@@ -217,11 +216,11 @@ classdef SNGSpotDetection < handle
             %% spotsize
             
             %spots larger than MinSpotSize
-            lt = [Regions1.Area] >= MinSpotSize;
+            lt = [Regions1.Area] >= objS.MinSpotSize;
             temp = num2cell(lt); [Regions1.LargerThan] = temp{:};
             
             %spots smaller than MaxSpotSize
-            st = [Regions1.Area] <= MaxSpotSize;
+            st = [Regions1.Area] <= objS.MaxSpotSize;
             temp = num2cell(st); [Regions1.SmallerThan] = temp{:};
             
             %%
@@ -294,14 +293,21 @@ classdef SNGSpotDetection < handle
  
                 %}
                 
-                SpotParameters = Regions1;
+                objS.SpotParameters = Regions1;
                 
-                SpotDetectionInfo.Multiproduct = MultiProduct;
-                SpotDetectionInfo.MultiproductThreshold = MultiProductTh;
+                %SpotDetectionInfo.Multiproduct = MultiProduct;
+                %SpotDetectionInfo.MultiproductThreshold = MultiProductTh;
                 %SpotDetectionInfo.SpotFilter = Ifilt;
                 
-                SpotN = numel(SpotsDetected);
+                %objS.SpotFilter = Ifilt;
+                objS.SpotsDetected = SpotsDetected;
+                objS.SpotN = numel(SpotsDetected);
                 
+        end
+        function objS = All(objS)
+            %The All function must have the object output for parfor in SpotNGlia
+            %although it is a handle class
+            SpotDetection(objS)
         end
     end
 end
