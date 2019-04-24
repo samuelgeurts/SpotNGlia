@@ -16,11 +16,9 @@ classdef SNGMidBrainDetection < handle
         
     end
     properties
-        
         siz = [];
         rangex = [];
         rangey = [];
-        
         
         edges = []
         DGraph = []
@@ -42,7 +40,7 @@ classdef SNGMidBrainDetection < handle
         Hor
         Ver 
     end
-    properties(Transient = true)
+    properties(Transient = true, Hidden = true)
         %data from template
         midbrainCenter
         edgeFilter
@@ -102,7 +100,7 @@ classdef SNGMidBrainDetection < handle
         %image getter functions
         function value = get.alignedImage(objB)
             if isempty(objB.alignedImage)
-               warning('First load the input image alignedImage with obj.BrainSegmentationObject.loadAlignedImage') 
+               warning('First load the input image alignedImage with BrainSegmentationObject(fn).alignedImage = obj.RegObject(fn).Ialigned') 
                %a separate load function?
                %pros: it prevents long computing time as previous algorithms has not to be uploaded
                %cons: a separate function has to be called to load images
@@ -166,14 +164,13 @@ classdef SNGMidBrainDetection < handle
             value = objB.Ibrain;
         end
         
-                
-        
-        
-        function All(objB)
+        function objB = All(objB)
+            %output variable is needed for parfor in SpotNGlia
             polarTransform(objB)
             edgeCorrelation(objB)
             multiplyWithProbabilityMap(objB)
             findShortestPath(objB)
+            reversePolarTransformPath(objB)
         end
         function polarTransform(objB)
             
