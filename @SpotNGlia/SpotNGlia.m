@@ -1,4 +1,4 @@
-classdef SpotNGlia < handle & SpotNGliaPro
+classdef SpotNGlia < handle & SpotNGliaShow
     
     %TODO set Properties - Object Hidden true before release
     %TODO give all algorithms an paralell processing option
