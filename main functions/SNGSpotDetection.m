@@ -37,6 +37,7 @@ classdef SNGSpotDetection < handle
     properties(Transient = true, Hidden = true)
         %IMAGES
         alignedImage = []
+        grayscaleImage
         
         %from CompleteTemplate
         %template = []
@@ -47,11 +48,12 @@ classdef SNGSpotDetection < handle
         BrainEdge = []
         
         %output parameters
-        thresholdedMultiProduct
-        multiProduct
-        blurredImages,
-        substractedImages,
+        blurredImages
+        substractedImages
         thresholdedImages
+        multiProduct
+        thresholdedMultiProduct
+
         
         SpotParameters %all spotinfo
     end
@@ -71,6 +73,7 @@ classdef SNGSpotDetection < handle
             end
             
         end
+        %from registrationObject
         function value = get.alignedImage(objS)
             if isempty(objS.alignedImage)
                warning('First load the input image alignedImage with SpotDetectionObject(fn).alignedImage = obj.RegObject(fn).Ialigned') 
@@ -78,12 +81,14 @@ classdef SNGSpotDetection < handle
             end
             value = objS.alignedImage;
         end 
+        %from brainsegmentationObject
         function value = get.BrainEdge(objS)
             if isempty(objS.BrainEdge)
                 objS.BrainEdge = objS.SpotNGliaObject.BrainSegmentationObject(objS.iFish).BrainEdge;
             end
             value = objS.BrainEdge;
         end
+        %from template
         function value = get.SVAP_index(objS)
             if isempty(objS.SVAP_index)
                 objS.SVAP_index = objS.SpotNGliaObject.CompleteTemplate.SVAP_index;
@@ -95,11 +100,56 @@ classdef SNGSpotDetection < handle
                 objS.SpotVectorArrayProbability = objS.SpotNGliaObject.CompleteTemplate.SpotVectorArrayProbability;
             end
             value = objS.SpotVectorArrayProbability;
-        end  
-        function SpotDetection(objS)
+        end
+        %call core methods
+        function value = get.grayscaleImage(objS)
+            if isempty(objS.grayscaleImage)
+                disp('compute color to gray')
+                objS.colorToGray
+            end
+            value = objS.grayscaleImage;
+        end
+        function value = get.blurredImages(objS)
+            if isempty(objS.blurredImages)
+                disp('compute wavelet multiproduct')
+                objS.computeMultiProduct
+            end
+            value = objS.blurredImages;
+        end
+        function value = get.substractedImages(objS)
+            if isempty(objS.substractedImages)
+                disp('compute wavelet multiproduct')
+                objS.computeMultiProduct
+            end
+            value = objS.substractedImages;
+        end
+        function value = get.thresholdedImages(objS)
+            if isempty(objS.thresholdedImages)
+                disp('compute wavelet multiproduct')
+                objS.computeMultiProduct
+            end
+            value = objS.thresholdedImages;
+        end
+        function value = get.multiProduct(objS)
+            if isempty(objS.multiProduct)
+                disp('compute wavelet multiproduct')
+                objS.computeMultiProduct
+            end
+            value = objS.multiProduct;
+        end
+        function value = get.thresholdedMultiProduct(objS)
+            if isempty(objS.thresholdedMultiProduct)
+                disp('compute wavelet multiproduct')
+                objS.computeMultiProduct
+            end
+            value = objS.thresholdedMultiProduct;
+        end
+
+        %core methods
+        function colorToGray(objS)
             
             Ialigned = objS.alignedImage;
-            cmbr = objS.BrainEdge;
+
             %ScaleLevels = max(objS.MPlevels);
             
             %TODO: suffisticated color transform of afterwards color detection
@@ -108,13 +158,15 @@ classdef SNGSpotDetection < handle
             %TODO: find out how hard thresholding works
             
             %RGB to gray algorithm
-            grayscaleImage = sng_RGB2Gray(Ialigned, objS.ColorToGrayVector, false);
+            objS.grayscaleImage = sng_RGB2Gray(Ialigned, objS.ColorToGrayVector, false);
+        end
+        function computeMultiProduct(objS)
             
             % Generate Wavelets
             %[MultiProductTh,MultiProduct,A,W,Wth] = sng_SpotWavelet(GI,ScaleLevels,ScaleBase,MPlevels,MPthreshold,false);
             [objS.thresholdedMultiProduct,objS.multiProduct,...
                 objS.blurredImages,objS.substractedImages,...
-                objS.thresholdedImages] = sng_SpotWavelet(grayscaleImage,...
+                objS.thresholdedImages] = sng_SpotWavelet(objS.grayscaleImage,...
                 objS.ScaleLevels, objS.ScaleBase, objS.MPlevels,...
                 objS.MPthreshold, false);
             %{
@@ -124,8 +176,11 @@ classdef SNGSpotDetection < handle
               figure;imagesc(W(:,:,k))
               end
             %}
+        end
+        function computeSpotProperties(objS)
+            cmbr = objS.BrainEdge;
             
-            %SpotMeasure
+            %SpotMeasures
             CC = bwconncomp(objS.thresholdedMultiProduct);
             L = labelmatrix(CC);
             nspots1 = CC.NumObjects;
@@ -304,10 +359,18 @@ classdef SNGSpotDetection < handle
                 objS.SpotN = numel(SpotsDetected);
                 
         end
+        %combine method
         function objS = All(objS)
             %The All function must have the object output for parfor in SpotNGlia
             %although it is a handle class
-            SpotDetection(objS)
+            
+            for iimage = 1:size(objS,2)
+                disp(iimage)
+                
+                colorToGray(objS(iimage))   
+                computeMultiProduct(objS(iimage))
+                computeSpotProperties(objS(iimage))
+            end
         end
     end
 end
