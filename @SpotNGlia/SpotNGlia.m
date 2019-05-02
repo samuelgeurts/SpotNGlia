@@ -66,11 +66,11 @@ classdef SpotNGlia < handle & SpotNGliaShow
         %ExtendedDeptOfFieldInfo
         %RegistrationInfo
         %BrainSegmentationInfo
-        SpotDetectionInfo
-        SpotsDetected
-        SpotParameters
+        %SpotDetectionInfo
+        %SpotsDetected
+        %SpotParameters
     end
-    properties(Transient = true) %, Hidden = true)
+    properties(Transient = true, Hidden = true)
         CompleteTemplate = SNGTemplate.empty
         PreprocessingObject = SNGPreprocessing.empty
         RegObject = SNGAlignment.empty
