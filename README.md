@@ -3,7 +3,7 @@ A Matlab toolbox described in the following paper:
 
 **Reverse genetic screen reveals that Il34 facilitates yolk sac macrophage distribution and seeding of the brain**  
 Laura E. Kuil, Nynke Oosterhof, Samuël N. Geurts, Herma C. van der Linde, Erik Meijering, Tjakko J. van Ham  
-(under review)
+Published: MAR 2019   DISEASE MODELS & MECHANISMS   Volume: 12   Issue: 3    doi: 10.1242/dmm.037762
 
 With this tool automated counting of microglia cells inside the midbrain of 3dpf zebrafish multistack brightfield images is performed. The algorithm can be distinguished in 5 main steps which have to be applied sequential. First, preprocessing which contains image corrections and enhancements on single fish images also the image slices of a single fish are merged such that in focus data is preserved. Second, image registration is applied, where a fish image is transformed such that it is aligned with a template fish with known orientation. Third, segmentation of the brain is applied to find the brain boundaries as we only have to look for microglia (red spots) in the brain area. Finally, a spotdetection method based on wavelets is applied to count microglia. A menu shows the results and enables manual correction. A csv file with microglia numbers is generated for further analysis.
 
