@@ -175,11 +175,17 @@ classdef SNGTemplate < handle
             end
             value = objt.polarMidbrainBandWithGaussian;
         end
+        function value = get.Spot1(objt)
+            if isempty(objt.Spot1)
+                disp('compute additional Spot parameters');
+                objt.TemplateSpot; %compute polar band
+            end
+            value = objt.Spot1;
+        end
         
         function loadTemplate(objt)
             % Mean Fish Registration Template
             %based on older template, can be updated with 50 fish batch but lead
-            %probably not to improvement. Source is not sure, TemplateGeneration?
             
             objt.Template = imread([objt.TemplatePath3dpf, '/template.tif']);
             SIZE = size(objt.Template);
