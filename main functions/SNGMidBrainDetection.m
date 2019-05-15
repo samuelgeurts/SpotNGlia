@@ -153,7 +153,8 @@ classdef SNGMidBrainDetection < handle
         end
         function value = get.Mask(objB)
             if isempty(objB.Mask)
-                objB.reversePolarTransformPath
+                %objB.reversePolarTransformPath
+                objB.Mask = sng_Polar2Im(objB.path3);
             end
             value = objB.Mask;
         end
@@ -176,7 +177,8 @@ classdef SNGMidBrainDetection < handle
             
             
             % polar transform
-            Isquare = objB.sng_cropAroundCoord(objB.alignedImage, objB.midbrainCenter);
+            %Isquare = objB.sng_cropAroundCoord(objB.alignedImage, objB.midbrainCenter);
+            Isquare = sng_CropExtendAroundCoord(objB.alignedImage, objB.midbrainCenter, [1000 1000], 'mode');
             
             %extend with 200 pixels on every side
             objB.siz = size(objB.alignedImage);
@@ -561,6 +563,7 @@ classdef SNGMidBrainDetection < handle
     end
     
     methods(Static = true)
+        %{
         function [Img2] = sng_cropAroundCoord(Img1, coords1, boxsize, exteriorColor)
             %extends images and cut out a 1000x1000 image around a given center
             %extend with 200 pixels on every side
@@ -575,6 +578,9 @@ classdef SNGMidBrainDetection < handle
  
              Img1 = objt.BandMidBrain;
              coords1 = objt.CenterMidBrain;
+            
+             Img1 = Image(:,:,5);
+             coords1 = obj.BrainSegmentationObject(iFish).midbrainCenter
  
             %}
             siz = size(Img1);
@@ -585,10 +591,11 @@ classdef SNGMidBrainDetection < handle
             if ~exist('exteriorColor')
                 exteriorColor = 255;
             end
-            
-            ext = uint8(exteriorColor * ones(siz(1)+400, siz(2)+400, siz(3)));
+            ext = (exteriorColor * ones(siz(1)+400, siz(2)+400, siz(3)));
+            %ext = uint8(exteriorColor * ones(siz(1)+400, siz(2)+400, siz(3)));
             ext(201:siz(1)+200, 201:siz(2)+200, :) = Img1;
             
+  
             
             %{
              figure;imagesc(uint8(ext))
@@ -621,6 +628,7 @@ classdef SNGMidBrainDetection < handle
              figure;imagesc(uint8(Img3))
             %}
         end
+        %}
         function [edges] = sng_SquareGridDiGraph(s)
             %this function generates nodes and edges from a rectangular grid (matrix)
             %direction is from left to right and connectivety is -45,0,45 degrees
