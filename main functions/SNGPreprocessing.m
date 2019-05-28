@@ -111,9 +111,9 @@ classdef SNGPreprocessing < handle
             end
             value = obp.imageSlice;
         end        
-        function value = get.imageSliceCor(obp)
-            
-            if isempty(obp.imageSliceCor)
+        function value = get.imageSliceCor(obp)   
+            temp = obp.imageSliceCor;
+            if isempty(temp) || isempty(temp{1})
                 rgbWarp(obp);
                 disp('apply rgb alignment on all images of a single fish')
             end
@@ -147,10 +147,6 @@ classdef SNGPreprocessing < handle
             end
             value = obp.filteredImage;
         end
-
-        
-        
-        
         function obp = rgbCorrection(obp)
             %computes rgb correction i.e. translation of color channels
             
@@ -195,13 +191,13 @@ classdef SNGPreprocessing < handle
             %preallocation
             obp.NCC_Img_before = cell(1, obp.nSlices);
             obp.NCC_Img_after = cell(1, obp.nSlices);
-            obp.imageSliceCor = cell(1, obp.nSlices);
-            obp.rgbCropValues = cell(1, obp.nSlices);
+            imageSliceCor = cell(1, obp.nSlices);
+            rgbCropValues = cell(1, obp.nSlices);
             
             for iSlice = 1:obp.nSlices
                 
                 %colorwarp
-                [obp.imageSliceCor{iSlice}, obp.rgbCropValues{iSlice}] = obp.sng_rgbWarp(obp.imageSlice{iSlice}(:, :, 1:3), obp.colorWarp{iSlice});
+                [imageSliceCor{iSlice}, rgbCropValues{iSlice}] = obp.sng_rgbWarp(obp.imageSlice{iSlice}(:, :, 1:3), obp.colorWarp{iSlice});
                 
                 %compute correlation
                 %{
@@ -217,6 +213,9 @@ classdef SNGPreprocessing < handle
                 obp.NCC_Img_after{iSlice}(1) = sng_NCC(obp.imageSliceCor{iSlice}(:, :, 1), obp.imageSliceCor{iSlice}(:, :, 2));
                 obp.NCC_Img_after{iSlice}(2) = sng_NCC(obp.imageSliceCor{iSlice}(:, :, 1), obp.imageSliceCor{iSlice}(:, :, 3));
             end
+            obp.imageSliceCor = imageSliceCor;
+            obp.rgbCropValues = rgbCropValues;
+            
             %imwrite(uint8(Img2), fullFileName{l}, 'WriteMode', 'append', 'Compression','none');
         end
         function obp = rgbWarpFilteredImage(obp)
