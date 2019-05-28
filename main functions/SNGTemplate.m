@@ -1,4 +1,4 @@
-classdef SNGTemplate < handle
+classdef SNGTemplate < handle & matlab.mixin.Copyable
     % class for generating template object. Based on the function MakeTemplateMat
     % which it replaces. Running the function load the needed template
     % variables and creates the template on a chosen location. In future the load function has to be replaced by the functions
@@ -32,6 +32,7 @@ classdef SNGTemplate < handle
         %Spot
         SpotVectorArrayProbability
         SVAP_index
+        spotContrastVector
         
         spotcolorsTT;
         backrcolorsTT;
@@ -284,6 +285,7 @@ classdef SNGTemplate < handle
             save(strcat(objt.savePath, filesep, objt.fileName, '.mat'), 'objt');
         end
         
+        %Brain template functions
         function BrainTemplate(objt)
             % function based on TemplateBrainParameters
             % this function needs aan SpotNGlia object to retrieve information from, stackinfo information
@@ -603,9 +605,9 @@ classdef SNGTemplate < handle
             
         end
         
+        %Spot template functions
         function TemplateSpot(objt)
             %this function computes the template variables of the test batch with annotations.
-            
             
             %TODO split deze functie verder op
             %save alleen het masker per spot want dat duurd het langst
@@ -687,7 +689,6 @@ classdef SNGTemplate < handle
                 backrcolorsT = [];
                 spotcolorsT = [];
                 
-                
                 if image_TF
                     subplotvar = ceil(sqrt(2*numel(spots)));
                     figure;
@@ -735,7 +736,8 @@ classdef SNGTemplate < handle
                     end
                 end
                 
-                drawnow
+                %drawnow
+                
                 spotcolorsTT = [spotcolorsTT; spotcolorsT];
                 backrcolorsTT = [backrcolorsTT; backrcolorsT];
                 
@@ -748,7 +750,7 @@ classdef SNGTemplate < handle
                 objt.Mask2 = Mask2;
                 
                 
-                %     %
+                %%     
                 %{
                  spotcolorsTT2 = unique(objt.spotcolorsTT, 'rows');
                  backrcolorsTT2 = unique(objt.backrcolorsTT, 'rows');
@@ -767,11 +769,9 @@ classdef SNGTemplate < handle
             
             
         end
-        function TemplateSpotpart2(objt)
+        function optimalSpotContrastVector(objt)
             S = double(objt.spotcolorsTT);
             B = double(objt.backrcolorsTT);
-            
-            %
             
             % % feature segmentation.
             %{
@@ -839,10 +839,11 @@ classdef SNGTemplate < handle
   Jaccard = 1-sum(Overlap)/sum(Combination)
             %}
             
-            
             [cartvec, bestJac, polarvec, index] = objt.FindBestContrastVector(S, B, 7, 11, false, true);
             bestvec = cartvec(:, end);
+            objt.spotContrastVector = bestvec;
             
+            %old image data
             if image_TF
                 Jc1 = sng_Rgb2BwContrast(S, B, bestvec, true); set(gca, 'XLim', [75, 160])
                 Jc2 = sng_Rgb2BwContrast(S, B, [1; 0; 0], true);
@@ -850,17 +851,18 @@ classdef SNGTemplate < handle
                 Jc4 = sng_Rgb2BwContrast(S, B, [0; 0; 1], true);
             end
             
-            
-            % % Compute BW image based on transform vector
+            %{
+            %% Compute BW image based on transform vector
             k10 = 10
             CorrectedSlice = sng_openimstack2([PreprocessionPath, '/', stackinfo(k10).stackname, '.tif']);
-            Icombined = sng_SliceCombine(CorrectedSlice, stackinfo(k10).ExtendedDeptOfField.IndexMatrix);
-            
+            Icombined = sng_SliceCombine(CorrectedSlice, stackinfo(k10).ExtendedDeptOfField.IndexMatrix); 
             Img2 = sng_RGB2Gray(Icombined, bestvec, true);
-            %Img2 = sng_RGB2Gray(Icombined,[0;1;0],true);
-            
-            
-            % % create volume that contains which a color vector can compared with to determine if it is in the range of spots
+            %}
+        end
+        function spotColorProbability(objt)
+            %% create volume that contains which a color vector can compared with to determine if it is in the range of spots
+            S = double(objt.spotcolorsTT);
+            B = double(objt.backrcolorsTT);
             
             %spot colorvectors scatter plot
             %{
@@ -907,7 +909,6 @@ classdef SNGTemplate < handle
             %SVAP_subscript = uint8(subscript);
             SpotVectorArrayProbability = SpotMaskGauss(SVAP_index);
             
-            
             %{
   writerObj1 = VideoWriter('blurred spots','MPEG-4');
   writerObj1.FrameRate = 50;    % to perform realtime movie
@@ -927,35 +928,28 @@ classdef SNGTemplate < handle
             
             %Regionstats = regionprops(SpotMask) %to much single pixels
             %Regionstats = regionprops(boolean(SpotMaskGauss)) %to much single pixels
-            
-            
+                
             %{
+  spotcolorsTT2 = unique(objt.spotcolorsTT, 'rows');         
   [X,Y,Z] = meshgrid(1:255,1:255,1:255);
   S2 = double(spotcolorsTT2);
   kk = boundary(S2(:,1),S2(:,2),S2(:,3));
-  figure;trisurf(kk,S2(:,1),S2(:,2),S2(:,3),'Facecolor','red','FaceAlpha',0.1)
+  figure;t = trisurf(kk,S2(:,1),S2(:,2),S2(:,3),'Facecolor','red','FaceAlpha',0.1)
+  t.EdgeColor = [1 0 0]
+  t.EdgeAlpha = 0.1
  
- 
+            
+            
+            
+            
+            
   DT = delaunayTriangulation(S2(:,1),S2(:,2),S2(:,3));
   K = convexHull(DT)
   figure;trisurf(K,DT.Points(:,1),DT.Points(:,2),DT.Points(:,3),'Facecolor','cyan','FaceAlpha',0.1)
             %}
             
-            
-            SpotTemplateVar.SpotContrastVector = bestvec;
-            SpotTemplateVar.SpotVectorArrayProbability = SpotVectorArrayProbability;
-            SpotTemplateVar.SVAP_index = SVAP_index;
-            
-            if Save_TF
-                save([Basepath, '/Template Spot/SpotTemplate.mat'], 'SpotTemplateVar');
-                save([TemplatePath3dpf, '/SpotTemplate.mat'], 'SpotTemplateVar');
-            end
-            
-            % % strech image the optain lower variance of spot color
-            %{
- 
- 
-            %}
+            objt.SpotVectorArrayProbability = SpotVectorArrayProbability;
+            objt.SVAP_index = SVAP_index;
             
         end
         
