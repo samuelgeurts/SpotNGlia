@@ -326,33 +326,7 @@ classdef SpotNGlia < handle & SpotNGliaShow
                 end
             end
             value = obj.SpotDetectionObject;
-        end
-        %{
-        function obj2 = castObject(obj)
-            %this function cast the SpotNGlia class to the SpotnGliaPro class and back
-            %all non dependent properties are copied
-            %you can go from SpotNGlia to SpotNGliaPro and vice verse
-            %This works because SpotnGliaPro is inherited from SpotNGlia
-            
-            C = metaclass(SpotNGlia);
-            P = C.Properties;  
-            
-            if strcmp(class(obj),'SpotNGlia')
-                obj2 = SpotNGliaPro;
-            elseif strcmp(class(obj),'SpotNGliaPro')
-                obj2 = SpotNGlia;
-            else
-                error('target should be SpotNGlia or SpotNGliaPro class') 
-            end
-            
-            for k = 1:length(P)
-                if ~P{k}.Dependent
-                    obj2.(P{k}.Name) = obj.(P{k}.Name);
-                end
-            end            
-        end
-%}
-        
+        end        
         function SliceCombination(obj, slicenumbers)
             %computes imageinfo and stackinfo
             %       sorting = ['date' or 'name']
@@ -999,28 +973,7 @@ classdef SpotNGlia < handle & SpotNGliaShow
             obj.BatchInfo.MeanFishColor = mean(MeanFishColor(:));
             obj.BatchInfo.StdMeanFishColor = std(MeanFishColor(:));
         end
-        
-        %{
-function CorrectCheckBrain(obj)
-               %this function updates the spots according to previous added or removed spots
- 
-               %         obj.checkup(k1).Spots
-               %         obj.checkup(k1).SpotAdditions
-               %         obj.checkup(k1).SpotRemovals
-               %
-               %
-               %         [obj.checkup(k1).Spots]
-               %
-               %
-               %         [TF, ~] = ismember([obj.checkup(k1).Spots], [obj.checkup(k1).SpotAdditions], 'rows');
-               %         sc.XData(TF) = [];
-               %         sc.YData(TF) = [];
-               %         %add previous added spots
-               %         sc.XData = [sc.XData, ph2.XData];
-               %         sc.YData = [sc.YData, ph2.YData];
-           end
-        %}
-        
+
         ShowFishHeadHist(obj, fishnumber)
         ShowMaxFishHist(obj, fishnumber)
         ShowFishDiscrimination(obj, exportit)
@@ -1539,95 +1492,6 @@ function CorrectCheckBrain(obj)
             temp = num2cell(F1score); [obj.SpotBrainInfo(1:nfishes).F1score] = temp{:};
             temp = num2cell(AbsDifference); [obj.SpotBrainInfo(1:nfishes).AbsDifference] = temp{:};
             temp = num2cell(RelDifference); [obj.SpotBrainInfo(1:nfishes).RelDifference] = temp{:};
-        end
-        function ShowBoxPlot(obj, exportit)
-            %Example show and save
-            %   ShowBoxPlot(obj,1)
-            %Example only show
-            %   obj.ShowBoxPlot
-            
-            %%% brainval spotval
-            fsx = 6; fsy = 10;
-            
-            if isfield(obj.BrainInfo, 'Jaccard')
-                bj = obj.BrainStats.FiveNumberSummaryJaccard(3);
-                bd = obj.BrainStats.FiveNumberSummaryDice(3);
-                
-                [h1, g1] = setfigax1;
-                boxplot(g1, [ ...
-                    obj.BrainInfo.Jaccard; ...
-                    obj.BrainInfo.Dice]', {'Jaccard', 'Dice'});
-                %title('Brain Validation')
-                
-                setfigax2(g1)
-                text(1.2, bj, sprintf('%.2f', bj), 'FontName', 'arial', 'FontSize', 8)
-                text(2.2, bd, sprintf('%.2f', bd), 'FontName', 'arial', 'FontSize', 8)
-                realsizeandsave(h1)
-                
-                
-            end
-            
-            if isfield(obj.SpotInfo, 'Precision')
-                sp = obj.SpotStats.FiveNumberSummaryPrecision(3);
-                sr = obj.SpotStats.FiveNumberSummaryRecall(3);
-                sf = obj.SpotStats.FiveNumberSummaryF1score(3);
-                [h2, g2] = setfigax1;
-                boxplot(g2, [ ...
-                    obj.SpotInfo.Precision; ...
-                    obj.SpotInfo.Recall; ...
-                    obj.SpotInfo.F1score]', {'Precision', 'Recall', 'F1score'});
-                %title('Spot Validation')
-                setfigax2(g2)
-                text(1.3, sp, sprintf('%.2f', sp), 'FontName', 'arial', 'FontSize', 8)
-                text(2.3, sr, sprintf('%.2f', sr), 'FontName', 'arial', 'FontSize', 8)
-                text(3.3, sf, sprintf('%.2f', sf), 'FontName', 'arial', 'FontSize', 8)
-                set(gca, 'XLim', [0.5, 3.8])
-                realsizeandsave(h2)
-            end
-            
-            if isfield(obj.SpotBrainInfo, 'Precision')
-                bsp = obj.SpotBrainStats.FiveNumberSummaryPrecision(3);
-                bsr = obj.SpotBrainStats.FiveNumberSummaryRecall(3);
-                bsf = obj.SpotBrainStats.FiveNumberSummaryF1score(3);
-                
-                [h3, g3] = setfigax1;
-                boxplot(g3, [ ...
-                    obj.SpotBrainInfo.Precision; ...
-                    obj.SpotBrainInfo.Recall; ...
-                    obj.SpotBrainInfo.F1score]', {'Precision', 'Recall', 'F1score'});
-                %title('Spot Validation on Computed Brain')
-                
-                setfigax2(g3)
-                
-                text(1.3, bsp, sprintf('%.2f', bsp), 'FontName', 'arial', 'FontSize', 8)
-                text(2.3, bsr, sprintf('%.2f', bsr), 'FontName', 'arial', 'FontSize', 8)
-                text(3.3, bsf, sprintf('%.2f', bsf), 'FontName', 'arial', 'FontSize', 8)
-                set(gca, 'XLim', [0.5, 3.8])
-                realsizeandsave(h3)
-            end
-            
-            function [figurehandle, axishandle] = setfigax1
-                %fsx = 5;fsy = 10;
-                figurehandle = figure('PaperUnits', 'centimeters', 'Color', [1, 1, 1]);
-                axishandle = gca;
-                SpotNGlia.sng_figcm(fsx, fsy);
-            end
-            function setfigax2(axishandle)
-                set(axishandle, 'FontName', 'arial', 'FontSize', 8, 'XGrid', 'on', 'YGrid', 'on');
-                set(axishandle, 'Units', 'centimeters', 'Position', [1.2, 1.2, fsx - 1.7, fsy - 1.7]);
-                set(axishandle, 'YLim', [-0.02, 1.02]);
-            end
-            function realsizeandsave(figurehandle)
-                if exist('exportit', 'var') && exportit
-                    export_fig(figurehandle, ['/Users/samuelgeurts/Desktop/', 'boxplot', num2str(figurehandle.Number)], '-png', '-r600', '-nocrop');
-                end
-                ScaledFigure.calibrateDisplay(113.6); %113.6 for this screen
-                ScaledFigure(figurehandle, 'reuse');
-                set(figurehandle, 'Units', 'Centimeters');
-                set(figurehandle, 'Position', (get(figurehandle, 'Position') + [fsx, 0, 0, 0]));
-            end
-            
-            
         end
         function ShowFishVal(obj, fishnumbers, ComOrAnn)
             %if ComOrAnn is not given, the computed brain is used
