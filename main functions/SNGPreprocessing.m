@@ -101,7 +101,8 @@ classdef SNGPreprocessing < handle
         %}
         
         function value = get.imageSlice(obp)
-            if isempty(obp.imageSlice)
+            temp = obp.imageSlice;
+            if isempty(temp) || isempty(temp{1})
                 obp.imageSlice = cell(1, obp.nSlices); %preallocate for every new slice
                 for iSlice = 1:obp.nSlices
                     obp.imageSlice{iSlice} = imread([obp.imagePath, filesep, obp.imageNames{iSlice}]);

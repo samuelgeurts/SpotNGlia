@@ -256,8 +256,44 @@ classdef SpotNGlia < handle & SpotNGliaShow
                 error('unknown mode')
             end
             
-            obj.OS = getenv('OS');
+            obj.OS = getenv('OS');           
+        
+            updateSpotNGliaObjectsinSubObjects(obj)
+        end
+        function updateSpotNGliaObjectsinSubObjects(obj)
+            %this function updates the SpotNGliaObject property in the functions
+                %obj.CompleteTemplate
+                %obj.PreprocessingObject
+                %obj.RegObject
+                %obj.BrainSegmentationObject
+                %obj.SpotDetectionObject
+                %obj.CompleteTemplate.SpotNGliaObject = obj;
+            %It is solution #1 of issue https://github.com/samuelgeurts/SpotNGlia/issues/17
+                       
+            obj.CompleteTemplate.SpotNGliaObject = obj;
+            for ifish = 1:numel(obj.PreprocessingObject)
+                obj.PreprocessingObject(ifish).SpotNGliaObject = obj;
+            end
+            for ifish = 1:numel(obj.RegObject)
+                obj.RegObject(ifish).SpotNGliaObject = obj;
+            end
+            for ifish = 1:numel(obj.BrainSegmentationObject)
+                obj.BrainSegmentationObject(ifish).SpotNGliaObject = obj;
+            end
+            for ifish = 1:numel(obj.SpotDetectionObject)
+                obj.SpotDetectionObject(ifish).SpotNGliaObject = obj;
+            end
             
+            PreprocessingObject = obj.PreprocessingObject;
+            RegObject = obj.RegObject;
+            BrainSegmentationObject = obj.BrainSegmentationObject;
+            SpotDetectionObject = obj.SpotDetectionObject;
+            
+            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'PreprocessingObject', '-append')
+            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'RegObject','-append')
+            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'BrainSegmentationObject', '-append')
+            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'SpotDetectionObject', '-append')
+                
         end
         function value = get.CompleteTemplate(obj)
             if isempty(obj.CompleteTemplate)
@@ -267,6 +303,7 @@ classdef SpotNGlia < handle & SpotNGliaShow
             end
             value = obj.CompleteTemplate;
         end
+        
         function value = get.PreprocessingObject(obj)
             if isempty(obj.PreprocessingObject)
                 disp('loading PreprocessingObject')
