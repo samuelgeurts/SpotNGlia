@@ -137,6 +137,7 @@ classdef SNGAlignment < handle
 %                 SpotNGliaObject = SpotNGliaObject.LoadTemplate;
 %             end
         end
+        
         function value = get.template(obr)
             if isempty(obr.template)     
                 obr.template = obr.SpotNGliaObject.CompleteTemplate.Template;
@@ -144,7 +145,6 @@ classdef SNGAlignment < handle
             end
             value = obr.Icombined;
         end 
-        
         function value = get.Icombined(obr)
             if isempty(obr.Icombined)
                 %disp('load image');
@@ -159,17 +159,34 @@ classdef SNGAlignment < handle
             end
             value = obr.Icombined;
         end       
-        
         function value = get.Ialigned(obr)
             if isempty(obr.Ialigned)
                 alignmentWarp(obr);
                 disp('warp image');
             end
             value = obr.Ialigned;
-        end        
-        
-%         function loadMergedImage(obr)
-%         end
+        end                  
+        function value = get.I20(obr)
+            if isempty(obr.I20)
+                BackgroundRemoval(obr);
+                disp('Background Removal');
+            end
+            value = obr.I20;
+        end             
+        function value = get.I30(obr)
+            if isempty(obr.I30)
+                Rotationalalignment(obr);
+                disp('Rotational Alignment');
+            end
+            value = obr.I30;
+        end                   
+        function value = get.I40(obr)
+            if isempty(obr.I40)
+                Scalealignment(obr);
+                disp('Scale Alignment');
+            end
+            value = obr.I40;
+        end                
         
         function obr = BackgroundRemoval(obr, Icombined)
             
