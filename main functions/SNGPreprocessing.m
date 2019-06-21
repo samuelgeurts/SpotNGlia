@@ -102,7 +102,7 @@ classdef SNGPreprocessing < handle
         
         function value = get.imageSlice(obp)
             temp = obp.imageSlice;
-            if isempty(temp) || isempty(temp{1})
+            if isempty(temp)% || isempty(temp{1})
                 obp.imageSlice = cell(1, obp.nSlices); %preallocate for every new slice
                 for iSlice = 1:obp.nSlices
                     obp.imageSlice{iSlice} = imread([obp.imagePath, filesep, obp.imageNames{iSlice}]);
@@ -211,8 +211,8 @@ classdef SNGPreprocessing < handle
                 %original image before and after normalised correlation (green-red and blue-red channel)
                 obp.NCC_Img_before{iSlice}(1) = sng_NCC(obp.imageSlice{iSlice}(:, :, 1), obp.imageSlice{iSlice}(:, :, 2));
                 obp.NCC_Img_before{iSlice}(2) = sng_NCC(obp.imageSlice{iSlice}(:, :, 1), obp.imageSlice{iSlice}(:, :, 3));
-                obp.NCC_Img_after{iSlice}(1) = sng_NCC(obp.imageSliceCor{iSlice}(:, :, 1), obp.imageSliceCor{iSlice}(:, :, 2));
-                obp.NCC_Img_after{iSlice}(2) = sng_NCC(obp.imageSliceCor{iSlice}(:, :, 1), obp.imageSliceCor{iSlice}(:, :, 3));
+                obp.NCC_Img_after{iSlice}(1) = sng_NCC(imageSliceCor{iSlice}(:, :, 1), imageSliceCor{iSlice}(:, :, 2));
+                obp.NCC_Img_after{iSlice}(2) = sng_NCC(imageSliceCor{iSlice}(:, :, 1), imageSliceCor{iSlice}(:, :, 3));
             end
             obp.imageSliceCor = imageSliceCor;
             obp.rgbCropValues = rgbCropValues;
