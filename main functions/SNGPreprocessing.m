@@ -102,7 +102,7 @@ classdef SNGPreprocessing < handle
         
         function value = get.imageSlice(obp)
             temp = obp.imageSlice;
-            if isempty(temp)% || isempty(temp{1})
+            if isempty(temp) || isempty(temp{1})
                 obp.imageSlice = cell(1, obp.nSlices); %preallocate for every new slice
                 for iSlice = 1:obp.nSlices
                     obp.imageSlice{iSlice} = imread([obp.SpotNGliaObject.FishPath, filesep, obp.imageNames{iSlice}]);
@@ -179,13 +179,17 @@ classdef SNGPreprocessing < handle
         function obp = rgbBandpassFilter(obp)
             
             %preallocation
-            obp.filteredImage = cell(1, obp.nSlices);
-            
+            filteredImage = cell(1, obp.nSlices);
+            bandFiltered = cell(1, obp.nSlices);
+
             for iSlice = 1:obp.nSlices
                 %bandpass filter focussed on spotsize passing
-                [obp.filteredImage{iSlice}, obp.bandFiltered{iSlice}] = obp.sng_bandpassFilter(obp.imageSlice{iSlice}(:, :, 1:3), obp.sigmalp, obp.sigmahp); %%TODO put this function in this class
+                [filteredImage{iSlice}, bandFiltered{iSlice}] = obp.sng_bandpassFilter(obp.imageSlice{iSlice}(:, :, 1:3), obp.sigmalp, obp.sigmahp); %%TODO put this function in this class
                 
             end
+            
+            obp.filteredImage = filteredImage;
+            obp.bandFiltered = bandFiltered;
         end
         function obp = rgbWarp(obp)
             
