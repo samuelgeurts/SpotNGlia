@@ -258,7 +258,7 @@ classdef SpotNGlia < handle & SpotNGliaShow
             
             obj.OS = getenv('OS');           
         
-            updateSpotNGliaObjectsinSubObjects(obj)
+            %updateSpotNGliaObjectsinSubObjects(obj)
         end
         function updateSpotNGliaObjectsinSubObjects(obj)
             %this function updates the SpotNGliaObject property in the functions
@@ -289,7 +289,7 @@ classdef SpotNGlia < handle & SpotNGliaShow
             BrainSegmentationObject = obj.BrainSegmentationObject;
             SpotDetectionObject = obj.SpotDetectionObject;
             
-            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'PreprocessingObject', '-append')
+            save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'PreprocessingObject')
             save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'RegObject','-append')
             save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'BrainSegmentationObject', '-append')
             save([obj.SavePath, filesep, obj.InfoName, '.mat'], 'SpotDetectionObject', '-append')
@@ -505,7 +505,10 @@ classdef SpotNGlia < handle & SpotNGliaShow
                     fn = fishnumbers(iFish);
                     PreprocessingObject(fn) = SNGPreprocessing(obj);
                     PreprocessingObject(fn).imageNames = obj.StackInfo(fn).imagenames;
-                    PreprocessingObject(fn).imagePath = obj.FishPath;
+                    %PreprocessingObject(fn).imagePath = obj.FishPath;
+                        %removed 20190604 because loading issues when on a different system
+                        %SNGPreprocessing refers to
+                        %obp.SpotNGliaObject.FishPath instead
                     PreprocessingObject(fn).nSlices = obj.StackInfo(fn).stacksize;
                     PreprocessingObject(fn).iFish = fn;
                 end
