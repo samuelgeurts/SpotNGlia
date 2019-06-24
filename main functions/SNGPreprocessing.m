@@ -148,6 +148,14 @@ classdef SNGPreprocessing < handle
             end
             value = obp.filteredImage;
         end
+        function value = get.variance_sq(obp)
+            if isempty(obp.variance_sq)
+                [obp.IndexMatrix, obp.variance_sq] = obp.sng_StackDOF2(obp.correctedSlice, obp.variancedisksize); 
+                disp('computed extended dept of field')
+            end
+            value = obp.variance_sq;
+        end        
+        
         function obp = rgbCorrection(obp)
             %computes rgb correction i.e. translation of color channels
             
