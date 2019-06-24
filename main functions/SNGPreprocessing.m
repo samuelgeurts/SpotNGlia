@@ -38,7 +38,7 @@ classdef SNGPreprocessing < handle
         %imageFullPath
         iFish
         imageNames
-        imagePath
+        %imagePath %removed 20190524 could maybe cause issues, if so refer to obp.SpotNGliaObject.FishPath instead
         
         %rgbCorrection
         colorWarp; % = ECCWarp;
@@ -105,7 +105,7 @@ classdef SNGPreprocessing < handle
             if isempty(temp)% || isempty(temp{1})
                 obp.imageSlice = cell(1, obp.nSlices); %preallocate for every new slice
                 for iSlice = 1:obp.nSlices
-                    obp.imageSlice{iSlice} = imread([obp.imagePath, filesep, obp.imageNames{iSlice}]);
+                    obp.imageSlice{iSlice} = imread([obp.SpotNGliaObject.FishPath, filesep, obp.imageNames{iSlice}]);
                     obp.imageSlice{iSlice} = im2uint8(obp.imageSlice{iSlice}(:, :, 1:3));
                 end
                 disp('load images')  
