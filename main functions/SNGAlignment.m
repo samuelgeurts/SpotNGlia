@@ -187,6 +187,22 @@ classdef SNGAlignment < handle
             end
             value = obr.I40;
         end                
+        function value = get.I22_3(obr)
+            if isempty(obr.I22_3)
+                Rotationalalignment(obr);
+                disp('Scale Alignment');
+            end
+            value = obr.I22_3;
+        end                
+        function value = get.I55(obr)
+            if isempty(obr.I55)
+                SubPixelAlignment(obr);
+                disp('SubPixel Alignment');
+            end
+            value = obr.I55;
+        end                           
+        
+        
         
         function obr = BackgroundRemoval(obr, Icombined)
             

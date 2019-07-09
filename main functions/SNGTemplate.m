@@ -176,6 +176,13 @@ classdef SNGTemplate < handle & matlab.mixin.Copyable
             end
             value = objt.polarMidbrainBandWithGaussian;
         end
+        function value = get.polarMidbrainBand(objt)
+            if isempty(objt.polarMidbrainBand)
+                disp('compute Brain parameters');
+                objt.polarProbabilityMidbrain; %compute polar band
+            end
+            value = objt.polarMidbrainBand;
+        end
         function value = get.Spot1(objt)
             if isempty(objt.Spot1)
                 disp('compute additional Spot parameters');
