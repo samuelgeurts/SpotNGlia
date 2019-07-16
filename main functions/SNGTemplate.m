@@ -36,6 +36,7 @@ classdef SNGTemplate < handle & matlab.mixin.Copyable
         
         spotcolorsTT;
         backrcolorsTT;
+        spotSizeTT;
         
     end %basic
     properties(Constant = true) %inputparameters
@@ -621,7 +622,6 @@ classdef SNGTemplate < handle & matlab.mixin.Copyable
             %bereken eroded spotmasker en background masker apart
             %bereken colors later
             
-            
             nFishes = 1:numel(objt.SpotNGliaObject.StackInfo);
             %nFishes = 1;
             
@@ -640,6 +640,7 @@ classdef SNGTemplate < handle & matlab.mixin.Copyable
             
             spotcolorsTT = [];
             backrcolorsTT = [];
+            spotSizeTT = [];
             
             
             for iFish = nFishes
@@ -695,6 +696,7 @@ classdef SNGTemplate < handle & matlab.mixin.Copyable
                 
                 backrcolorsT = [];
                 spotcolorsT = [];
+                spotSizeT = [];
                 
                 if image_TF
                     subplotvar = ceil(sqrt(2*numel(spots)));
@@ -736,6 +738,16 @@ classdef SNGTemplate < handle & matlab.mixin.Copyable
                     spotcolorsT = [spotcolorsT; spotcolors];
                     backrcolorsT = [backrcolorsT; backrcolors];
                     
+                    %compute spot size
+                    CC = bwconncomp(Mask2);
+                    for iObject = 1:CC.NumObjects
+                        Objectsize(iObject) = length([CC.PixelIdxList{iObject}]);
+                    end
+                    spotSize = max(Objectsize);
+                    spotSizeT = [spotSizeT; spotSize];
+                    
+                    
+                    
                     
                     if image_TF
                         subplot(subplotvar, subplotvar, (2 * l)-1); imagesc(SpotF); axis off tight equal
@@ -746,10 +758,13 @@ classdef SNGTemplate < handle & matlab.mixin.Copyable
                 %drawnow
                 
                 spotcolorsTT = [spotcolorsTT; spotcolorsT];
-                backrcolorsTT = [backrcolorsTT; backrcolorsT];
+                backrcolorsTT = [backrcolorsTT; backrcolorsT];     
+                spotSizeTT = [spotSizeTT;spotSizeT];
                 
                 objt.spotcolorsTT = spotcolorsTT;
                 objt.backrcolorsTT = backrcolorsTT;
+                objt.spotSizeTT = spotSizeTT;
+                
                 
                 objt.Spot1 = Spot1;
                 objt.SpotF = SpotF;
@@ -867,7 +882,7 @@ classdef SNGTemplate < handle & matlab.mixin.Copyable
             %}
         end
         function spotColorProbability(objt)
-            %% create volume that contains which a color vector can compared with to determine if it is in the range of spots
+            % create volume that contains which a color vector can compared with to determine if it is in the range of spots
             S = double(objt.spotcolorsTT);
             B = double(objt.backrcolorsTT);
             
