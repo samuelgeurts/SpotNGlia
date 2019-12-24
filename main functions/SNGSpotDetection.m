@@ -144,6 +144,15 @@ classdef SNGSpotDetection < handle & matlab.mixin.Copyable
             end
             value = objS.thresholdedMultiProduct;
         end
+        function value = get.SpotParameters(objS)
+            if isempty(objS.SpotParameters)
+                disp('compute spot properties')
+                objS.computeSpotProperties
+            end
+            value = objS.SpotParameters;
+        end
+        
+        
 
         %core methods
         function colorToGray(objS)
@@ -180,7 +189,8 @@ classdef SNGSpotDetection < handle & matlab.mixin.Copyable
         end
         function computeSpotProperties(objS)
             cmbr = objS.BrainEdge;
-            
+            Ialigned = objS.alignedImage;
+
             %SpotMeasures
             CC = bwconncomp(objS.thresholdedMultiProduct);
             L = labelmatrix(CC);
